@@ -42,11 +42,13 @@ import {
 } from '@/components/ui/collapsible';
 
 const DEFAULT_PARTS = ['FRONT', 'BACK', 'SLEEVE L', 'SLEEVE R', 'COLLAR', 'POCKET'];
+const MAX_PLIES = 103; // Maximum plies - cutter gets stuck above this
+const RECOMMENDED_PLIES = 100; // Recommended maximum
 
 const MarkerPlans = () => {
   const { 
     orders, markerPlans, cutPlans, laySheets, bundles, bundleGuides, 
-    addMarkerPlan, generateAllFromMarker, deleteCutPlan, deleteLaySheetsForCutPlan,
+    addMarkerPlan, deleteMarkerPlan, generateAllFromMarker, deleteCutPlan, deleteLaySheetsForCutPlan,
     deleteBundlesForCutPlan, deleteBundleGuidesForCutPlan, deleteAllForMarker
   } = useCuttingStore();
   const { toast } = useToast();
@@ -55,6 +57,7 @@ const MarkerPlans = () => {
   const [selectedMarker, setSelectedMarker] = useState<MarkerPlan | null>(null);
   const [isGenerateDialogOpen, setIsGenerateDialogOpen] = useState(false);
   const [markerToGenerate, setMarkerToGenerate] = useState<MarkerPlan | null>(null);
+  const [editingMarker, setEditingMarker] = useState<MarkerPlan | null>(null);
   
   // Form state for creating marker
   const [selectedOrder, setSelectedOrder] = useState<string>('');
@@ -64,7 +67,7 @@ const MarkerPlans = () => {
 
   // Generate All form state
   const [numberOfCuts, setNumberOfCuts] = useState<number>(1);
-  const [pliesPerCut, setPliesPerCut] = useState<number>(100);
+  const [pliesPerCut, setPliesPerCut] = useState<number>(RECOMMENDED_PLIES);
   const [bundleSize, setBundleSize] = useState<number>(50);
   const [selectedParts, setSelectedParts] = useState<string[]>(DEFAULT_PARTS);
 
@@ -91,7 +94,30 @@ const MarkerPlans = () => {
     toast({ title: `All documents for Marker #${markerNo} deleted` });
   };
 
-  const handleCreateMarker = () => {
+  const handleDeleteMarkerPlan = (marker: MarkerPlan) => {
+    // First delete all generated documents
+    const connectedCutPlans = cutPlans.filter(cp => cp.markerId === marker.id);
+    connectedCutPlans.forEach(cp => {
+      deleteLaySheetsForCutPlan(cp.id);
+      deleteBundlesForCutPlan(cp.id);
+      deleteBundleGuidesForCutPlan(cp.id);
+      deleteCutPlan(cp.id);
+    });
+    // Then delete the marker itself
+    deleteMarkerPlan(marker.id);
+    toast({ title: `Marker #${marker.markerNo} and all related documents deleted` });
+  };
+
+  const handleEditMarker = (marker: MarkerPlan) => {
+    setEditingMarker(marker);
+    setSelectedOrder(marker.orderId);
+    setMarkerLength(marker.markerLength);
+    setEfficiency(marker.efficiency);
+    setSizeRatios(marker.sizes);
+    setIsDialogOpen(true);
+  };
+
+  const handleSaveMarker = () => {
     if (!selectedOrder) {
       toast({ title: 'Please select an order', variant: 'destructive' });
       return;
@@ -100,22 +126,41 @@ const MarkerPlans = () => {
     const order = getOrder(selectedOrder);
     if (!order) return;
 
-    const markerNo = markerPlans.filter(m => m.orderId === selectedOrder).length + 1;
-    const newMarker: MarkerPlan = {
-      id: `m-${Date.now()}`,
-      orderId: selectedOrder,
-      markerNo,
-      markerLength,
-      fabricWidth: order.fabricWidth,
-      efficiency,
-      sizes: sizeRatios,
-      createdAt: new Date().toISOString().split('T')[0]
-    };
+    if (editingMarker) {
+      // Update existing marker - delete old and create new with same number
+      deleteMarkerPlan(editingMarker.id);
+      const updatedMarker: MarkerPlan = {
+        id: `m-${Date.now()}`,
+        orderId: selectedOrder,
+        markerNo: editingMarker.markerNo,
+        markerLength,
+        fabricWidth: order.fabricWidth,
+        efficiency,
+        sizes: sizeRatios,
+        createdAt: editingMarker.createdAt
+      };
+      addMarkerPlan(updatedMarker);
+      toast({ title: `Marker #${editingMarker.markerNo} updated!` });
+    } else {
+      // Create new marker
+      const markerNo = markerPlans.filter(m => m.orderId === selectedOrder).length + 1;
+      const newMarker: MarkerPlan = {
+        id: `m-${Date.now()}`,
+        orderId: selectedOrder,
+        markerNo,
+        markerLength,
+        fabricWidth: order.fabricWidth,
+        efficiency,
+        sizes: sizeRatios,
+        createdAt: new Date().toISOString().split('T')[0]
+      };
+      addMarkerPlan(newMarker);
+      toast({ title: `Marker Plan #${markerNo} created!` });
+    }
 
-    addMarkerPlan(newMarker);
     setIsDialogOpen(false);
+    setEditingMarker(null);
     setSizeRatios({});
-    toast({ title: `Marker Plan #${markerNo} created!` });
   };
 
   const openGenerateDialog = (marker: MarkerPlan) => {
@@ -193,16 +238,28 @@ const MarkerPlans = () => {
             <h1 className="text-3xl font-bold tracking-tight text-foreground">Marker Plans</h1>
             <p className="text-muted-foreground">Create marker ratios and generate all connected documents</p>
           </div>
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <Dialog open={isDialogOpen} onOpenChange={(open) => {
+            setIsDialogOpen(open);
+            if (!open) {
+              setEditingMarker(null);
+              setSizeRatios({});
+            }
+          }}>
             <DialogTrigger asChild>
-              <Button className="gradient-primary text-primary-foreground">
+              <Button className="gradient-primary text-primary-foreground" onClick={() => {
+                setEditingMarker(null);
+                setSelectedOrder('');
+                setMarkerLength(12.5);
+                setEfficiency(85);
+                setSizeRatios({});
+              }}>
                 <Plus className="mr-2 h-4 w-4" />
                 New Marker Plan
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-2xl">
               <DialogHeader>
-                <DialogTitle>Create Marker Plan</DialogTitle>
+                <DialogTitle>{editingMarker ? `Edit Marker #${editingMarker.markerNo}` : 'Create Marker Plan'}</DialogTitle>
               </DialogHeader>
               <div className="grid gap-4 py-4">
                 <div className="grid grid-cols-2 gap-4">
@@ -264,8 +321,8 @@ const MarkerPlans = () => {
                   </div>
                 </div>
 
-                <Button onClick={handleCreateMarker} className="gradient-primary text-primary-foreground">
-                  Create Marker Plan
+                <Button onClick={handleSaveMarker} className="gradient-primary text-primary-foreground">
+                  {editingMarker ? 'Update Marker Plan' : 'Create Marker Plan'}
                 </Button>
               </div>
             </DialogContent>
@@ -298,7 +355,7 @@ const MarkerPlans = () => {
             return (
               <Card key={marker.id} className="shadow-card">
                 <CardHeader className="pb-2">
-                  <div className="flex items-start justify-between">
+                    <div className="flex items-start justify-between">
                     <div className="space-y-1">
                       <div className="flex items-center gap-3">
                         <CardTitle className="text-lg flex items-center gap-2">
@@ -309,14 +366,45 @@ const MarkerPlans = () => {
                       </div>
                       <p className="text-sm text-muted-foreground">{order?.styleName}</p>
                     </div>
-                    <Button 
-                      size="sm" 
-                      variant="outline"
-                      onClick={() => setSelectedMarker(marker)}
-                    >
-                      <FileText className="mr-1 h-3 w-3" />
-                      View
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={() => handleEditMarker(marker)}
+                      >
+                        <Edit className="mr-1 h-3 w-3" />
+                        Edit
+                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button size="sm" variant="outline" className="text-destructive hover:text-destructive">
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete Marker #{marker.markerNo}?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This will also delete all generated cut plans, lay sheets, and bundles for this marker.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => handleDeleteMarkerPlan(marker)}>
+                              Delete
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={() => setSelectedMarker(marker)}
+                      >
+                        <FileText className="mr-1 h-3 w-3" />
+                        View
+                      </Button>
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent>
@@ -515,15 +603,36 @@ const MarkerPlans = () => {
                     <Label className="flex items-center gap-2">
                       <Layers className="h-4 w-4 text-primary" />
                       Plies per Cut
+                      {pliesPerCut > MAX_PLIES && (
+                        <Badge variant="destructive" className="ml-2">Exceeds Max!</Badge>
+                      )}
+                      {pliesPerCut > RECOMMENDED_PLIES && pliesPerCut <= MAX_PLIES && (
+                        <Badge variant="secondary" className="ml-2 bg-warning/20 text-warning">High</Badge>
+                      )}
                     </Label>
                     <Input 
                       type="number" 
                       min={1}
-                      max={500}
+                      max={MAX_PLIES}
                       value={pliesPerCut}
-                      onChange={(e) => setPliesPerCut(Number(e.target.value))}
+                      onChange={(e) => {
+                        const value = Number(e.target.value);
+                        if (value > MAX_PLIES) {
+                          setPliesPerCut(MAX_PLIES);
+                        } else {
+                          setPliesPerCut(value);
+                        }
+                      }}
+                      className={pliesPerCut > RECOMMENDED_PLIES ? 'border-warning' : ''}
                     />
-                    <p className="text-xs text-muted-foreground">Layers of fabric per cut</p>
+                    <p className="text-xs text-muted-foreground">
+                      Recommended: {RECOMMENDED_PLIES} plies max (cutter limit: {MAX_PLIES})
+                    </p>
+                    {pliesPerCut > RECOMMENDED_PLIES && (
+                      <p className="text-xs text-warning">
+                        ⚠️ High ply count may cause cutter to get stuck in fabric
+                      </p>
+                    )}
                   </div>
                 </div>
 
