@@ -6,11 +6,11 @@ import {
   Package, 
   FileText,
   Settings,
-  Factory,
   Ruler,
   Scale
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import logo from '@/assets/logo.png';
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
@@ -28,14 +28,8 @@ export function Sidebar() {
   return (
     <div className="flex h-screen w-64 flex-col bg-sidebar">
       {/* Logo */}
-      <div className="flex h-16 items-center gap-3 border-b border-sidebar-border px-6">
-        <div className="flex h-9 w-9 items-center justify-center rounded-lg gradient-primary">
-          <Factory className="h-5 w-5 text-primary-foreground" />
-        </div>
-        <div>
-          <h1 className="text-sm font-semibold text-sidebar-foreground">Adeem Uniform</h1>
-          <p className="text-xs text-sidebar-foreground/60">Cutting ERP</p>
-        </div>
+      <div className="flex h-20 items-center gap-3 border-b border-sidebar-border px-4">
+        <img src={logo} alt="Ghoush Logo" className="h-16 w-auto object-contain" />
       </div>
 
       {/* Navigation */}
