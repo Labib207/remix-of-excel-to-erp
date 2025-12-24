@@ -33,6 +33,8 @@ interface CuttingStore {
   // Bundle Actions
   addBundle: (bundle: Bundle) => void;
   addBundles: (bundles: Bundle[]) => void;
+  updateBundle: (id: string, bundle: Partial<Bundle>) => void;
+  deleteBundle: (id: string) => void;
   clearBundlesForCutPlan: (cutPlanId: string) => void;
   
   // Bundle Guide Actions
@@ -246,6 +248,12 @@ export const useCuttingStore = create<CuttingStore>((set, get) => ({
   // Bundle Actions
   addBundle: (bundle) => set((state) => ({ bundles: [...state.bundles, bundle] })),
   addBundles: (bundles) => set((state) => ({ bundles: [...state.bundles, ...bundles] })),
+  updateBundle: (id, updates) => set((state) => ({
+    bundles: state.bundles.map(b => b.id === id ? { ...b, ...updates } : b)
+  })),
+  deleteBundle: (id) => set((state) => ({
+    bundles: state.bundles.filter(b => b.id !== id)
+  })),
   clearBundlesForCutPlan: (cutPlanId) => set((state) => ({
     bundles: state.bundles.filter(b => b.cutPlanId !== cutPlanId)
   })),
