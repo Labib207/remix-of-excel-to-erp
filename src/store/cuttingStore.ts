@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { Order, CutPlan, Bundle, Ratio, MarkerPlan, LaySheet, BundleGuide, SIZES } from '@/types/cutting';
+import { Order, CutPlan, Bundle, Ratio, MarkerPlan, LaySheet, BundleGuide, SIZES, FabricRoll, LayRecord } from '@/types/cutting';
 
 interface CuttingStore {
   orders: Order[];
@@ -9,6 +9,8 @@ interface CuttingStore {
   markerPlans: MarkerPlan[];
   laySheets: LaySheet[];
   bundleGuides: BundleGuide[];
+  fabricRolls: FabricRoll[];
+  layRecords: LayRecord[];
   
   // Order Actions
   addOrder: (order: Order) => void;
@@ -49,6 +51,16 @@ interface CuttingStore {
   // Ratio Actions
   addRatio: (ratio: Ratio) => void;
   deleteRatio: (id: string) => void;
+  
+  // Fabric Roll Actions
+  addFabricRoll: (roll: FabricRoll) => void;
+  updateFabricRoll: (id: string, roll: Partial<FabricRoll>) => void;
+  deleteFabricRoll: (id: string) => void;
+  
+  // Lay Record Actions
+  addLayRecord: (record: LayRecord) => void;
+  updateLayRecord: (id: string, record: Partial<LayRecord>) => void;
+  deleteLayRecord: (id: string) => void;
   
   // Generate connected documents
   generateDocumentsFromCutPlan: (cutPlanId: string, bundleSize: number, parts: string[]) => void;
@@ -180,6 +192,8 @@ export const useCuttingStore = create<CuttingStore>((set, get) => ({
   markerPlans: sampleMarkerPlans,
   laySheets: sampleLaySheets,
   bundleGuides: [],
+  fabricRolls: [],
+  layRecords: [],
   
   // Order Actions
   addOrder: (order) => set((state) => ({ orders: [...state.orders, order] })),
@@ -255,6 +269,24 @@ export const useCuttingStore = create<CuttingStore>((set, get) => ({
   addRatio: (ratio) => set((state) => ({ ratios: [...state.ratios, ratio] })),
   deleteRatio: (id) => set((state) => ({
     ratios: state.ratios.filter(r => r.id !== id)
+  })),
+  
+  // Fabric Roll Actions
+  addFabricRoll: (roll) => set((state) => ({ fabricRolls: [...state.fabricRolls, roll] })),
+  updateFabricRoll: (id, updates) => set((state) => ({
+    fabricRolls: state.fabricRolls.map(r => r.id === id ? { ...r, ...updates } : r)
+  })),
+  deleteFabricRoll: (id) => set((state) => ({
+    fabricRolls: state.fabricRolls.filter(r => r.id !== id)
+  })),
+  
+  // Lay Record Actions
+  addLayRecord: (record) => set((state) => ({ layRecords: [...state.layRecords, record] })),
+  updateLayRecord: (id, updates) => set((state) => ({
+    layRecords: state.layRecords.map(r => r.id === id ? { ...r, ...updates } : r)
+  })),
+  deleteLayRecord: (id) => set((state) => ({
+    layRecords: state.layRecords.filter(r => r.id !== id)
   })),
   
   // Generate all connected documents from a cut plan

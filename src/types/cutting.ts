@@ -124,3 +124,55 @@ export interface FabricConsumption {
     balance: number;
   };
 }
+
+// Reconciliation Types
+export interface FabricRoll {
+  id: string;
+  rollNo: string;
+  fabricType: 'SHELL' | 'FUSING' | 'TAB';
+  systemLength: number; // meters
+  receivedDate: string;
+  status: 'available' | 'in-use' | 'exhausted';
+}
+
+export interface LayRecord {
+  id: string;
+  cutPlanId: string;
+  cutNo: number;
+  shade: string;
+  rollNo: string;
+  rollId?: string;
+  systemRollLength: number;
+  actualLays: number;
+  markerLength: number;
+  layedMts: number;
+  overlapYards: number;
+  rollShortageIncrease: number;
+  rollEndNextPly1st: number;
+  damage: number;
+  rollEndNextPly2nd: number;
+  recutReturn: number;
+  unusableRollEnd: number;
+  totalUsage: number;
+  rollEnd: number;
+  bigEnd: number;
+  remarks: string;
+}
+
+export interface ReconciliationSummary {
+  id: string;
+  orderId: string;
+  fabricType: 'SHELL' | 'FUSING' | 'TAB';
+  fabricDescription: string;
+  fabricWidth: number;
+  consumptionPerPc: number;
+  orderQty: number;
+  requirementAsPerMarker: number;
+  receivingFabric: number;
+  cuttingWastage: number;
+  usageAsPerMarker: number;
+  balance: number;
+  unusableRollEnd: number;
+  bigEnd: number;
+  remarks: string;
+}

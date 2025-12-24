@@ -7,7 +7,8 @@ import {
   FileText,
   Settings,
   Factory,
-  Ruler
+  Ruler,
+  Scale
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -17,6 +18,7 @@ const navigation = [
   { name: 'Marker Plans', href: '/markers', icon: Ruler },
   { name: 'Cutting Plans', href: '/cutting', icon: Scissors },
   { name: 'Bundles', href: '/bundles', icon: Package },
+  { name: 'Reconciliation', href: '/reconciliation', icon: Scale },
   { name: 'Reports', href: '/reports', icon: FileText },
 ];
 
