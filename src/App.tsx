@@ -9,6 +9,7 @@ import MarkerPlans from "./pages/MarkerPlans";
 import CuttingPlans from "./pages/CuttingPlans";
 import Bundles from "./pages/Bundles";
 import Reports from "./pages/Reports";
+import Reconciliation from "./pages/Reconciliation";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -26,6 +27,7 @@ const App = () => (
           <Route path="/cutting" element={<CuttingPlans />} />
           <Route path="/bundles" element={<Bundles />} />
           <Route path="/reports" element={<Reports />} />
+          <Route path="/reconciliation" element={<Reconciliation />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
