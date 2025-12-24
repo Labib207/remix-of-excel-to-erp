@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { useCuttingStore } from '@/store/cuttingStore';
-import { SIZES, CutPlan } from '@/types/cutting';
+import { SIZES, CutPlan, Bundle } from '@/types/cutting';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -20,11 +20,24 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
 } from '@/components/ui/dialog';
-import { Plus, Printer, Package, Tag, FileText, ArrowRight, Download } from 'lucide-react';
+import { Plus, Printer, Package, Tag, FileText, ArrowRight, Download, Pencil, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { exportBundleGuidePDF, exportBundleTagsPDF, exportAllBundleTagsByPart } from '@/lib/pdfExport';
 import { Separator } from '@/components/ui/separator';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+
 const PARTS = [
   'FRONT', 'BACK', 'SLEEVE', 'COLLAR', 'POCKET', 'FLAP',
   'L FRONT', 'R FRONT', 'FRT SLV', 'BCK SLV', 'U.COLLAR', 'T COLLER',
@@ -33,7 +46,7 @@ const PARTS = [
 ];
 
 const Bundles = () => {
-  const { cutPlans, orders, bundles, bundleGuides, generateDocumentsFromCutPlan } = useCuttingStore();
+  const { cutPlans, orders, bundles, bundleGuides, generateDocumentsFromCutPlan, updateBundle, deleteBundle } = useCuttingStore();
   const { toast } = useToast();
   
   const [selectedCutPlan, setSelectedCutPlan] = useState<string>('');
@@ -41,6 +54,17 @@ const Bundles = () => {
   const [selectedParts, setSelectedParts] = useState<string[]>(PARTS.slice(0, 6));
   const [showBundleGuide, setShowBundleGuide] = useState<CutPlan | null>(null);
   const [showBundleTags, setShowBundleTags] = useState<CutPlan | null>(null);
+  
+  // Edit bundle state
+  const [editingBundle, setEditingBundle] = useState<Bundle | null>(null);
+  const [editForm, setEditForm] = useState({
+    bundleNo: 0,
+    quantity: 0,
+    plyStart: 0,
+    plyEnd: 0,
+    startNo: 0,
+    endNo: 0,
+  });
 
   const togglePart = (part: string) => {
     setSelectedParts(prev => 
@@ -70,6 +94,56 @@ const Bundles = () => {
 
   const planGuides = showBundleGuide ? bundleGuides.filter(bg => bg.cutPlanId === showBundleGuide.id) : [];
   const planBundles = showBundleTags ? bundles.filter(b => b.cutPlanId === showBundleTags.id) : [];
+
+  // Open edit dialog
+  const handleEditBundle = (bundle: Bundle) => {
+    setEditingBundle(bundle);
+    setEditForm({
+      bundleNo: bundle.bundleNo,
+      quantity: bundle.quantity,
+      plyStart: bundle.plyStart || 1,
+      plyEnd: bundle.plyEnd || bundle.quantity,
+      startNo: bundle.startNo,
+      endNo: bundle.endNo,
+    });
+  };
+
+  // Save edited bundle
+  const handleSaveBundle = () => {
+    if (!editingBundle) return;
+    
+    // Validate inputs
+    if (editForm.plyStart > editForm.plyEnd) {
+      toast({ title: 'Ply Start cannot be greater than Ply End', variant: 'destructive' });
+      return;
+    }
+    if (editForm.startNo > editForm.endNo) {
+      toast({ title: 'S/N Start cannot be greater than S/N End', variant: 'destructive' });
+      return;
+    }
+    if (editForm.quantity < 1) {
+      toast({ title: 'Quantity must be at least 1', variant: 'destructive' });
+      return;
+    }
+    
+    updateBundle(editingBundle.id, {
+      bundleNo: editForm.bundleNo,
+      quantity: editForm.quantity,
+      plyStart: editForm.plyStart,
+      plyEnd: editForm.plyEnd,
+      startNo: editForm.startNo,
+      endNo: editForm.endNo,
+    });
+    
+    toast({ title: 'Bundle updated successfully!' });
+    setEditingBundle(null);
+  };
+
+  // Delete bundle
+  const handleDeleteBundle = (bundleId: string) => {
+    deleteBundle(bundleId);
+    toast({ title: 'Bundle deleted' });
+  };
 
   return (
     <MainLayout>
@@ -444,8 +518,38 @@ const Bundles = () => {
                           </div>
                         </div>
 
-                        <div className="border-t border-dashed border-border pt-2 text-center">
-                          <p className="text-xs text-muted-foreground">...........................SIGNATURE</p>
+                        {/* Edit/Delete Actions */}
+                        <div className="flex gap-2 border-t border-dashed border-border pt-2">
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="flex-1"
+                            onClick={() => handleEditBundle(bundle)}
+                          >
+                            <Pencil className="h-3 w-3 mr-1" />
+                            Edit
+                          </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="outline" size="sm" className="text-destructive hover:text-destructive">
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Delete Bundle #{bundle.bundleNo}?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  This will permanently delete this bundle tag. This action cannot be undone.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleDeleteBundle(bundle.id)}>
+                                  Delete
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
                         </div>
                       </div>
                     );
@@ -490,6 +594,136 @@ const Bundles = () => {
                   </Button>
                 </div>
               </div>
+            </DialogContent>
+          </Dialog>
+        )}
+
+        {/* Edit Bundle Dialog */}
+        {editingBundle && (
+          <Dialog open={!!editingBundle} onOpenChange={() => setEditingBundle(null)}>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <Pencil className="h-5 w-5 text-primary" />
+                  Edit Bundle #{editingBundle.bundleNo}
+                </DialogTitle>
+              </DialogHeader>
+              
+              <div className="space-y-4 py-4">
+                {/* Bundle Info (read-only) */}
+                <div className="grid grid-cols-2 gap-4 p-3 bg-muted/50 rounded-lg">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Size</p>
+                    <p className="font-bold text-lg">{editingBundle.size}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Part</p>
+                    <p className="font-medium">{editingBundle.part}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Cut #</p>
+                    <p className="font-mono">{editingBundle.cutNo}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Shade</p>
+                    <p className="font-medium">{editingBundle.shade}</p>
+                  </div>
+                </div>
+
+                <Separator />
+
+                {/* Editable Fields */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="bundleNo">Bundle Number</Label>
+                    <Input
+                      id="bundleNo"
+                      type="number"
+                      value={editForm.bundleNo}
+                      onChange={(e) => setEditForm(prev => ({ ...prev, bundleNo: parseInt(e.target.value) || 0 }))}
+                      min={1}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="quantity">Quantity</Label>
+                    <Input
+                      id="quantity"
+                      type="number"
+                      value={editForm.quantity}
+                      onChange={(e) => setEditForm(prev => ({ ...prev, quantity: parseInt(e.target.value) || 0 }))}
+                      min={1}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="plyStart">Ply Start</Label>
+                    <Input
+                      id="plyStart"
+                      type="number"
+                      value={editForm.plyStart}
+                      onChange={(e) => setEditForm(prev => ({ ...prev, plyStart: parseInt(e.target.value) || 0 }))}
+                      min={1}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="plyEnd">Ply End</Label>
+                    <Input
+                      id="plyEnd"
+                      type="number"
+                      value={editForm.plyEnd}
+                      onChange={(e) => setEditForm(prev => ({ ...prev, plyEnd: parseInt(e.target.value) || 0 }))}
+                      min={1}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="startNo">Serial Start</Label>
+                    <Input
+                      id="startNo"
+                      type="number"
+                      value={editForm.startNo}
+                      onChange={(e) => setEditForm(prev => ({ ...prev, startNo: parseInt(e.target.value) || 0 }))}
+                      min={1}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="endNo">Serial End</Label>
+                    <Input
+                      id="endNo"
+                      type="number"
+                      value={editForm.endNo}
+                      onChange={(e) => setEditForm(prev => ({ ...prev, endNo: parseInt(e.target.value) || 0 }))}
+                      min={1}
+                    />
+                  </div>
+                </div>
+
+                {/* Calculated Preview */}
+                <div className="p-3 bg-primary/5 border border-primary/20 rounded-lg">
+                  <p className="text-xs text-muted-foreground mb-2">Preview</p>
+                  <div className="flex justify-between text-sm">
+                    <span>Ply Range: <strong className="text-primary">{editForm.plyStart}-{editForm.plyEnd}</strong></span>
+                    <span>Qty: <strong>{editForm.quantity}</strong></span>
+                  </div>
+                  <div className="flex justify-between text-sm mt-1">
+                    <span>S/N Range: <strong>{editForm.startNo}-{editForm.endNo}</strong></span>
+                    <span>Bundle: <strong>#{editForm.bundleNo}</strong></span>
+                  </div>
+                </div>
+              </div>
+
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setEditingBundle(null)}>
+                  Cancel
+                </Button>
+                <Button onClick={handleSaveBundle} className="gradient-primary text-primary-foreground">
+                  Save Changes
+                </Button>
+              </DialogFooter>
             </DialogContent>
           </Dialog>
         )}
