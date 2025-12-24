@@ -21,9 +21,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Plus, Printer, Package, Tag, FileText, ArrowRight } from 'lucide-react';
+import { Plus, Printer, Package, Tag, FileText, ArrowRight, Download } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-
+import { exportBundleGuidePDF, exportBundleTagsPDF, exportAllBundleTagsByPart } from '@/lib/pdfExport';
 const PARTS = [
   'FRONT', 'BACK', 'SLEEVE', 'COLLAR', 'POCKET', 'FLAP',
   'L FRONT', 'R FRONT', 'FRT SLV', 'BCK SLV', 'U.COLLAR', 'T COLLER',
@@ -334,9 +334,18 @@ const Bundles = () => {
                   <Button variant="outline" onClick={() => setShowBundleGuide(null)}>
                     Close
                   </Button>
-                  <Button className="gradient-primary text-primary-foreground">
-                    <Printer className="mr-2 h-4 w-4" />
-                    Print Bundle Guide
+                  <Button 
+                    className="gradient-primary text-primary-foreground"
+                    onClick={() => {
+                      const order = getOrder(showBundleGuide.orderId);
+                      if (order) {
+                        exportBundleGuidePDF(planGuides, showBundleGuide, order);
+                        toast({ title: 'Bundle Guide PDF exported!' });
+                      }
+                    }}
+                  >
+                    <Download className="mr-2 h-4 w-4" />
+                    Export PDF
                   </Button>
                 </div>
               </div>
@@ -423,9 +432,31 @@ const Bundles = () => {
                   <Button variant="outline" onClick={() => setShowBundleTags(null)}>
                     Close
                   </Button>
-                  <Button className="gradient-primary text-primary-foreground">
-                    <Printer className="mr-2 h-4 w-4" />
-                    Print All Tags
+                  <Button 
+                    variant="outline"
+                    onClick={() => {
+                      const order = getOrder(showBundleTags.orderId);
+                      if (order) {
+                        exportAllBundleTagsByPart(planBundles, showBundleTags, order);
+                        toast({ title: 'Bundle Tags exported by part!' });
+                      }
+                    }}
+                  >
+                    <Download className="mr-2 h-4 w-4" />
+                    Export by Part
+                  </Button>
+                  <Button 
+                    className="gradient-primary text-primary-foreground"
+                    onClick={() => {
+                      const order = getOrder(showBundleTags.orderId);
+                      if (order) {
+                        exportBundleTagsPDF(planBundles, showBundleTags, order);
+                        toast({ title: 'All Bundle Tags PDF exported!' });
+                      }
+                    }}
+                  >
+                    <Download className="mr-2 h-4 w-4" />
+                    Export All Tags
                   </Button>
                 </div>
               </div>
