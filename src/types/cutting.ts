@@ -49,9 +49,21 @@ export interface Ratio {
   totalQty: number;
 }
 
+export interface MarkerPlan {
+  id: string;
+  orderId: string;
+  markerNo: number;
+  markerLength: number;
+  fabricWidth: number;
+  efficiency: number;
+  sizes: SizeQuantity;
+  createdAt: string;
+}
+
 export interface CutPlan {
   id: string;
   orderId: string;
+  markerId: string;
   cutNo: number;
   shade: string;
   plies: number;
@@ -61,11 +73,25 @@ export interface CutPlan {
   totalQty: number;
   fabricUsed: number;
   date: string;
+  status: 'planned' | 'cutting' | 'completed';
+}
+
+export interface LaySheet {
+  id: string;
+  cutPlanId: string;
+  layNo: number;
+  plies: number;
+  layLength: number;
+  fabricRoll: string;
+  startTime?: string;
+  endTime?: string;
+  operator?: string;
 }
 
 export interface Bundle {
   id: string;
   cutPlanId: string;
+  orderId: string;
   bundleNo: number;
   size: string;
   part: string;
@@ -73,6 +99,17 @@ export interface Bundle {
   startNo: number;
   endNo: number;
   shade: string;
+  cutNo: number;
+}
+
+export interface BundleGuide {
+  id: string;
+  cutPlanId: string;
+  size: string;
+  totalQty: number;
+  bundles: number;
+  bundleSize: number;
+  remainderQty: number;
 }
 
 export interface FabricConsumption {
