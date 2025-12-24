@@ -200,9 +200,27 @@ export const useCuttingStore = create<CuttingStore>((set, get) => ({
   updateOrder: (id, updates) => set((state) => ({
     orders: state.orders.map(o => o.id === id ? { ...o, ...updates } : o)
   })),
-  deleteOrder: (id) => set((state) => ({
-    orders: state.orders.filter(o => o.id !== id)
-  })),
+  deleteOrder: (id) => {
+    const state = get();
+    
+    // Get all cut plan IDs for this order
+    const relatedCutPlanIds = state.cutPlans
+      .filter(cp => cp.orderId === id)
+      .map(cp => cp.id);
+    
+    set((s) => ({
+      orders: s.orders.filter(o => o.id !== id),
+      markerPlans: s.markerPlans.filter(mp => mp.orderId !== id),
+      cutPlans: s.cutPlans.filter(cp => cp.orderId !== id),
+      // LayRecord uses cutPlanId, not orderId
+      layRecords: s.layRecords.filter(lr => !relatedCutPlanIds.includes(lr.cutPlanId)),
+      bundles: s.bundles.filter(b => !relatedCutPlanIds.includes(b.cutPlanId)),
+      bundleGuides: s.bundleGuides.filter(bg => !relatedCutPlanIds.includes(bg.cutPlanId)),
+      laySheets: s.laySheets.filter(ls => !relatedCutPlanIds.includes(ls.cutPlanId)),
+      // Ratio uses orderId
+      ratios: s.ratios.filter(r => r.orderId !== id),
+    }));
+  },
   
   // Marker Plan Actions
   addMarkerPlan: (marker) => set((state) => ({ markerPlans: [...state.markerPlans, marker] })),

@@ -19,10 +19,26 @@ const statusLabels = {
 export function OrdersTable() {
   const { orders } = useCuttingStore();
 
+  if (orders.length === 0) {
+    return (
+      <div className="rounded-xl border border-border bg-card shadow-card">
+        <div className="flex items-center justify-between border-b border-border px-6 py-4">
+          <h3 className="text-lg font-semibold text-foreground">Active Orders</h3>
+          <Link to="/orders">
+            <Button variant="outline" size="sm">Add Order</Button>
+          </Link>
+        </div>
+        <div className="p-8 text-center">
+          <p className="text-muted-foreground">No orders yet. Add your first order to get started.</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="rounded-xl border border-border bg-card shadow-card">
       <div className="flex items-center justify-between border-b border-border px-6 py-4">
-        <h3 className="text-lg font-semibold text-foreground">Active Orders</h3>
+        <h3 className="text-lg font-semibold text-foreground">Active Orders ({orders.length})</h3>
         <Link to="/orders">
           <Button variant="outline" size="sm">View All</Button>
         </Link>
@@ -66,12 +82,16 @@ export function OrdersTable() {
                 </td>
                 <td className="whitespace-nowrap px-6 py-4 text-right">
                   <div className="flex justify-end gap-2">
-                    <Button variant="ghost" size="icon" className="h-8 w-8">
-                      <Eye className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon" className="h-8 w-8">
-                      <Edit className="h-4 w-4" />
-                    </Button>
+                    <Link to="/orders">
+                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                    </Link>
+                    <Link to="/orders">
+                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                    </Link>
                   </div>
                 </td>
               </tr>
