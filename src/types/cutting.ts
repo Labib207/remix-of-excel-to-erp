@@ -99,6 +99,8 @@ export interface Bundle {
   quantity: number;
   startNo: number;
   endNo: number;
+  plyStart: number;  // Ply range start within this cut
+  plyEnd: number;    // Ply range end within this cut
   shade: string;
   cutNo: number;
 }

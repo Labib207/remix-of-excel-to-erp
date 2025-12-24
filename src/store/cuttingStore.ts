@@ -307,7 +307,7 @@ export const useCuttingStore = create<CuttingStore>((set, get) => ({
     layRecords: state.layRecords.filter(r => r.id !== id)
   })),
   
-  // Generate all connected documents from a cut plan
+  // Generate all connected documents from a cut plan with proper ply sequence
   generateDocumentsFromCutPlan: (cutPlanId: string, bundleSize: number, parts: string[]) => {
     const state = get();
     const cutPlan = state.cutPlans.find(cp => cp.id === cutPlanId);
@@ -322,17 +322,35 @@ export const useCuttingStore = create<CuttingStore>((set, get) => ({
       bundleGuides: s.bundleGuides.filter(bg => bg.cutPlanId !== cutPlanId)
     }));
     
+    // Get the next bundle number for this order (across all cut plans)
+    const existingOrderBundles = state.bundles.filter(b => 
+      b.orderId === order.id && b.cutPlanId !== cutPlanId
+    );
+    // Get unique bundle numbers per part (since all parts share same bundle number)
+    const existingBundleNos = [...new Set(existingOrderBundles.map(b => b.bundleNo))];
+    let globalBundleNo = existingBundleNos.length > 0 ? Math.max(...existingBundleNos) + 1 : 1;
+    
+    // Get the next serial number for this order
+    const existingSerials = existingOrderBundles.map(b => b.endNo);
+    let globalSerialNo = existingSerials.length > 0 ? Math.max(...existingSerials) + 1 : 1;
+    
     const newBundles: Bundle[] = [];
     const newGuides: BundleGuide[] = [];
-    let globalBundleNo = state.bundles.filter(b => b.cutPlanId !== cutPlanId).length + 1;
+    
+    // Plies available from the cut plan
+    const totalPlies = cutPlan.plies;
     
     // For each size in the cut plan
     Object.entries(cutPlan.sizes).forEach(([size, qty]) => {
       if (qty <= 0) return;
       
-      const numFullBundles = Math.floor(qty / bundleSize);
-      const remainder = qty % bundleSize;
-      const totalBundles = numFullBundles + (remainder > 0 ? 1 : 0);
+      // qty = ratio * plies, so each "piece" per size comes from plies
+      // For bundling, we bundle by plies (e.g., 50 plies per bundle for this size)
+      const ratio = qty / totalPlies; // pieces per ply for this size
+      
+      const numFullBundles = Math.floor(totalPlies / bundleSize);
+      const remainderPlies = totalPlies % bundleSize;
+      const totalBundles = numFullBundles + (remainderPlies > 0 ? 1 : 0);
       
       // Create Bundle Guide
       newGuides.push({
@@ -341,35 +359,47 @@ export const useCuttingStore = create<CuttingStore>((set, get) => ({
         size,
         totalQty: qty,
         bundles: totalBundles,
-        bundleSize,
-        remainderQty: remainder
+        bundleSize: bundleSize * ratio, // actual pieces per bundle
+        remainderQty: remainderPlies * ratio
       });
       
-      let startNo = 1;
+      let currentPlyStart = 1;
       
       // Create full bundles
       for (let i = 0; i < numFullBundles; i++) {
+        const plyStart = currentPlyStart;
+        const plyEnd = currentPlyStart + bundleSize - 1;
+        const bundleQty = bundleSize * ratio;
+        
         parts.forEach(part => {
           newBundles.push({
-            id: `${Date.now()}-${globalBundleNo}-${part}-${size}`,
+            id: `${Date.now()}-${globalBundleNo}-${part}-${size}-${i}`,
             cutPlanId,
             orderId: order.id,
             bundleNo: globalBundleNo,
             size,
             part,
-            quantity: bundleSize,
-            startNo,
-            endNo: startNo + bundleSize - 1,
+            quantity: bundleQty,
+            startNo: globalSerialNo,
+            endNo: globalSerialNo + bundleQty - 1,
+            plyStart,
+            plyEnd,
             shade: cutPlan.shade,
             cutNo: cutPlan.cutNo
           });
         });
-        startNo += bundleSize;
+        
+        globalSerialNo += bundleQty;
+        currentPlyStart += bundleSize;
         globalBundleNo++;
       }
       
       // Create remainder bundle if needed
-      if (remainder > 0) {
+      if (remainderPlies > 0) {
+        const plyStart = currentPlyStart;
+        const plyEnd = currentPlyStart + remainderPlies - 1;
+        const remainderQty = remainderPlies * ratio;
+        
         parts.forEach(part => {
           newBundles.push({
             id: `${Date.now()}-${globalBundleNo}-${part}-${size}-rem`,
@@ -378,13 +408,16 @@ export const useCuttingStore = create<CuttingStore>((set, get) => ({
             bundleNo: globalBundleNo,
             size,
             part,
-            quantity: remainder,
-            startNo,
-            endNo: startNo + remainder - 1,
+            quantity: remainderQty,
+            startNo: globalSerialNo,
+            endNo: globalSerialNo + remainderQty - 1,
+            plyStart,
+            plyEnd,
             shade: cutPlan.shade,
             cutNo: cutPlan.cutNo
           });
         });
+        globalSerialNo += remainderQty;
         globalBundleNo++;
       }
     });
@@ -463,13 +496,15 @@ export const useCuttingStore = create<CuttingStore>((set, get) => ({
         fabricRoll: `ROLL-${String(cutNo).padStart(3, '0')}`
       });
       
-      // Generate Bundle Guides and Bundle Tags for each size
+      // Generate Bundle Guides and Bundle Tags for each size with ply tracking
       Object.entries(sizes).forEach(([size, qty]) => {
         if (qty <= 0) return;
         
-        const numFullBundles = Math.floor(qty / bundleSize);
-        const remainder = qty % bundleSize;
-        const totalBundles = numFullBundles + (remainder > 0 ? 1 : 0);
+        // Bundle by plies, not by total qty
+        const ratio = marker.sizes[size] || 1;
+        const numFullBundles = Math.floor(pliesPerCut / bundleSize);
+        const remainderPlies = pliesPerCut % bundleSize;
+        const totalBundles = numFullBundles + (remainderPlies > 0 ? 1 : 0);
         
         // Create Bundle Guide
         newGuides.push({
@@ -478,14 +513,19 @@ export const useCuttingStore = create<CuttingStore>((set, get) => ({
           size,
           totalQty: qty,
           bundles: totalBundles,
-          bundleSize,
-          remainderQty: remainder
+          bundleSize: bundleSize * ratio,
+          remainderQty: remainderPlies * ratio
         });
         
-        let startNo = 1;
+        let currentPlyStart = 1;
+        let serialNo = 1;
         
         // Create full bundles
         for (let i = 0; i < numFullBundles; i++) {
+          const plyStart = currentPlyStart;
+          const plyEnd = currentPlyStart + bundleSize - 1;
+          const bundleQty = bundleSize * ratio;
+          
           parts.forEach(part => {
             newBundles.push({
               id: `${Date.now()}-${globalBundleNo}-${part}-${size}-${cutIndex}-${i}`,
@@ -494,19 +534,26 @@ export const useCuttingStore = create<CuttingStore>((set, get) => ({
               bundleNo: globalBundleNo,
               size,
               part,
-              quantity: bundleSize,
-              startNo,
-              endNo: startNo + bundleSize - 1,
+              quantity: bundleQty,
+              startNo: serialNo,
+              endNo: serialNo + bundleQty - 1,
+              plyStart,
+              plyEnd,
               shade: order.shade,
               cutNo
             });
           });
-          startNo += bundleSize;
+          serialNo += bundleQty;
+          currentPlyStart += bundleSize;
           globalBundleNo++;
         }
         
         // Create remainder bundle if needed
-        if (remainder > 0) {
+        if (remainderPlies > 0) {
+          const plyStart = currentPlyStart;
+          const plyEnd = currentPlyStart + remainderPlies - 1;
+          const remainderQty = remainderPlies * ratio;
+          
           parts.forEach(part => {
             newBundles.push({
               id: `${Date.now()}-${globalBundleNo}-${part}-${size}-${cutIndex}-rem`,
@@ -515,9 +562,11 @@ export const useCuttingStore = create<CuttingStore>((set, get) => ({
               bundleNo: globalBundleNo,
               size,
               part,
-              quantity: remainder,
-              startNo,
-              endNo: startNo + remainder - 1,
+              quantity: remainderQty,
+              startNo: serialNo,
+              endNo: serialNo + remainderQty - 1,
+              plyStart,
+              plyEnd,
               shade: order.shade,
               cutNo
             });
