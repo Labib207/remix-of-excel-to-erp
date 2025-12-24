@@ -43,6 +43,15 @@ interface CuttingStore {
   
   // Generate connected documents
   generateDocumentsFromCutPlan: (cutPlanId: string, bundleSize: number, parts: string[]) => void;
+  
+  // Generate ALL documents from a marker plan
+  generateAllFromMarker: (
+    markerId: string,
+    numberOfCuts: number,
+    pliesPerCut: number,
+    bundleSize: number,
+    parts: string[]
+  ) => { cutPlans: number; laySheets: number; bundleGuides: number; bundles: number };
 }
 
 // Sample data based on the Excel
@@ -296,5 +305,153 @@ export const useCuttingStore = create<CuttingStore>((set, get) => ({
       bundles: [...s.bundles, ...newBundles],
       bundleGuides: [...s.bundleGuides, ...newGuides]
     }));
+  },
+
+  // Generate ALL documents from a marker plan (Cut Plans + Lay Sheets + Bundle Guides + Bundle Tags)
+  generateAllFromMarker: (
+    markerId: string,
+    numberOfCuts: number,
+    pliesPerCut: number,
+    bundleSize: number,
+    parts: string[]
+  ) => {
+    const state = get();
+    const marker = state.markerPlans.find(m => m.id === markerId);
+    if (!marker) return { cutPlans: 0, laySheets: 0, bundleGuides: 0, bundles: 0 };
+    
+    const order = state.orders.find(o => o.id === marker.orderId);
+    if (!order) return { cutPlans: 0, laySheets: 0, bundleGuides: 0, bundles: 0 };
+
+    const newCutPlans: CutPlan[] = [];
+    const newLaySheets: LaySheet[] = [];
+    const newBundles: Bundle[] = [];
+    const newGuides: BundleGuide[] = [];
+    
+    const existingCutCount = state.cutPlans.length;
+    let globalBundleNo = state.bundles.length + 1;
+    
+    // Create multiple cut plans based on numberOfCuts
+    for (let cutIndex = 0; cutIndex < numberOfCuts; cutIndex++) {
+      const cutNo = existingCutCount + cutIndex + 1;
+      const cutPlanId = `cp-${Date.now()}-${cutIndex}`;
+      const layLength = marker.markerLength + 0.0254;
+      const fabricUsed = pliesPerCut * layLength;
+      
+      // Calculate sizes: ratio × plies
+      const sizes: Record<string, number> = {};
+      Object.entries(marker.sizes).forEach(([size, ratio]) => {
+        if (ratio > 0) {
+          sizes[size] = ratio * pliesPerCut;
+        }
+      });
+      
+      const totalQty = Object.values(sizes).reduce((sum, qty) => sum + qty, 0);
+      
+      // Create Cut Plan
+      const newCutPlan: CutPlan = {
+        id: cutPlanId,
+        orderId: marker.orderId,
+        markerId: marker.id,
+        cutNo,
+        shade: order.shade,
+        plies: pliesPerCut,
+        markerLength: marker.markerLength,
+        layLength,
+        sizes,
+        totalQty,
+        fabricUsed,
+        date: new Date().toISOString().split('T')[0],
+        status: 'planned'
+      };
+      newCutPlans.push(newCutPlan);
+      
+      // Create Lay Sheet for this cut plan
+      newLaySheets.push({
+        id: `ls-${Date.now()}-${cutIndex}`,
+        cutPlanId,
+        layNo: 1,
+        plies: pliesPerCut,
+        layLength,
+        fabricRoll: `ROLL-${String(cutNo).padStart(3, '0')}`
+      });
+      
+      // Generate Bundle Guides and Bundle Tags for each size
+      Object.entries(sizes).forEach(([size, qty]) => {
+        if (qty <= 0) return;
+        
+        const numFullBundles = Math.floor(qty / bundleSize);
+        const remainder = qty % bundleSize;
+        const totalBundles = numFullBundles + (remainder > 0 ? 1 : 0);
+        
+        // Create Bundle Guide
+        newGuides.push({
+          id: `bg-${cutPlanId}-${size}`,
+          cutPlanId,
+          size,
+          totalQty: qty,
+          bundles: totalBundles,
+          bundleSize,
+          remainderQty: remainder
+        });
+        
+        let startNo = 1;
+        
+        // Create full bundles
+        for (let i = 0; i < numFullBundles; i++) {
+          parts.forEach(part => {
+            newBundles.push({
+              id: `${Date.now()}-${globalBundleNo}-${part}-${size}-${cutIndex}-${i}`,
+              cutPlanId,
+              orderId: order.id,
+              bundleNo: globalBundleNo,
+              size,
+              part,
+              quantity: bundleSize,
+              startNo,
+              endNo: startNo + bundleSize - 1,
+              shade: order.shade,
+              cutNo
+            });
+          });
+          startNo += bundleSize;
+          globalBundleNo++;
+        }
+        
+        // Create remainder bundle if needed
+        if (remainder > 0) {
+          parts.forEach(part => {
+            newBundles.push({
+              id: `${Date.now()}-${globalBundleNo}-${part}-${size}-${cutIndex}-rem`,
+              cutPlanId,
+              orderId: order.id,
+              bundleNo: globalBundleNo,
+              size,
+              part,
+              quantity: remainder,
+              startNo,
+              endNo: startNo + remainder - 1,
+              shade: order.shade,
+              cutNo
+            });
+          });
+          globalBundleNo++;
+        }
+      });
+    }
+    
+    // Update store with all new documents
+    set((s) => ({
+      cutPlans: [...s.cutPlans, ...newCutPlans],
+      laySheets: [...s.laySheets, ...newLaySheets],
+      bundles: [...s.bundles, ...newBundles],
+      bundleGuides: [...s.bundleGuides, ...newGuides]
+    }));
+    
+    return {
+      cutPlans: newCutPlans.length,
+      laySheets: newLaySheets.length,
+      bundleGuides: newGuides.length,
+      bundles: newBundles.length
+    };
   }
 }));

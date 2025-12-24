@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { useCuttingStore } from '@/store/cuttingStore';
-import { SIZES, MarkerPlan, Order } from '@/types/cutting';
+import { SIZES, MarkerPlan } from '@/types/cutting';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Dialog,
   DialogContent,
@@ -21,20 +22,30 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Plus, Printer, Ruler, FileText, ArrowRight } from 'lucide-react';
+import { Plus, Printer, Ruler, FileText, ArrowRight, Zap, Layers, Package } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
+const DEFAULT_PARTS = ['FRONT', 'BACK', 'SLEEVE L', 'SLEEVE R', 'COLLAR', 'POCKET'];
+
 const MarkerPlans = () => {
-  const { orders, markerPlans, cutPlans, addMarkerPlan, addCutPlan, addLaySheet } = useCuttingStore();
+  const { orders, markerPlans, cutPlans, laySheets, bundles, bundleGuides, addMarkerPlan, generateAllFromMarker } = useCuttingStore();
   const { toast } = useToast();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedMarker, setSelectedMarker] = useState<MarkerPlan | null>(null);
+  const [isGenerateDialogOpen, setIsGenerateDialogOpen] = useState(false);
+  const [markerToGenerate, setMarkerToGenerate] = useState<MarkerPlan | null>(null);
   
-  // Form state
+  // Form state for creating marker
   const [selectedOrder, setSelectedOrder] = useState<string>('');
   const [markerLength, setMarkerLength] = useState<number>(12.5);
   const [efficiency, setEfficiency] = useState<number>(85);
   const [sizeRatios, setSizeRatios] = useState<Record<string, number>>({});
+
+  // Generate All form state
+  const [numberOfCuts, setNumberOfCuts] = useState<number>(1);
+  const [pliesPerCut, setPliesPerCut] = useState<number>(100);
+  const [bundleSize, setBundleSize] = useState<number>(50);
+  const [selectedParts, setSelectedParts] = useState<string[]>(DEFAULT_PARTS);
 
   const getOrder = (orderId: string) => orders.find(o => o.id === orderId);
   const getCutPlansForMarker = (markerId: string) => cutPlans.filter(cp => cp.markerId === markerId);
@@ -66,51 +77,70 @@ const MarkerPlans = () => {
     toast({ title: `Marker Plan #${markerNo} created!` });
   };
 
-  const generateCutPlanFromMarker = (marker: MarkerPlan) => {
-    const order = getOrder(marker.orderId);
-    if (!order) return;
+  const openGenerateDialog = (marker: MarkerPlan) => {
+    setMarkerToGenerate(marker);
+    setIsGenerateDialogOpen(true);
+  };
 
-    const cutNo = cutPlans.length + 1;
-    const plies = 100;
-    const layLength = marker.markerLength + 0.0254;
-    const fabricUsed = plies * layLength;
+  const handleGenerateAll = () => {
+    if (!markerToGenerate) return;
 
-    const sizes: Record<string, number> = {};
-    Object.entries(marker.sizes).forEach(([size, ratio]) => {
-      sizes[size] = ratio * plies;
+    if (selectedParts.length === 0) {
+      toast({ title: 'Please select at least one part', variant: 'destructive' });
+      return;
+    }
+
+    const result = generateAllFromMarker(
+      markerToGenerate.id,
+      numberOfCuts,
+      pliesPerCut,
+      bundleSize,
+      selectedParts
+    );
+
+    setIsGenerateDialogOpen(false);
+    setMarkerToGenerate(null);
+
+    toast({
+      title: 'All Documents Generated!',
+      description: `Created ${result.cutPlans} Cut Plans, ${result.laySheets} Lay Sheets, ${result.bundleGuides} Bundle Guides, ${result.bundles} Bundle Tags`,
+    });
+  };
+
+  const togglePart = (part: string) => {
+    setSelectedParts(prev => 
+      prev.includes(part) 
+        ? prev.filter(p => p !== part)
+        : [...prev, part]
+    );
+  };
+
+  // Calculate preview totals
+  const getPreviewTotals = () => {
+    if (!markerToGenerate) return null;
+    
+    const totalRatio = Object.values(markerToGenerate.sizes).reduce((sum, v) => sum + v, 0);
+    const qtyPerCut = totalRatio * pliesPerCut;
+    const totalQty = qtyPerCut * numberOfCuts;
+    const layLength = markerToGenerate.markerLength + 0.0254;
+    const totalFabric = layLength * pliesPerCut * numberOfCuts;
+    
+    // Calculate bundles
+    let totalBundles = 0;
+    Object.values(markerToGenerate.sizes).forEach(ratio => {
+      if (ratio > 0) {
+        const sizeQty = ratio * pliesPerCut * numberOfCuts;
+        totalBundles += Math.ceil(sizeQty / bundleSize);
+      }
     });
 
-    const totalQty = Object.values(sizes).reduce((sum, qty) => sum + qty, 0);
-
-    const newCutPlan = {
-      id: `cp-${Date.now()}`,
-      orderId: marker.orderId,
-      markerId: marker.id,
-      cutNo,
-      shade: order.shade,
-      plies,
-      markerLength: marker.markerLength,
-      layLength,
-      sizes,
+    return {
+      qtyPerCut,
       totalQty,
-      fabricUsed,
-      date: new Date().toISOString().split('T')[0],
-      status: 'planned' as const
+      totalFabric: totalFabric.toFixed(2),
+      totalBundles,
+      totalTags: totalBundles * selectedParts.length
     };
-
-    addCutPlan(newCutPlan);
-
-    // Auto-generate lay sheet
-    addLaySheet({
-      id: `ls-${Date.now()}`,
-      cutPlanId: newCutPlan.id,
-      layNo: 1,
-      plies,
-      layLength,
-      fabricRoll: `ROLL-${String(cutNo).padStart(3, '0')}`
-    });
-
-    toast({ title: `Cut Plan #${cutNo} & Lay Sheet generated!` });
   };
 
   return (
@@ -120,7 +150,7 @@ const MarkerPlans = () => {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold tracking-tight text-foreground">Marker Plans</h1>
-            <p className="text-muted-foreground">Create marker ratios and generate connected cut plans</p>
+            <p className="text-muted-foreground">Create marker ratios and generate all connected documents</p>
           </div>
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
@@ -279,10 +309,10 @@ const MarkerPlans = () => {
                   {/* Connected Cut Plans */}
                   <div className="border-t border-border pt-3">
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-muted-foreground">Connected Cut Plans:</span>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-xs text-muted-foreground">Connected:</span>
                         {connectedCutPlans.length > 0 ? (
-                          connectedCutPlans.map(cp => (
+                          connectedCutPlans.slice(0, 3).map(cp => (
                             <Badge key={cp.id} className="bg-success/10 text-success border-success/20">
                               Cut #{cp.cutNo}
                             </Badge>
@@ -290,14 +320,17 @@ const MarkerPlans = () => {
                         ) : (
                           <span className="text-xs text-muted-foreground">None</span>
                         )}
+                        {connectedCutPlans.length > 3 && (
+                          <Badge variant="outline">+{connectedCutPlans.length - 3} more</Badge>
+                        )}
                       </div>
                       <Button 
                         size="sm" 
-                        onClick={() => generateCutPlanFromMarker(marker)}
-                        className="gradient-primary text-primary-foreground"
+                        onClick={() => openGenerateDialog(marker)}
+                        className="bg-gradient-to-r from-success to-primary text-primary-foreground hover:opacity-90"
                       >
-                        <Plus className="mr-1 h-3 w-3" />
-                        Generate Cut Plan
+                        <Zap className="mr-1 h-3 w-3" />
+                        Generate All
                       </Button>
                     </div>
                   </div>
@@ -306,6 +339,144 @@ const MarkerPlans = () => {
             );
           })}
         </div>
+
+        {/* Generate All Dialog */}
+        {markerToGenerate && (
+          <Dialog open={isGenerateDialogOpen} onOpenChange={setIsGenerateDialogOpen}>
+            <DialogContent className="max-w-3xl">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-3">
+                  <Zap className="h-5 w-5 text-success" />
+                  Generate All Documents - Marker #{markerToGenerate.markerNo}
+                </DialogTitle>
+              </DialogHeader>
+              
+              <div className="space-y-6 py-4">
+                {/* Cutting Settings */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-2">
+                      <Layers className="h-4 w-4 text-primary" />
+                      Number of Cuts
+                    </Label>
+                    <Input 
+                      type="number" 
+                      min={1}
+                      max={50}
+                      value={numberOfCuts}
+                      onChange={(e) => setNumberOfCuts(Number(e.target.value))}
+                    />
+                    <p className="text-xs text-muted-foreground">How many times to cut this marker</p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-2">
+                      <Layers className="h-4 w-4 text-primary" />
+                      Plies per Cut
+                    </Label>
+                    <Input 
+                      type="number" 
+                      min={1}
+                      max={500}
+                      value={pliesPerCut}
+                      onChange={(e) => setPliesPerCut(Number(e.target.value))}
+                    />
+                    <p className="text-xs text-muted-foreground">Layers of fabric per cut</p>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    <Package className="h-4 w-4 text-primary" />
+                    Bundle Size
+                  </Label>
+                  <Input 
+                    type="number" 
+                    min={1}
+                    max={200}
+                    value={bundleSize}
+                    onChange={(e) => setBundleSize(Number(e.target.value))}
+                  />
+                  <p className="text-xs text-muted-foreground">Pieces per bundle</p>
+                </div>
+
+                {/* Parts Selection */}
+                <div className="space-y-2">
+                  <Label>Select Parts (for Bundle Tags)</Label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {DEFAULT_PARTS.map((part) => (
+                      <div key={part} className="flex items-center space-x-2">
+                        <Checkbox 
+                          id={part}
+                          checked={selectedParts.includes(part)}
+                          onCheckedChange={() => togglePart(part)}
+                        />
+                        <label htmlFor={part} className="text-sm cursor-pointer">{part}</label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Preview Calculations */}
+                {(() => {
+                  const preview = getPreviewTotals();
+                  if (!preview) return null;
+                  
+                  return (
+                    <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
+                      <h4 className="font-semibold mb-3 text-primary">Preview Calculations</h4>
+                      <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 text-center">
+                        <div>
+                          <p className="text-xs text-muted-foreground">Qty per Cut</p>
+                          <p className="font-mono font-bold">{preview.qtyPerCut}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-muted-foreground">Total Qty</p>
+                          <p className="font-mono font-bold text-primary">{preview.totalQty}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-muted-foreground">Fabric (m)</p>
+                          <p className="font-mono font-bold">{preview.totalFabric}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-muted-foreground">Bundles</p>
+                          <p className="font-mono font-bold">{preview.totalBundles}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-muted-foreground">Bundle Tags</p>
+                          <p className="font-mono font-bold text-success">{preview.totalTags}</p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* What will be generated */}
+                <div className="rounded-lg border border-border bg-muted/30 p-4">
+                  <h4 className="font-semibold mb-2">Documents to Generate:</h4>
+                  <ul className="text-sm space-y-1 text-muted-foreground">
+                    <li>✓ {numberOfCuts} Cut Plan(s)</li>
+                    <li>✓ {numberOfCuts} Lay Sheet(s)</li>
+                    <li>✓ Bundle Guides for each size</li>
+                    <li>✓ Bundle Tags for {selectedParts.length} part(s)</li>
+                  </ul>
+                </div>
+
+                <div className="flex justify-end gap-2 pt-4 border-t border-border">
+                  <Button variant="outline" onClick={() => setIsGenerateDialogOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button 
+                    onClick={handleGenerateAll}
+                    className="bg-gradient-to-r from-success to-primary text-primary-foreground hover:opacity-90"
+                  >
+                    <Zap className="mr-2 h-4 w-4" />
+                    Generate All Documents
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+        )}
 
         {/* Marker Detail Modal */}
         {selectedMarker && (
