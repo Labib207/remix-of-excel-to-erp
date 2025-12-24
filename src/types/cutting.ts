@@ -34,6 +34,7 @@ export interface Order {
   shade: string;
   totalQty: number;
   sizeQuantities: SizeQuantity;
+  customSizes?: Size[]; // Custom sizes for this order
   fabricWidth: number;
   orderDate: string;
   deliveryDate: string;

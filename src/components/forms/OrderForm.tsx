@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Order, SIZES, SizeQuantity } from '@/types/cutting';
+import { useState } from 'react';
+import { Order, SIZES, SizeQuantity, Size } from '@/types/cutting';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,6 +11,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
+import { Plus, X, Edit2 } from 'lucide-react';
 
 interface OrderFormProps {
   order?: Order | null;
@@ -34,9 +35,24 @@ export const OrderForm = ({ order, onSubmit, onCancel }: OrderFormProps) => {
     status: order?.status || 'pending' as const,
   });
 
-  const [sizeQuantities, setSizeQuantities] = useState<SizeQuantity>(
-    order?.sizeQuantities || SIZES.reduce((acc, size) => ({ ...acc, [size.code]: 0 }), {})
+  // Custom sizes state - use order's custom sizes or default SIZES
+  const [useCustomSizes, setUseCustomSizes] = useState<boolean>(!!order?.customSizes?.length);
+  const [customSizes, setCustomSizes] = useState<Size[]>(
+    order?.customSizes?.length ? order.customSizes : []
   );
+  const [newSizeCode, setNewSizeCode] = useState('');
+  const [editingSize, setEditingSize] = useState<string | null>(null);
+  const [editSizeValue, setEditSizeValue] = useState('');
+
+  // Get active sizes based on mode
+  const activeSizes = useCustomSizes && customSizes.length > 0 ? customSizes : SIZES;
+
+  const [sizeQuantities, setSizeQuantities] = useState<SizeQuantity>(() => {
+    if (order?.sizeQuantities) {
+      return order.sizeQuantities;
+    }
+    return activeSizes.reduce((acc, size) => ({ ...acc, [size.code]: 0 }), {});
+  });
 
   const totalQty = Object.values(sizeQuantities).reduce((sum, qty) => sum + (qty || 0), 0);
 
@@ -47,6 +63,77 @@ export const OrderForm = ({ order, onSubmit, onCancel }: OrderFormProps) => {
   const handleSizeChange = (sizeCode: string, value: string) => {
     const numValue = parseInt(value) || 0;
     setSizeQuantities(prev => ({ ...prev, [sizeCode]: numValue }));
+  };
+
+  const handleAddCustomSize = () => {
+    const trimmedCode = newSizeCode.trim().toUpperCase();
+    if (!trimmedCode) {
+      toast({ title: 'Error', description: 'Size code cannot be empty', variant: 'destructive' });
+      return;
+    }
+    if (customSizes.some(s => s.code === trimmedCode)) {
+      toast({ title: 'Error', description: 'Size code already exists', variant: 'destructive' });
+      return;
+    }
+    
+    setCustomSizes(prev => [...prev, { code: trimmedCode, label: trimmedCode }]);
+    setSizeQuantities(prev => ({ ...prev, [trimmedCode]: 0 }));
+    setNewSizeCode('');
+  };
+
+  const handleRemoveCustomSize = (code: string) => {
+    setCustomSizes(prev => prev.filter(s => s.code !== code));
+    setSizeQuantities(prev => {
+      const { [code]: _, ...rest } = prev;
+      return rest;
+    });
+  };
+
+  const handleEditSize = (code: string) => {
+    setEditingSize(code);
+    setEditSizeValue(code);
+  };
+
+  const handleSaveEditSize = (oldCode: string) => {
+    const newCode = editSizeValue.trim().toUpperCase();
+    if (!newCode) {
+      toast({ title: 'Error', description: 'Size code cannot be empty', variant: 'destructive' });
+      return;
+    }
+    if (newCode !== oldCode && customSizes.some(s => s.code === newCode)) {
+      toast({ title: 'Error', description: 'Size code already exists', variant: 'destructive' });
+      return;
+    }
+
+    setCustomSizes(prev => prev.map(s => 
+      s.code === oldCode ? { code: newCode, label: newCode } : s
+    ));
+    
+    if (newCode !== oldCode) {
+      setSizeQuantities(prev => {
+        const qty = prev[oldCode] || 0;
+        const { [oldCode]: _, ...rest } = prev;
+        return { ...rest, [newCode]: qty };
+      });
+    }
+    
+    setEditingSize(null);
+    setEditSizeValue('');
+  };
+
+  const handleToggleCustomSizes = () => {
+    if (!useCustomSizes) {
+      // Switching to custom sizes
+      setUseCustomSizes(true);
+      if (customSizes.length === 0) {
+        // Initialize with empty custom sizes
+        setSizeQuantities({});
+      }
+    } else {
+      // Switching back to default sizes
+      setUseCustomSizes(false);
+      setSizeQuantities(SIZES.reduce((acc, size) => ({ ...acc, [size.code]: 0 }), {}));
+    }
   };
 
   const handleSubmit = () => {
@@ -63,6 +150,10 @@ export const OrderForm = ({ order, onSubmit, onCancel }: OrderFormProps) => {
       toast({ title: 'Error', description: 'Style number is required', variant: 'destructive' });
       return;
     }
+    if (useCustomSizes && customSizes.length === 0) {
+      toast({ title: 'Error', description: 'Please add at least one size', variant: 'destructive' });
+      return;
+    }
     if (totalQty <= 0) {
       toast({ title: 'Error', description: 'Please enter at least one size quantity', variant: 'destructive' });
       return;
@@ -71,6 +162,14 @@ export const OrderForm = ({ order, onSubmit, onCancel }: OrderFormProps) => {
       toast({ title: 'Error', description: 'Delivery date is required', variant: 'destructive' });
       return;
     }
+
+    // Filter sizeQuantities to only include active sizes with values > 0
+    const filteredSizeQuantities: SizeQuantity = {};
+    activeSizes.forEach(size => {
+      if (sizeQuantities[size.code] > 0) {
+        filteredSizeQuantities[size.code] = sizeQuantities[size.code];
+      }
+    });
 
     const newOrder: Order = {
       id: order?.id || `order-${Date.now()}`,
@@ -83,7 +182,8 @@ export const OrderForm = ({ order, onSubmit, onCancel }: OrderFormProps) => {
       orderDate: formData.orderDate,
       deliveryDate: formData.deliveryDate,
       status: formData.status,
-      sizeQuantities,
+      sizeQuantities: filteredSizeQuantities,
+      customSizes: useCustomSizes && customSizes.length > 0 ? customSizes : undefined,
       totalQty,
     };
 
@@ -189,21 +289,106 @@ export const OrderForm = ({ order, onSubmit, onCancel }: OrderFormProps) => {
         </Select>
       </div>
 
-      {/* Size Quantities Grid */}
+      {/* Size Mode Toggle */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <Label className="text-base font-semibold">Size Quantities *</Label>
-          <div className="text-sm">
-            <span className="text-muted-foreground">Total: </span>
-            <span className="font-mono font-bold text-lg text-primary">{totalQty.toLocaleString()}</span>
+          <div className="flex items-center gap-4">
+            <Button
+              type="button"
+              variant={useCustomSizes ? "default" : "outline"}
+              size="sm"
+              onClick={handleToggleCustomSizes}
+            >
+              {useCustomSizes ? "Using Custom Sizes" : "Use Custom Sizes"}
+            </Button>
+            <div className="text-sm">
+              <span className="text-muted-foreground">Total: </span>
+              <span className="font-mono font-bold text-lg text-primary">{totalQty.toLocaleString()}</span>
+            </div>
           </div>
         </div>
+
+        {/* Custom Size Input */}
+        {useCustomSizes && (
+          <div className="p-4 bg-muted/50 rounded-lg border border-border space-y-3">
+            <Label className="text-sm text-muted-foreground">Add custom sizes (e.g., 35, 36, 37 or S, M, L)</Label>
+            <div className="flex gap-2">
+              <Input
+                placeholder="Enter size code (e.g., 35, XS)"
+                value={newSizeCode}
+                onChange={(e) => setNewSizeCode(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleAddCustomSize()}
+                className="max-w-xs"
+              />
+              <Button type="button" onClick={handleAddCustomSize} size="sm">
+                <Plus className="h-4 w-4 mr-1" /> Add Size
+              </Button>
+            </div>
+            
+            {customSizes.length > 0 && (
+              <div className="flex flex-wrap gap-2 mt-2">
+                {customSizes.map((size) => (
+                  <div key={size.code} className="flex items-center gap-1 bg-background border border-border rounded-md px-2 py-1">
+                    {editingSize === size.code ? (
+                      <>
+                        <Input
+                          value={editSizeValue}
+                          onChange={(e) => setEditSizeValue(e.target.value)}
+                          className="h-6 w-16 text-xs px-1"
+                          autoFocus
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') handleSaveEditSize(size.code);
+                            if (e.key === 'Escape') setEditingSize(null);
+                          }}
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-5 w-5 p-0"
+                          onClick={() => handleSaveEditSize(size.code)}
+                        >
+                          ✓
+                        </Button>
+                      </>
+                    ) : (
+                      <>
+                        <span className="font-mono text-sm">{size.code}</span>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-5 w-5 p-0 text-muted-foreground hover:text-foreground"
+                          onClick={() => handleEditSize(size.code)}
+                        >
+                          <Edit2 className="h-3 w-3" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-5 w-5 p-0 text-destructive hover:text-destructive"
+                          onClick={() => handleRemoveCustomSize(size.code)}
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Size Quantities Grid */}
         <div className="rounded-lg border border-border overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="bg-muted">
-                  {SIZES.map((size) => (
+                  {activeSizes.map((size) => (
                     <th key={size.code} className="px-2 py-2 text-center font-mono text-xs font-medium border-r border-border last:border-r-0 min-w-[60px]">
                       {size.code}
                     </th>
@@ -212,7 +397,7 @@ export const OrderForm = ({ order, onSubmit, onCancel }: OrderFormProps) => {
               </thead>
               <tbody>
                 <tr>
-                  {SIZES.map((size) => (
+                  {activeSizes.map((size) => (
                     <td key={size.code} className="p-1 border-r border-border last:border-r-0">
                       <Input
                         type="number"
