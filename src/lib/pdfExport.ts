@@ -1,6 +1,7 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { CutPlan, LaySheet, Bundle, BundleGuide, Order, SIZES } from '@/types/cutting';
+import logoImage from '@/assets/logo.png';
 
 // Extend jsPDF type for autotable
 declare module 'jspdf' {
@@ -9,20 +10,60 @@ declare module 'jspdf' {
   }
 }
 
-const addHeader = (doc: jsPDF, title: string, subtitle?: string) => {
-  doc.setFontSize(18);
+// Cache for logo base64
+let logoBase64Cache: string | null = null;
+
+const loadLogoAsBase64 = (): Promise<string> => {
+  return new Promise((resolve) => {
+    if (logoBase64Cache) {
+      resolve(logoBase64Cache);
+      return;
+    }
+    
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext('2d');
+      ctx?.drawImage(img, 0, 0);
+      logoBase64Cache = canvas.toDataURL('image/png');
+      resolve(logoBase64Cache);
+    };
+    img.onerror = () => resolve('');
+    img.src = logoImage;
+  });
+};
+
+const addHeader = async (doc: jsPDF, title: string, subtitle?: string) => {
+  const logo = await loadLogoAsBase64();
+  
+  // Add logo
+  if (logo) {
+    doc.addImage(logo, 'PNG', 14, 8, 25, 20);
+  }
+  
+  // Title next to logo
+  doc.setFontSize(16);
   doc.setFont('helvetica', 'bold');
-  doc.text(title, 14, 20);
+  doc.text(title, 45, 18);
   
   if (subtitle) {
-    doc.setFontSize(10);
+    doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
-    doc.text(subtitle, 14, 28);
+    doc.text(subtitle, 45, 25);
   }
   
   doc.setFontSize(8);
   doc.setFont('helvetica', 'normal');
-  doc.text(`Generated: ${new Date().toLocaleString()}`, doc.internal.pageSize.width - 14, 20, { align: 'right' });
+  doc.text(`Generated: ${new Date().toLocaleString()}`, doc.internal.pageSize.width - 14, 15, { align: 'right' });
+  
+  // Company name
+  doc.setFontSize(7);
+  doc.setTextColor(100, 100, 100);
+  doc.text('GHOUSH - Military & Safety Uniforms', doc.internal.pageSize.width - 14, 20, { align: 'right' });
+  doc.setTextColor(0, 0, 0);
 };
 
 const addFooter = (doc: jsPDF, pageNumber: number, totalPages: number) => {
@@ -30,12 +71,13 @@ const addFooter = (doc: jsPDF, pageNumber: number, totalPages: number) => {
   doc.setFontSize(8);
   doc.setFont('helvetica', 'normal');
   doc.text(`Page ${pageNumber} of ${totalPages}`, doc.internal.pageSize.width / 2, pageHeight - 10, { align: 'center' });
+  doc.text('GHOUSH - Adeem Uniform Factory', 14, pageHeight - 10);
 };
 
-export const exportCutPlanPDF = (cutPlan: CutPlan, order: Order) => {
+export const exportCutPlanPDF = async (cutPlan: CutPlan, order: Order) => {
   const doc = new jsPDF();
   
-  addHeader(doc, `Cut Plan #${cutPlan.cutNo}`, `Order: ${order.orderNumber} | Style: ${order.styleNo}`);
+  await addHeader(doc, `Cut Plan #${cutPlan.cutNo}`, `Order: ${order.orderNumber} | Style: ${order.styleNo}`);
   
   // Details table
   autoTable(doc, {
@@ -83,10 +125,10 @@ export const exportCutPlanPDF = (cutPlan: CutPlan, order: Order) => {
   doc.save(`CutPlan_${cutPlan.cutNo}_${order.orderNumber}.pdf`);
 };
 
-export const exportLaySheetPDF = (laySheet: LaySheet, cutPlan: CutPlan, order: Order) => {
+export const exportLaySheetPDF = async (laySheet: LaySheet, cutPlan: CutPlan, order: Order) => {
   const doc = new jsPDF();
   
-  addHeader(doc, `Lay Sheet #${laySheet.layNo}`, `Cut Plan #${cutPlan.cutNo} | Order: ${order.orderNumber}`);
+  await addHeader(doc, `Lay Sheet #${laySheet.layNo}`, `Cut Plan #${cutPlan.cutNo} | Order: ${order.orderNumber}`);
   
   autoTable(doc, {
     startY: 35,
@@ -137,10 +179,10 @@ export const exportLaySheetPDF = (laySheet: LaySheet, cutPlan: CutPlan, order: O
   doc.save(`LaySheet_${laySheet.layNo}_Cut${cutPlan.cutNo}.pdf`);
 };
 
-export const exportBundleGuidePDF = (guides: BundleGuide[], cutPlan: CutPlan, order: Order) => {
+export const exportBundleGuidePDF = async (guides: BundleGuide[], cutPlan: CutPlan, order: Order) => {
   const doc = new jsPDF();
   
-  addHeader(doc, `Bundle Guide - Cut #${cutPlan.cutNo}`, `Order: ${order.orderNumber} | Style: ${order.styleNo}`);
+  await addHeader(doc, `Bundle Guide - Cut #${cutPlan.cutNo}`, `Order: ${order.orderNumber} | Style: ${order.styleNo}`);
   
   autoTable(doc, {
     startY: 35,
@@ -181,18 +223,17 @@ export const exportBundleGuidePDF = (guides: BundleGuide[], cutPlan: CutPlan, or
   doc.save(`BundleGuide_Cut${cutPlan.cutNo}_${order.orderNumber}.pdf`);
 };
 
-export const exportBundleTagsPDF = (bundles: Bundle[], cutPlan: CutPlan, order: Order) => {
+export const exportBundleTagsPDF = async (bundles: Bundle[], cutPlan: CutPlan, order: Order) => {
   const doc = new jsPDF();
-  const pageWidth = doc.internal.pageSize.width;
-  const pageHeight = doc.internal.pageSize.height;
+  const logo = await loadLogoAsBase64();
   
   // Tags layout: 2 columns, 4 rows per page = 8 tags per page
   const tagWidth = 90;
-  const tagHeight = 60;
+  const tagHeight = 65;
   const marginX = 15;
   const marginY = 15;
   const gapX = 5;
-  const gapY = 8;
+  const gapY = 5;
   
   let currentPage = 1;
   const totalPages = Math.ceil(bundles.length / 8);
@@ -216,20 +257,26 @@ export const exportBundleTagsPDF = (bundles: Bundle[], cutPlan: CutPlan, order: 
     doc.setLineWidth(0.5);
     doc.rect(x, y, tagWidth, tagHeight);
     
-    // Header bar
+    // Header bar with logo
     doc.setFillColor(59, 130, 246);
-    doc.rect(x, y, tagWidth, 12, 'F');
+    doc.rect(x, y, tagWidth, 14, 'F');
+    
+    // Add small logo in header
+    if (logo) {
+      doc.addImage(logo, 'PNG', x + 2, y + 2, 10, 10);
+    }
+    
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(10);
     doc.setFont('helvetica', 'bold');
-    doc.text(`BUNDLE #${bundle.bundleNo}`, x + tagWidth / 2, y + 8, { align: 'center' });
+    doc.text(`BUNDLE #${bundle.bundleNo}`, x + tagWidth / 2 + 5, y + 9, { align: 'center' });
     
     // Content
     doc.setTextColor(0, 0, 0);
     doc.setFontSize(8);
     doc.setFont('helvetica', 'normal');
     
-    const contentY = y + 18;
+    const contentY = y + 20;
     const lineHeight = 7;
     
     doc.text(`Order: ${order.orderNumber}`, x + 4, contentY);
@@ -259,7 +306,9 @@ export const exportBundleTagsPDF = (bundles: Bundle[], cutPlan: CutPlan, order: 
   doc.save(`BundleTags_Cut${cutPlan.cutNo}_${order.orderNumber}.pdf`);
 };
 
-export const exportAllBundleTagsByPart = (bundles: Bundle[], cutPlan: CutPlan, order: Order) => {
+export const exportAllBundleTagsByPart = async (bundles: Bundle[], cutPlan: CutPlan, order: Order) => {
+  const logo = await loadLogoAsBase64();
+  
   // Group bundles by part
   const bundlesByPart = bundles.reduce((acc, bundle) => {
     if (!acc[bundle.part]) acc[bundle.part] = [];
@@ -271,11 +320,11 @@ export const exportAllBundleTagsByPart = (bundles: Bundle[], cutPlan: CutPlan, o
   Object.entries(bundlesByPart).forEach(([part, partBundles]) => {
     const doc = new jsPDF();
     const tagWidth = 90;
-    const tagHeight = 60;
+    const tagHeight = 65;
     const marginX = 15;
     const marginY = 15;
     const gapX = 5;
-    const gapY = 8;
+    const gapY = 5;
     
     let currentPage = 1;
     const totalPages = Math.ceil(partBundles.length / 8);
@@ -303,18 +352,24 @@ export const exportAllBundleTagsByPart = (bundles: Bundle[], cutPlan: CutPlan, o
       doc.setLineWidth(0.5);
       doc.rect(x, y, tagWidth, tagHeight);
       
+      // Header with logo
       doc.setFillColor(59, 130, 246);
-      doc.rect(x, y, tagWidth, 12, 'F');
+      doc.rect(x, y, tagWidth, 14, 'F');
+      
+      if (logo) {
+        doc.addImage(logo, 'PNG', x + 2, y + 2, 10, 10);
+      }
+      
       doc.setTextColor(255, 255, 255);
       doc.setFontSize(10);
       doc.setFont('helvetica', 'bold');
-      doc.text(`BUNDLE #${bundle.bundleNo}`, x + tagWidth / 2, y + 8, { align: 'center' });
+      doc.text(`BUNDLE #${bundle.bundleNo}`, x + tagWidth / 2 + 5, y + 9, { align: 'center' });
       
       doc.setTextColor(0, 0, 0);
       doc.setFontSize(8);
       doc.setFont('helvetica', 'normal');
       
-      const contentY = y + 18;
+      const contentY = y + 20;
       const lineHeight = 7;
       
       doc.text(`Order: ${order.orderNumber}`, x + 4, contentY);
