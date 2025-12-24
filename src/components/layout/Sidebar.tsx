@@ -6,13 +6,15 @@ import {
   Package, 
   FileText,
   Settings,
-  Factory
+  Factory,
+  Ruler
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
   { name: 'Orders', href: '/orders', icon: ClipboardList },
+  { name: 'Marker Plans', href: '/markers', icon: Ruler },
   { name: 'Cutting Plans', href: '/cutting', icon: Scissors },
   { name: 'Bundles', href: '/bundles', icon: Package },
   { name: 'Reports', href: '/reports', icon: FileText },

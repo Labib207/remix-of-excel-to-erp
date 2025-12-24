@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { useCuttingStore } from '@/store/cuttingStore';
-import { SIZES, CutPlan } from '@/types/cutting';
+import { SIZES, CutPlan, LaySheet } from '@/types/cutting';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -11,13 +11,22 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Plus, Printer, FileText, Scissors } from 'lucide-react';
+import { Printer, FileText, Scissors, ArrowRight, Layers } from 'lucide-react';
 
 const CuttingPlans = () => {
-  const { cutPlans, orders } = useCuttingStore();
+  const { cutPlans, orders, markerPlans, laySheets } = useCuttingStore();
   const [selectedPlan, setSelectedPlan] = useState<CutPlan | null>(null);
+  const [selectedLaySheet, setSelectedLaySheet] = useState<LaySheet | null>(null);
 
   const getOrder = (orderId: string) => orders.find(o => o.id === orderId);
+  const getMarker = (markerId: string) => markerPlans.find(m => m.id === markerId);
+  const getLaySheet = (cutPlanId: string) => laySheets.find(ls => ls.cutPlanId === cutPlanId);
+
+  const statusStyles = {
+    planned: 'bg-muted text-muted-foreground',
+    cutting: 'bg-warning/10 text-warning border-warning/20',
+    completed: 'bg-success/10 text-success border-success/20'
+  };
 
   return (
     <MainLayout>
@@ -25,14 +34,29 @@ const CuttingPlans = () => {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight text-foreground">Cutting Plans</h1>
+            <h1 className="text-3xl font-bold tracking-tight text-foreground">Cutting Plans & Lay Sheets</h1>
             <p className="text-muted-foreground">Manage fabric laying and cutting operations</p>
           </div>
-          <Button className="gradient-primary text-primary-foreground">
-            <Plus className="mr-2 h-4 w-4" />
-            New Cut Plan
-          </Button>
         </div>
+
+        {/* Workflow Indicator */}
+        <Card className="shadow-card bg-gradient-to-r from-primary/5 to-success/5 border-primary/20">
+          <CardContent className="py-4">
+            <div className="flex items-center justify-center gap-4 text-sm">
+              <span className="text-muted-foreground">Order</span>
+              <ArrowRight className="h-4 w-4 text-primary" />
+              <span className="text-muted-foreground">Marker Plan</span>
+              <ArrowRight className="h-4 w-4 text-primary" />
+              <span className="font-semibold text-primary">Cut Plan</span>
+              <ArrowRight className="h-4 w-4 text-primary" />
+              <span className="font-semibold text-primary">Lay Sheet</span>
+              <ArrowRight className="h-4 w-4 text-primary" />
+              <span className="text-muted-foreground">Bundle Guide</span>
+              <ArrowRight className="h-4 w-4 text-primary" />
+              <span className="text-muted-foreground">Bundle Tags</span>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Summary Stats */}
         <div className="grid gap-4 sm:grid-cols-3">
@@ -68,13 +92,13 @@ const CuttingPlans = () => {
             <CardContent className="pt-6">
               <div className="flex items-center gap-4">
                 <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-warning/10">
-                  <FileText className="h-6 w-6 text-warning" />
+                  <Layers className="h-6 w-6 text-warning" />
                 </div>
                 <div>
                   <p className="text-2xl font-bold font-mono">
-                    {cutPlans.reduce((sum, cp) => sum + cp.fabricUsed, 0).toFixed(0)}m
+                    {laySheets.length}
                   </p>
-                  <p className="text-sm text-muted-foreground">Fabric Used</p>
+                  <p className="text-sm text-muted-foreground">Lay Sheets</p>
                 </div>
               </div>
             </CardContent>
@@ -84,7 +108,7 @@ const CuttingPlans = () => {
         {/* Cut Plans Table */}
         <Card className="shadow-card">
           <CardHeader>
-            <CardTitle>All Cut Plans</CardTitle>
+            <CardTitle>Cut Plans & Connected Documents</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="overflow-x-auto">
@@ -93,19 +117,20 @@ const CuttingPlans = () => {
                   <tr className="border-b border-border bg-muted/50">
                     <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Cut No</th>
                     <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Order</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Shade</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Marker</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Status</th>
                     <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">Plies</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">Marker</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">Lay Length</th>
                     <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">Qty</th>
                     <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">Fabric</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">Date</th>
+                    <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-muted-foreground">Lay Sheet</th>
                     <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
                   {cutPlans.map((plan) => {
                     const order = getOrder(plan.orderId);
+                    const marker = getMarker(plan.markerId);
+                    const laySheet = getLaySheet(plan.id);
                     return (
                       <tr key={plan.id} className="transition-colors hover:bg-muted/30">
                         <td className="px-4 py-3">
@@ -117,18 +142,19 @@ const CuttingPlans = () => {
                           {order?.orderNumber || '-'}
                         </td>
                         <td className="px-4 py-3">
-                          <Badge className="bg-muted text-foreground">
-                            {plan.shade}
+                          {marker ? (
+                            <Badge variant="secondary" className="font-mono text-xs">
+                              M#{marker.markerNo}
+                            </Badge>
+                          ) : '-'}
+                        </td>
+                        <td className="px-4 py-3">
+                          <Badge variant="outline" className={statusStyles[plan.status]}>
+                            {plan.status}
                           </Badge>
                         </td>
                         <td className="px-4 py-3 text-right font-mono text-sm">
                           {plan.plies}
-                        </td>
-                        <td className="px-4 py-3 text-right font-mono text-sm">
-                          {plan.markerLength}m
-                        </td>
-                        <td className="px-4 py-3 text-right font-mono text-sm">
-                          {plan.layLength}m
                         </td>
                         <td className="px-4 py-3 text-right font-mono text-sm font-medium">
                           {plan.totalQty}
@@ -136,8 +162,17 @@ const CuttingPlans = () => {
                         <td className="px-4 py-3 text-right font-mono text-sm text-primary">
                           {plan.fabricUsed.toFixed(2)}m
                         </td>
-                        <td className="px-4 py-3 text-sm text-muted-foreground">
-                          {new Date(plan.date).toLocaleDateString()}
+                        <td className="px-4 py-3 text-center">
+                          {laySheet ? (
+                            <Badge 
+                              className="bg-success/10 text-success border-success/20 cursor-pointer"
+                              onClick={() => setSelectedLaySheet(laySheet)}
+                            >
+                              LS#{laySheet.layNo}
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-muted-foreground">-</Badge>
+                          )}
                         </td>
                         <td className="px-4 py-3 text-right">
                           <div className="flex justify-end gap-2">
@@ -162,14 +197,14 @@ const CuttingPlans = () => {
           </CardContent>
         </Card>
 
-        {/* Cut Plan Detail Modal (Lay Sheet) */}
+        {/* Cut Plan Detail Modal */}
         {selectedPlan && (
           <Dialog open={!!selectedPlan} onOpenChange={() => setSelectedPlan(null)}>
             <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-3">
                   <Scissors className="h-5 w-5 text-primary" />
-                  Cutting Lay Sheet - Cut #{selectedPlan.cutNo}
+                  Cut Plan #{selectedPlan.cutNo}
                 </DialogTitle>
               </DialogHeader>
               
@@ -178,8 +213,8 @@ const CuttingPlans = () => {
                 <div className="grid grid-cols-2 gap-4 rounded-lg border border-border bg-muted/30 p-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <p className="text-xs text-muted-foreground">Print Date</p>
-                      <p className="font-medium">{new Date().toLocaleDateString()}</p>
+                      <p className="text-xs text-muted-foreground">Order</p>
+                      <p className="font-medium">{getOrder(selectedPlan.orderId)?.orderNumber}</p>
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground">Cut No.</p>
@@ -216,7 +251,7 @@ const CuttingPlans = () => {
 
                 {/* Size Ratio */}
                 <div>
-                  <h4 className="font-semibold mb-3">Size Ratio</h4>
+                  <h4 className="font-semibold mb-3">Size Quantities</h4>
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm border border-border rounded-lg overflow-hidden">
                       <thead>
@@ -266,6 +301,51 @@ const CuttingPlans = () => {
                 {/* Print Button */}
                 <div className="flex justify-end gap-2 pt-4 border-t border-border">
                   <Button variant="outline" onClick={() => setSelectedPlan(null)}>
+                    Close
+                  </Button>
+                  <Button className="gradient-primary text-primary-foreground">
+                    <Printer className="mr-2 h-4 w-4" />
+                    Print Cut Plan
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+        )}
+
+        {/* Lay Sheet Modal */}
+        {selectedLaySheet && (
+          <Dialog open={!!selectedLaySheet} onOpenChange={() => setSelectedLaySheet(null)}>
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-3">
+                  <Layers className="h-5 w-5 text-primary" />
+                  Lay Sheet #{selectedLaySheet.layNo}
+                </DialogTitle>
+              </DialogHeader>
+              
+              <div className="space-y-4 py-4">
+                <div className="grid grid-cols-2 gap-4 rounded-lg border border-border bg-muted/30 p-4">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Lay No</p>
+                    <p className="font-mono font-bold text-lg">{selectedLaySheet.layNo}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">No. of Plies</p>
+                    <p className="font-mono font-bold text-lg">{selectedLaySheet.plies}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Lay Length</p>
+                    <p className="font-mono font-bold">{selectedLaySheet.layLength}m</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Fabric Roll</p>
+                    <p className="font-medium">{selectedLaySheet.fabricRoll}</p>
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-2 pt-4 border-t border-border">
+                  <Button variant="outline" onClick={() => setSelectedLaySheet(null)}>
                     Close
                   </Button>
                   <Button className="gradient-primary text-primary-foreground">

@@ -1,26 +1,48 @@
 import { create } from 'zustand';
-import { Order, CutPlan, Bundle, Ratio, SIZES } from '@/types/cutting';
+import { Order, CutPlan, Bundle, Ratio, MarkerPlan, LaySheet, BundleGuide, SIZES } from '@/types/cutting';
 
 interface CuttingStore {
   orders: Order[];
   cutPlans: CutPlan[];
   bundles: Bundle[];
   ratios: Ratio[];
+  markerPlans: MarkerPlan[];
+  laySheets: LaySheet[];
+  bundleGuides: BundleGuide[];
   
-  // Actions
+  // Order Actions
   addOrder: (order: Order) => void;
   updateOrder: (id: string, order: Partial<Order>) => void;
   deleteOrder: (id: string) => void;
   
+  // Marker Plan Actions
+  addMarkerPlan: (marker: MarkerPlan) => void;
+  deleteMarkerPlan: (id: string) => void;
+  
+  // Cut Plan Actions
   addCutPlan: (cutPlan: CutPlan) => void;
   updateCutPlan: (id: string, cutPlan: Partial<CutPlan>) => void;
   deleteCutPlan: (id: string) => void;
   
+  // Lay Sheet Actions
+  addLaySheet: (laySheet: LaySheet) => void;
+  updateLaySheet: (id: string, laySheet: Partial<LaySheet>) => void;
+  
+  // Bundle Actions
   addBundle: (bundle: Bundle) => void;
   addBundles: (bundles: Bundle[]) => void;
+  clearBundlesForCutPlan: (cutPlanId: string) => void;
   
+  // Bundle Guide Actions
+  addBundleGuide: (guide: BundleGuide) => void;
+  addBundleGuides: (guides: BundleGuide[]) => void;
+  
+  // Ratio Actions
   addRatio: (ratio: Ratio) => void;
   deleteRatio: (id: string) => void;
+  
+  // Generate connected documents
+  generateDocumentsFromCutPlan: (cutPlanId: string, bundleSize: number, parts: string[]) => void;
 }
 
 // Sample data based on the Excel
@@ -45,10 +67,44 @@ const sampleOrder: Order = {
   status: 'in-progress'
 };
 
+const sampleMarkerPlans: MarkerPlan[] = [
+  {
+    id: 'm1',
+    orderId: '1',
+    markerNo: 1,
+    markerLength: 12.9,
+    fabricWidth: 145,
+    efficiency: 85,
+    sizes: { MS: 1, MR: 1, ML: 1, XLS: 1, XLR: 1, XLL: 1 },
+    createdAt: '2025-11-12'
+  },
+  {
+    id: 'm2',
+    orderId: '1',
+    markerNo: 2,
+    markerLength: 12.74,
+    fabricWidth: 145,
+    efficiency: 86,
+    sizes: { MR: 1, ML: 1, LS: 1, LR: 1, LL: 1, XLS: 1 },
+    createdAt: '2025-11-12'
+  },
+  {
+    id: 'm3',
+    orderId: '1',
+    markerNo: 3,
+    markerLength: 12.89,
+    fabricWidth: 145,
+    efficiency: 85,
+    sizes: { MS: 1, MR: 1, ML: 1, LL: 1, XLR: 1, XLL: 1 },
+    createdAt: '2025-11-12'
+  }
+];
+
 const sampleCutPlans: CutPlan[] = [
   {
     id: '1',
     orderId: '1',
+    markerId: 'm1',
     cutNo: 1,
     shade: 'X',
     plies: 100,
@@ -57,11 +113,13 @@ const sampleCutPlans: CutPlan[] = [
     sizes: { MS: 100, MR: 100, ML: 100, XLS: 100, XLR: 100, XLL: 100 },
     totalQty: 600,
     fabricUsed: 1292.54,
-    date: '2025-11-12'
+    date: '2025-11-12',
+    status: 'completed'
   },
   {
     id: '2',
     orderId: '1',
+    markerId: 'm2',
     cutNo: 2,
     shade: 'X',
     plies: 100,
@@ -70,11 +128,13 @@ const sampleCutPlans: CutPlan[] = [
     sizes: { MR: 100, ML: 100, LS: 100, LR: 100, LL: 100, XLS: 100 },
     totalQty: 600,
     fabricUsed: 1276.54,
-    date: '2025-11-12'
+    date: '2025-11-12',
+    status: 'cutting'
   },
   {
     id: '3',
     orderId: '1',
+    markerId: 'm3',
     cutNo: 3,
     shade: 'X',
     plies: 100,
@@ -83,16 +143,27 @@ const sampleCutPlans: CutPlan[] = [
     sizes: { MS: 100, MR: 100, ML: 100, LL: 100, XLR: 100, XLL: 100 },
     totalQty: 600,
     fabricUsed: 1291.54,
-    date: '2025-11-12'
+    date: '2025-11-12',
+    status: 'planned'
   }
 ];
 
-export const useCuttingStore = create<CuttingStore>((set) => ({
+const sampleLaySheets: LaySheet[] = [
+  { id: 'l1', cutPlanId: '1', layNo: 1, plies: 100, layLength: 12.9254, fabricRoll: 'ROLL-001' },
+  { id: 'l2', cutPlanId: '2', layNo: 1, plies: 100, layLength: 12.7654, fabricRoll: 'ROLL-002' },
+  { id: 'l3', cutPlanId: '3', layNo: 1, plies: 100, layLength: 12.9154, fabricRoll: 'ROLL-003' }
+];
+
+export const useCuttingStore = create<CuttingStore>((set, get) => ({
   orders: [sampleOrder],
   cutPlans: sampleCutPlans,
   bundles: [],
   ratios: [],
+  markerPlans: sampleMarkerPlans,
+  laySheets: sampleLaySheets,
+  bundleGuides: [],
   
+  // Order Actions
   addOrder: (order) => set((state) => ({ orders: [...state.orders, order] })),
   updateOrder: (id, updates) => set((state) => ({
     orders: state.orders.map(o => o.id === id ? { ...o, ...updates } : o)
@@ -101,6 +172,13 @@ export const useCuttingStore = create<CuttingStore>((set) => ({
     orders: state.orders.filter(o => o.id !== id)
   })),
   
+  // Marker Plan Actions
+  addMarkerPlan: (marker) => set((state) => ({ markerPlans: [...state.markerPlans, marker] })),
+  deleteMarkerPlan: (id) => set((state) => ({
+    markerPlans: state.markerPlans.filter(m => m.id !== id)
+  })),
+  
+  // Cut Plan Actions
   addCutPlan: (cutPlan) => set((state) => ({ cutPlans: [...state.cutPlans, cutPlan] })),
   updateCutPlan: (id, updates) => set((state) => ({
     cutPlans: state.cutPlans.map(c => c.id === id ? { ...c, ...updates } : c)
@@ -109,11 +187,114 @@ export const useCuttingStore = create<CuttingStore>((set) => ({
     cutPlans: state.cutPlans.filter(c => c.id !== id)
   })),
   
+  // Lay Sheet Actions
+  addLaySheet: (laySheet) => set((state) => ({ laySheets: [...state.laySheets, laySheet] })),
+  updateLaySheet: (id, updates) => set((state) => ({
+    laySheets: state.laySheets.map(l => l.id === id ? { ...l, ...updates } : l)
+  })),
+  
+  // Bundle Actions
   addBundle: (bundle) => set((state) => ({ bundles: [...state.bundles, bundle] })),
   addBundles: (bundles) => set((state) => ({ bundles: [...state.bundles, ...bundles] })),
+  clearBundlesForCutPlan: (cutPlanId) => set((state) => ({
+    bundles: state.bundles.filter(b => b.cutPlanId !== cutPlanId)
+  })),
   
+  // Bundle Guide Actions
+  addBundleGuide: (guide) => set((state) => ({ bundleGuides: [...state.bundleGuides, guide] })),
+  addBundleGuides: (guides) => set((state) => ({ bundleGuides: [...state.bundleGuides, ...guides] })),
+  
+  // Ratio Actions
   addRatio: (ratio) => set((state) => ({ ratios: [...state.ratios, ratio] })),
   deleteRatio: (id) => set((state) => ({
     ratios: state.ratios.filter(r => r.id !== id)
   })),
+  
+  // Generate all connected documents from a cut plan
+  generateDocumentsFromCutPlan: (cutPlanId: string, bundleSize: number, parts: string[]) => {
+    const state = get();
+    const cutPlan = state.cutPlans.find(cp => cp.id === cutPlanId);
+    if (!cutPlan) return;
+    
+    const order = state.orders.find(o => o.id === cutPlan.orderId);
+    if (!order) return;
+    
+    // Clear existing bundles for this cut plan
+    set((s) => ({
+      bundles: s.bundles.filter(b => b.cutPlanId !== cutPlanId),
+      bundleGuides: s.bundleGuides.filter(bg => bg.cutPlanId !== cutPlanId)
+    }));
+    
+    const newBundles: Bundle[] = [];
+    const newGuides: BundleGuide[] = [];
+    let globalBundleNo = state.bundles.filter(b => b.cutPlanId !== cutPlanId).length + 1;
+    
+    // For each size in the cut plan
+    Object.entries(cutPlan.sizes).forEach(([size, qty]) => {
+      if (qty <= 0) return;
+      
+      const numFullBundles = Math.floor(qty / bundleSize);
+      const remainder = qty % bundleSize;
+      const totalBundles = numFullBundles + (remainder > 0 ? 1 : 0);
+      
+      // Create Bundle Guide
+      newGuides.push({
+        id: `bg-${cutPlanId}-${size}`,
+        cutPlanId,
+        size,
+        totalQty: qty,
+        bundles: totalBundles,
+        bundleSize,
+        remainderQty: remainder
+      });
+      
+      let startNo = 1;
+      
+      // Create full bundles
+      for (let i = 0; i < numFullBundles; i++) {
+        parts.forEach(part => {
+          newBundles.push({
+            id: `${Date.now()}-${globalBundleNo}-${part}-${size}`,
+            cutPlanId,
+            orderId: order.id,
+            bundleNo: globalBundleNo,
+            size,
+            part,
+            quantity: bundleSize,
+            startNo,
+            endNo: startNo + bundleSize - 1,
+            shade: cutPlan.shade,
+            cutNo: cutPlan.cutNo
+          });
+        });
+        startNo += bundleSize;
+        globalBundleNo++;
+      }
+      
+      // Create remainder bundle if needed
+      if (remainder > 0) {
+        parts.forEach(part => {
+          newBundles.push({
+            id: `${Date.now()}-${globalBundleNo}-${part}-${size}-rem`,
+            cutPlanId,
+            orderId: order.id,
+            bundleNo: globalBundleNo,
+            size,
+            part,
+            quantity: remainder,
+            startNo,
+            endNo: startNo + remainder - 1,
+            shade: cutPlan.shade,
+            cutNo: cutPlan.cutNo
+          });
+        });
+        globalBundleNo++;
+      }
+    });
+    
+    set((s) => ({
+      bundles: [...s.bundles, ...newBundles],
+      bundleGuides: [...s.bundleGuides, ...newGuides]
+    }));
+  }
 }));
