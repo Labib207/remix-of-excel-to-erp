@@ -438,12 +438,12 @@ const Reconciliation = () => {
             <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label>Filter by Order</Label>
-                <Select value={selectedOrder} onValueChange={(v) => { setSelectedOrder(v); setSelectedCutPlan(''); }}>
+                <Select value={selectedOrder || "all"} onValueChange={(v) => { setSelectedOrder(v === "all" ? "" : v); setSelectedCutPlan(''); }}>
                   <SelectTrigger>
                     <SelectValue placeholder="All Orders" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All Orders</SelectItem>
+                    <SelectItem value="all">All Orders</SelectItem>
                     {orders.map((o) => (
                       <SelectItem key={o.id} value={o.id}>
                         {o.orderNumber} - {o.styleName}
@@ -454,12 +454,12 @@ const Reconciliation = () => {
               </div>
               <div className="space-y-2">
                 <Label>Filter by Cut Plan</Label>
-                <Select value={selectedCutPlan} onValueChange={setSelectedCutPlan}>
+                <Select value={selectedCutPlan || "all"} onValueChange={(v) => setSelectedCutPlan(v === "all" ? "" : v)}>
                   <SelectTrigger>
                     <SelectValue placeholder="All Cut Plans" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All Cut Plans</SelectItem>
+                    <SelectItem value="all">All Cut Plans</SelectItem>
                     {orderCutPlans.map((cp) => (
                       <SelectItem key={cp.id} value={cp.id}>
                         Cut #{cp.cutNo}
