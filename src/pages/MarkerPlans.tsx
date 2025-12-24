@@ -22,14 +22,35 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Plus, Printer, Ruler, FileText, ArrowRight, Zap, Layers, Package } from 'lucide-react';
+import { Plus, Printer, Ruler, FileText, ArrowRight, Zap, Layers, Package, Trash2, Edit, ChevronDown, ChevronUp } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 
 const DEFAULT_PARTS = ['FRONT', 'BACK', 'SLEEVE L', 'SLEEVE R', 'COLLAR', 'POCKET'];
 
 const MarkerPlans = () => {
-  const { orders, markerPlans, cutPlans, laySheets, bundles, bundleGuides, addMarkerPlan, generateAllFromMarker } = useCuttingStore();
+  const { 
+    orders, markerPlans, cutPlans, laySheets, bundles, bundleGuides, 
+    addMarkerPlan, generateAllFromMarker, deleteCutPlan, deleteLaySheetsForCutPlan,
+    deleteBundlesForCutPlan, deleteBundleGuidesForCutPlan, deleteAllForMarker
+  } = useCuttingStore();
   const { toast } = useToast();
+  const [expandedMarkers, setExpandedMarkers] = useState<Record<string, boolean>>({});
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedMarker, setSelectedMarker] = useState<MarkerPlan | null>(null);
   const [isGenerateDialogOpen, setIsGenerateDialogOpen] = useState(false);
@@ -49,6 +70,26 @@ const MarkerPlans = () => {
 
   const getOrder = (orderId: string) => orders.find(o => o.id === orderId);
   const getCutPlansForMarker = (markerId: string) => cutPlans.filter(cp => cp.markerId === markerId);
+  const getBundlesForCutPlan = (cutPlanId: string) => bundles.filter(b => b.cutPlanId === cutPlanId);
+  const getBundleGuidesForCutPlan = (cutPlanId: string) => bundleGuides.filter(bg => bg.cutPlanId === cutPlanId);
+  const getLaySheetForCutPlan = (cutPlanId: string) => laySheets.find(ls => ls.cutPlanId === cutPlanId);
+
+  const toggleMarkerExpand = (markerId: string) => {
+    setExpandedMarkers(prev => ({ ...prev, [markerId]: !prev[markerId] }));
+  };
+
+  const handleDeleteCutPlan = (cutPlanId: string, cutNo: number) => {
+    deleteLaySheetsForCutPlan(cutPlanId);
+    deleteBundlesForCutPlan(cutPlanId);
+    deleteBundleGuidesForCutPlan(cutPlanId);
+    deleteCutPlan(cutPlanId);
+    toast({ title: `Cut Plan #${cutNo} and all connected documents deleted` });
+  };
+
+  const handleDeleteAllForMarker = (markerId: string, markerNo: number) => {
+    deleteAllForMarker(markerId);
+    toast({ title: `All documents for Marker #${markerNo} deleted` });
+  };
 
   const handleCreateMarker = () => {
     if (!selectedOrder) {
@@ -306,33 +347,135 @@ const MarkerPlans = () => {
                     </div>
                   </div>
 
-                  {/* Connected Cut Plans */}
+                  {/* Connected Cut Plans - Expandable */}
                   <div className="border-t border-border pt-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-xs text-muted-foreground">Connected:</span>
-                        {connectedCutPlans.length > 0 ? (
-                          connectedCutPlans.slice(0, 3).map(cp => (
-                            <Badge key={cp.id} className="bg-success/10 text-success border-success/20">
-                              Cut #{cp.cutNo}
-                            </Badge>
-                          ))
-                        ) : (
-                          <span className="text-xs text-muted-foreground">None</span>
-                        )}
-                        {connectedCutPlans.length > 3 && (
-                          <Badge variant="outline">+{connectedCutPlans.length - 3} more</Badge>
-                        )}
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground">Generated Documents:</span>
+                        <Badge variant="secondary">{connectedCutPlans.length} Cut Plans</Badge>
+                        <Badge variant="secondary">{bundles.filter(b => connectedCutPlans.some(cp => cp.id === b.cutPlanId)).length} Bundles</Badge>
                       </div>
-                      <Button 
-                        size="sm" 
-                        onClick={() => openGenerateDialog(marker)}
-                        className="bg-gradient-to-r from-success to-primary text-primary-foreground hover:opacity-90"
-                      >
-                        <Zap className="mr-1 h-3 w-3" />
-                        Generate All
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        {connectedCutPlans.length > 0 && (
+                          <>
+                            <Button 
+                              size="sm" 
+                              variant="ghost"
+                              onClick={() => toggleMarkerExpand(marker.id)}
+                            >
+                              {expandedMarkers[marker.id] ? (
+                                <><ChevronUp className="mr-1 h-3 w-3" />Hide Details</>
+                              ) : (
+                                <><ChevronDown className="mr-1 h-3 w-3" />Show Details</>
+                              )}
+                            </Button>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button size="sm" variant="destructive">
+                                  <Trash2 className="mr-1 h-3 w-3" />
+                                  Delete All
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Delete all documents for Marker #{marker.markerNo}?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    This will delete {connectedCutPlans.length} cut plans and all connected lay sheets, bundle guides, and bundle tags.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction onClick={() => handleDeleteAllForMarker(marker.id, marker.markerNo)}>
+                                    Delete All
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </>
+                        )}
+                        <Button 
+                          size="sm" 
+                          onClick={() => openGenerateDialog(marker)}
+                          className="bg-gradient-to-r from-success to-primary text-primary-foreground hover:opacity-90"
+                        >
+                          <Zap className="mr-1 h-3 w-3" />
+                          Generate All
+                        </Button>
+                      </div>
                     </div>
+                    
+                    {/* Expanded Cut Plans List */}
+                    {expandedMarkers[marker.id] && connectedCutPlans.length > 0 && (
+                      <div className="mt-3 space-y-2">
+                        {connectedCutPlans.map((cp) => {
+                          const cpBundles = getBundlesForCutPlan(cp.id);
+                          const cpGuides = getBundleGuidesForCutPlan(cp.id);
+                          const cpLaySheet = getLaySheetForCutPlan(cp.id);
+                          
+                          return (
+                            <div key={cp.id} className="rounded-lg border border-border bg-muted/20 p-3">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-4">
+                                  <div>
+                                    <span className="font-semibold text-primary">Cut #{cp.cutNo}</span>
+                                    <span className="text-xs text-muted-foreground ml-2">({cp.status})</span>
+                                  </div>
+                                  <div className="text-xs text-muted-foreground">
+                                    Plies: <span className="font-mono">{cp.plies}</span>
+                                  </div>
+                                  <div className="text-xs text-muted-foreground">
+                                    Qty: <span className="font-mono">{cp.totalQty}</span>
+                                  </div>
+                                  {cpLaySheet && (
+                                    <Badge variant="outline" className="text-xs">
+                                      Lay Sheet ✓
+                                    </Badge>
+                                  )}
+                                  <Badge variant="outline" className="text-xs">
+                                    {cpGuides.length} Guides
+                                  </Badge>
+                                  <Badge variant="outline" className="text-xs">
+                                    {cpBundles.length} Tags
+                                  </Badge>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                      <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive">
+                                        <Trash2 className="h-4 w-4" />
+                                      </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                      <AlertDialogHeader>
+                                        <AlertDialogTitle>Delete Cut Plan #{cp.cutNo}?</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                          This will also delete the lay sheet, {cpGuides.length} bundle guides, and {cpBundles.length} bundle tags.
+                                        </AlertDialogDescription>
+                                      </AlertDialogHeader>
+                                      <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                        <AlertDialogAction onClick={() => handleDeleteCutPlan(cp.id, cp.cutNo)}>
+                                          Delete
+                                        </AlertDialogAction>
+                                      </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                  </AlertDialog>
+                                </div>
+                              </div>
+                              
+                              {/* Size breakdown */}
+                              <div className="mt-2 flex flex-wrap gap-1">
+                                {Object.entries(cp.sizes).filter(([_, qty]) => qty > 0).map(([size, qty]) => (
+                                  <Badge key={size} variant="secondary" className="font-mono text-xs">
+                                    {size}: {qty}
+                                  </Badge>
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>

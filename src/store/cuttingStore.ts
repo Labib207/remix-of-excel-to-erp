@@ -37,6 +37,15 @@ interface CuttingStore {
   addBundleGuide: (guide: BundleGuide) => void;
   addBundleGuides: (guides: BundleGuide[]) => void;
   
+  // Lay Sheet Actions (delete)
+  deleteLaySheet: (id: string) => void;
+  deleteLaySheetsForCutPlan: (cutPlanId: string) => void;
+  
+  // Delete bundles and guides for marker
+  deleteBundlesForCutPlan: (cutPlanId: string) => void;
+  deleteBundleGuidesForCutPlan: (cutPlanId: string) => void;
+  deleteAllForMarker: (markerId: string) => void;
+  
   // Ratio Actions
   addRatio: (ratio: Ratio) => void;
   deleteRatio: (id: string) => void;
@@ -212,6 +221,35 @@ export const useCuttingStore = create<CuttingStore>((set, get) => ({
   // Bundle Guide Actions
   addBundleGuide: (guide) => set((state) => ({ bundleGuides: [...state.bundleGuides, guide] })),
   addBundleGuides: (guides) => set((state) => ({ bundleGuides: [...state.bundleGuides, ...guides] })),
+  
+  // Lay Sheet Actions (delete)
+  deleteLaySheet: (id) => set((state) => ({
+    laySheets: state.laySheets.filter(l => l.id !== id)
+  })),
+  deleteLaySheetsForCutPlan: (cutPlanId) => set((state) => ({
+    laySheets: state.laySheets.filter(l => l.cutPlanId !== cutPlanId)
+  })),
+  
+  // Delete bundles and guides for cut plan
+  deleteBundlesForCutPlan: (cutPlanId) => set((state) => ({
+    bundles: state.bundles.filter(b => b.cutPlanId !== cutPlanId)
+  })),
+  deleteBundleGuidesForCutPlan: (cutPlanId) => set((state) => ({
+    bundleGuides: state.bundleGuides.filter(bg => bg.cutPlanId !== cutPlanId)
+  })),
+  
+  // Delete all documents generated from a marker
+  deleteAllForMarker: (markerId) => {
+    const state = get();
+    const cutPlanIds = state.cutPlans.filter(cp => cp.markerId === markerId).map(cp => cp.id);
+    
+    set((s) => ({
+      cutPlans: s.cutPlans.filter(cp => cp.markerId !== markerId),
+      laySheets: s.laySheets.filter(ls => !cutPlanIds.includes(ls.cutPlanId)),
+      bundles: s.bundles.filter(b => !cutPlanIds.includes(b.cutPlanId)),
+      bundleGuides: s.bundleGuides.filter(bg => !cutPlanIds.includes(bg.cutPlanId))
+    }));
+  },
   
   // Ratio Actions
   addRatio: (ratio) => set((state) => ({ ratios: [...state.ratios, ratio] })),
