@@ -426,8 +426,21 @@ const Bundles = () => {
                             <p className="font-mono font-bold">{bundle.quantity}</p>
                           </div>
                           <div>
+                            <p className="text-xs text-muted-foreground">Ply Range</p>
+                            <p className="font-mono font-medium text-primary">
+                              {bundle.plyStart}-{bundle.plyEnd}
+                            </p>
+                          </div>
+                        </div>
+                        
+                        <div className="grid grid-cols-2 gap-2 text-sm border-t border-border pt-2">
+                          <div>
                             <p className="text-xs text-muted-foreground">S/N Range</p>
                             <p className="font-mono font-medium">{bundle.startNo}-{bundle.endNo}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-muted-foreground">Bundle #</p>
+                            <p className="font-mono font-bold text-primary">{bundle.bundleNo}</p>
                           </div>
                         </div>
 

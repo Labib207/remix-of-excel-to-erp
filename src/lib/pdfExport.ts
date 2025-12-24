@@ -249,9 +249,10 @@ export const exportBundleTagsPDF = (bundles: Bundle[], cutPlan: CutPlan, order: 
     doc.text(`Part: ${bundle.part}`, x + 4, contentY + lineHeight * 3.5);
     doc.text(`Qty: ${bundle.quantity}`, x + tagWidth - 4, contentY + lineHeight * 3.5, { align: 'right' });
     
-    // Serial range
+    // Ply range and Serial range
     doc.setFontSize(8);
-    doc.text(`S/N: ${bundle.startNo} - ${bundle.endNo}`, x + tagWidth / 2, contentY + lineHeight * 4.5, { align: 'center' });
+    doc.text(`Ply: ${bundle.plyStart || 1}-${bundle.plyEnd || bundle.quantity}`, x + 4, contentY + lineHeight * 4.5);
+    doc.text(`S/N: ${bundle.startNo}-${bundle.endNo}`, x + tagWidth - 4, contentY + lineHeight * 4.5, { align: 'right' });
   });
   
   addFooter(doc, currentPage, totalPages);
@@ -332,7 +333,8 @@ export const exportAllBundleTagsByPart = (bundles: Bundle[], cutPlan: CutPlan, o
       doc.text(`Qty: ${bundle.quantity}`, x + tagWidth - 4, contentY + lineHeight * 3.5, { align: 'right' });
       
       doc.setFontSize(8);
-      doc.text(`S/N: ${bundle.startNo} - ${bundle.endNo}`, x + tagWidth / 2, contentY + lineHeight * 4.5, { align: 'center' });
+      doc.text(`Ply: ${bundle.plyStart || 1}-${bundle.plyEnd || bundle.quantity}`, x + 4, contentY + lineHeight * 4.5);
+      doc.text(`S/N: ${bundle.startNo}-${bundle.endNo}`, x + tagWidth - 4, contentY + lineHeight * 4.5, { align: 'right' });
     });
     
     addFooter(doc, currentPage, totalPages);
