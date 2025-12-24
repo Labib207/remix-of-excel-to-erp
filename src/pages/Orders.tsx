@@ -3,7 +3,6 @@ import { MainLayout } from '@/components/layout/MainLayout';
 import { useCuttingStore } from '@/store/cuttingStore';
 import { SIZES, Order } from '@/types/cutting';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -15,6 +14,7 @@ import {
 } from '@/components/ui/dialog';
 import { Plus, Eye, Edit, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { OrderForm } from '@/components/forms/OrderForm';
 
 const statusStyles = {
   pending: 'bg-muted text-muted-foreground',
@@ -29,13 +29,30 @@ const statusLabels = {
 };
 
 const Orders = () => {
-  const { orders, addOrder, deleteOrder } = useCuttingStore();
+  const { orders, addOrder, updateOrder, deleteOrder } = useCuttingStore();
   const { toast } = useToast();
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [editingOrder, setEditingOrder] = useState<Order | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
 
   const handleViewOrder = (order: Order) => {
     setSelectedOrder(order);
+  };
+
+  const handleCreateOrder = (order: Order) => {
+    addOrder(order);
+    setIsCreateDialogOpen(false);
+    toast({ title: 'Order created successfully' });
+  };
+
+  const handleUpdateOrder = (order: Order) => {
+    updateOrder(order.id, order);
+    setEditingOrder(null);
+    toast({ title: 'Order updated successfully' });
+  };
+
+  const handleEditClick = (order: Order) => {
+    setEditingOrder(order);
   };
 
   return (
@@ -47,22 +64,21 @@ const Orders = () => {
             <h1 className="text-3xl font-bold tracking-tight text-foreground">Orders</h1>
             <p className="text-muted-foreground">Manage production orders and size specifications</p>
           </div>
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
             <DialogTrigger asChild>
               <Button className="gradient-primary text-primary-foreground">
                 <Plus className="mr-2 h-4 w-4" />
                 New Order
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-3xl">
+            <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Create New Order</DialogTitle>
               </DialogHeader>
-              <div className="grid gap-4 py-4">
-                <p className="text-sm text-muted-foreground">
-                  Order creation form will be implemented with full size ratio planning.
-                </p>
-              </div>
+              <OrderForm
+                onSubmit={handleCreateOrder}
+                onCancel={() => setIsCreateDialogOpen(false)}
+              />
             </DialogContent>
           </Dialog>
         </div>
@@ -90,7 +106,11 @@ const Orders = () => {
                     >
                       <Eye className="h-4 w-4" />
                     </Button>
-                    <Button variant="outline" size="icon">
+                    <Button 
+                      variant="outline" 
+                      size="icon"
+                      onClick={() => handleEditClick(order)}
+                    >
                       <Edit className="h-4 w-4" />
                     </Button>
                     <Button 
@@ -222,6 +242,22 @@ const Orders = () => {
                   </div>
                 </div>
               </div>
+            </DialogContent>
+          </Dialog>
+        )}
+
+        {/* Edit Order Dialog */}
+        {editingOrder && (
+          <Dialog open={!!editingOrder} onOpenChange={() => setEditingOrder(null)}>
+            <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Edit Order - {editingOrder.orderNumber}</DialogTitle>
+              </DialogHeader>
+              <OrderForm
+                order={editingOrder}
+                onSubmit={handleUpdateOrder}
+                onCancel={() => setEditingOrder(null)}
+              />
             </DialogContent>
           </Dialog>
         )}

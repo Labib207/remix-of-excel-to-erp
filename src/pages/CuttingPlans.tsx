@@ -10,13 +10,21 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from '@/components/ui/dialog';
-import { Printer, FileText, Scissors, ArrowRight, Layers } from 'lucide-react';
+import { Printer, FileText, Scissors, ArrowRight, Layers, Plus } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { CutPlanForm } from '@/components/forms/CutPlanForm';
+import { LaySheetForm } from '@/components/forms/LaySheetForm';
 
 const CuttingPlans = () => {
-  const { cutPlans, orders, markerPlans, laySheets } = useCuttingStore();
+  const { cutPlans, orders, markerPlans, laySheets, addCutPlan, addLaySheet, updateLaySheet } = useCuttingStore();
+  const { toast } = useToast();
   const [selectedPlan, setSelectedPlan] = useState<CutPlan | null>(null);
   const [selectedLaySheet, setSelectedLaySheet] = useState<LaySheet | null>(null);
+  const [isCreateCutPlanOpen, setIsCreateCutPlanOpen] = useState(false);
+  const [isCreateLaySheetOpen, setIsCreateLaySheetOpen] = useState(false);
+  const [editingLaySheet, setEditingLaySheet] = useState<LaySheet | null>(null);
 
   const getOrder = (orderId: string) => orders.find(o => o.id === orderId);
   const getMarker = (markerId: string) => markerPlans.find(m => m.id === markerId);
@@ -28,6 +36,34 @@ const CuttingPlans = () => {
     completed: 'bg-success/10 text-success border-success/20'
   };
 
+  const handleCreateCutPlan = (cutPlan: CutPlan) => {
+    addCutPlan(cutPlan);
+    // Auto-create a lay sheet for the cut plan
+    const newLaySheet: LaySheet = {
+      id: `ls-${Date.now()}`,
+      cutPlanId: cutPlan.id,
+      layNo: laySheets.length + 1,
+      plies: cutPlan.plies,
+      layLength: cutPlan.layLength,
+      fabricRoll: '',
+    };
+    addLaySheet(newLaySheet);
+    setIsCreateCutPlanOpen(false);
+    toast({ title: 'Cut plan created with lay sheet' });
+  };
+
+  const handleCreateLaySheet = (laySheet: LaySheet) => {
+    addLaySheet(laySheet);
+    setIsCreateLaySheetOpen(false);
+    toast({ title: 'Lay sheet created successfully' });
+  };
+
+  const handleUpdateLaySheet = (laySheet: LaySheet) => {
+    updateLaySheet(laySheet.id, laySheet);
+    setEditingLaySheet(null);
+    toast({ title: 'Lay sheet updated successfully' });
+  };
+
   return (
     <MainLayout>
       <div className="space-y-6 animate-fade-in">
@@ -36,6 +72,46 @@ const CuttingPlans = () => {
           <div>
             <h1 className="text-3xl font-bold tracking-tight text-foreground">Cutting Plans & Lay Sheets</h1>
             <p className="text-muted-foreground">Manage fabric laying and cutting operations</p>
+          </div>
+          <div className="flex gap-2">
+            <Dialog open={isCreateLaySheetOpen} onOpenChange={setIsCreateLaySheetOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline">
+                  <Plus className="mr-2 h-4 w-4" />
+                  New Lay Sheet
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl">
+                <DialogHeader>
+                  <DialogTitle>Create Lay Sheet</DialogTitle>
+                </DialogHeader>
+                <LaySheetForm
+                  cutPlans={cutPlans}
+                  existingLaySheets={laySheets}
+                  onSubmit={handleCreateLaySheet}
+                  onCancel={() => setIsCreateLaySheetOpen(false)}
+                />
+              </DialogContent>
+            </Dialog>
+            <Dialog open={isCreateCutPlanOpen} onOpenChange={setIsCreateCutPlanOpen}>
+              <DialogTrigger asChild>
+                <Button className="gradient-primary text-primary-foreground">
+                  <Plus className="mr-2 h-4 w-4" />
+                  New Cut Plan
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Create Cut Plan (Manual Entry)</DialogTitle>
+                </DialogHeader>
+                <CutPlanForm
+                  orders={orders}
+                  existingCutPlans={cutPlans}
+                  onSubmit={handleCreateCutPlan}
+                  onCancel={() => setIsCreateCutPlanOpen(false)}
+                />
+              </DialogContent>
+            </Dialog>
           </div>
         </div>
 
@@ -146,7 +222,9 @@ const CuttingPlans = () => {
                             <Badge variant="secondary" className="font-mono text-xs">
                               M#{marker.markerNo}
                             </Badge>
-                          ) : '-'}
+                          ) : (
+                            <Badge variant="outline" className="text-xs text-muted-foreground">Manual</Badge>
+                          )}
                         </td>
                         <td className="px-4 py-3">
                           <Badge variant="outline" className={statusStyles[plan.status]}>
@@ -340,11 +418,29 @@ const CuttingPlans = () => {
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground">Fabric Roll</p>
-                    <p className="font-medium">{selectedLaySheet.fabricRoll}</p>
+                    <p className="font-medium">{selectedLaySheet.fabricRoll || '-'}</p>
                   </div>
+                  {selectedLaySheet.operator && (
+                    <div>
+                      <p className="text-xs text-muted-foreground">Operator</p>
+                      <p className="font-medium">{selectedLaySheet.operator}</p>
+                    </div>
+                  )}
+                  {selectedLaySheet.startTime && (
+                    <div>
+                      <p className="text-xs text-muted-foreground">Time</p>
+                      <p className="font-medium">{selectedLaySheet.startTime} - {selectedLaySheet.endTime || '...'}</p>
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex justify-end gap-2 pt-4 border-t border-border">
+                  <Button variant="outline" onClick={() => {
+                    setEditingLaySheet(selectedLaySheet);
+                    setSelectedLaySheet(null);
+                  }}>
+                    Edit
+                  </Button>
                   <Button variant="outline" onClick={() => setSelectedLaySheet(null)}>
                     Close
                   </Button>
@@ -354,6 +450,24 @@ const CuttingPlans = () => {
                   </Button>
                 </div>
               </div>
+            </DialogContent>
+          </Dialog>
+        )}
+
+        {/* Edit Lay Sheet Dialog */}
+        {editingLaySheet && (
+          <Dialog open={!!editingLaySheet} onOpenChange={() => setEditingLaySheet(null)}>
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>Edit Lay Sheet #{editingLaySheet.layNo}</DialogTitle>
+              </DialogHeader>
+              <LaySheetForm
+                laySheet={editingLaySheet}
+                cutPlans={cutPlans}
+                existingLaySheets={laySheets}
+                onSubmit={handleUpdateLaySheet}
+                onCancel={() => setEditingLaySheet(null)}
+              />
             </DialogContent>
           </Dialog>
         )}
