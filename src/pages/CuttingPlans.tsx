@@ -17,6 +17,7 @@ import { useToast } from '@/hooks/use-toast';
 import { CutPlanForm } from '@/components/forms/CutPlanForm';
 import { LaySheetForm } from '@/components/forms/LaySheetForm';
 import { exportCutPlanPDF, exportLaySheetPDF } from '@/lib/pdfExport';
+import { Separator } from '@/components/ui/separator';
 
 const CuttingPlans = () => {
   const { cutPlans, orders, markerPlans, laySheets, addCutPlan, addLaySheet, updateLaySheet } = useCuttingStore();
@@ -135,8 +136,15 @@ const CuttingPlans = () => {
           </CardContent>
         </Card>
 
-        {/* Summary Stats */}
-        <div className="grid gap-4 sm:grid-cols-3">
+        <Separator className="my-2" />
+
+        {/* Section: Summary Stats */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-3">
+            <h2 className="text-lg font-semibold text-foreground">Summary Statistics</h2>
+            <Separator className="flex-1" />
+          </div>
+          <div className="grid gap-4 sm:grid-cols-3">
           <Card className="shadow-card">
             <CardContent className="pt-6">
               <div className="flex items-center gap-4">
@@ -180,13 +188,21 @@ const CuttingPlans = () => {
               </div>
             </CardContent>
           </Card>
+          </div>
         </div>
 
-        {/* Cut Plans Table */}
-        <Card className="shadow-card">
-          <CardHeader>
-            <CardTitle>Cut Plans & Connected Documents</CardTitle>
-          </CardHeader>
+        <Separator className="my-2" />
+
+        {/* Section: Cut Plans Table */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-3">
+            <h2 className="text-lg font-semibold text-foreground">Cut Plans & Documents</h2>
+            <Separator className="flex-1" />
+          </div>
+          <Card className="shadow-card">
+            <CardHeader>
+              <CardTitle>Cut Plans & Connected Documents</CardTitle>
+            </CardHeader>
           <CardContent>
             <div className="overflow-x-auto">
               <table className="w-full">
@@ -275,6 +291,7 @@ const CuttingPlans = () => {
             </div>
           </CardContent>
         </Card>
+        </div>
 
         {/* Cut Plan Detail Modal */}
         {selectedPlan && (

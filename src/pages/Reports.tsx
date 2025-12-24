@@ -3,6 +3,7 @@ import { useCuttingStore } from '@/store/cuttingStore';
 import { SIZES } from '@/types/cutting';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Separator } from '@/components/ui/separator';
 import { FileText, Download, Printer } from 'lucide-react';
 
 const Reports = () => {
@@ -53,8 +54,13 @@ const Reports = () => {
           </div>
         </div>
 
-        {/* Order Summary Report */}
-        <Card className="shadow-card">
+        {/* Section: Order Summary Report */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-3">
+            <h2 className="text-lg font-semibold text-foreground">Order Summary</h2>
+            <Separator className="flex-1" />
+          </div>
+          <Card className="shadow-card">
           <CardHeader className="border-b border-border bg-muted/30">
             <div className="flex items-center justify-between">
               <CardTitle className="flex items-center gap-2">
@@ -92,6 +98,8 @@ const Reports = () => {
                 <p className="font-medium">{order.fabricWidth} cm</p>
               </div>
             </div>
+
+            <Separator className="my-4" />
 
             {/* Size-wise Breakdown */}
             <div className="mb-6">
@@ -153,6 +161,8 @@ const Reports = () => {
               </div>
             </div>
 
+            <Separator className="my-4" />
+
             {/* Fabric Consumption */}
             <div>
               <h4 className="font-semibold mb-3">Shell Fabric Consumption</h4>
@@ -189,13 +199,21 @@ const Reports = () => {
               </div>
             </div>
           </CardContent>
-        </Card>
+          </Card>
+        </div>
 
-        {/* Cut Plan Summary */}
-        <Card className="shadow-card">
-          <CardHeader>
-            <CardTitle>Cut Plan Summary</CardTitle>
-          </CardHeader>
+        <Separator className="my-2" />
+
+        {/* Section: Cut Plan Summary */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-3">
+            <h2 className="text-lg font-semibold text-foreground">Cut Plan Summary</h2>
+            <Separator className="flex-1" />
+          </div>
+          <Card className="shadow-card">
+            <CardHeader>
+              <CardTitle>Cut Plan Details</CardTitle>
+            </CardHeader>
           <CardContent>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -242,6 +260,7 @@ const Reports = () => {
             </div>
           </CardContent>
         </Card>
+        </div>
       </div>
     </MainLayout>
   );

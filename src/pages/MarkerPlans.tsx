@@ -23,6 +23,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Plus, Printer, Ruler, FileText, ArrowRight, Zap, Layers, Package, Trash2, Edit, ChevronDown, ChevronUp } from 'lucide-react';
+import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import {
   AlertDialog,
@@ -346,8 +347,15 @@ const MarkerPlans = () => {
           </CardContent>
         </Card>
 
-        {/* Marker Plans Grid */}
-        <div className="grid gap-4 lg:grid-cols-2">
+        <Separator className="my-2" />
+
+        {/* Section: Marker Plans Grid */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-3">
+            <h2 className="text-lg font-semibold text-foreground">Marker Plans ({markerPlans.length})</h2>
+            <Separator className="flex-1" />
+          </div>
+          <div className="grid gap-4 lg:grid-cols-2">
           {markerPlans.map((marker) => {
             const order = getOrder(marker.orderId);
             const connectedCutPlans = getCutPlansForMarker(marker.id);
@@ -569,6 +577,7 @@ const MarkerPlans = () => {
               </Card>
             );
           })}
+        </div>
         </div>
 
         {/* Generate All Dialog */}
