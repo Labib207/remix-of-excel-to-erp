@@ -12,10 +12,11 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { Printer, FileText, Scissors, ArrowRight, Layers, Plus } from 'lucide-react';
+import { Printer, FileText, Scissors, ArrowRight, Layers, Plus, Download } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { CutPlanForm } from '@/components/forms/CutPlanForm';
 import { LaySheetForm } from '@/components/forms/LaySheetForm';
+import { exportCutPlanPDF, exportLaySheetPDF } from '@/lib/pdfExport';
 
 const CuttingPlans = () => {
   const { cutPlans, orders, markerPlans, laySheets, addCutPlan, addLaySheet, updateLaySheet } = useCuttingStore();
@@ -381,9 +382,18 @@ const CuttingPlans = () => {
                   <Button variant="outline" onClick={() => setSelectedPlan(null)}>
                     Close
                   </Button>
-                  <Button className="gradient-primary text-primary-foreground">
-                    <Printer className="mr-2 h-4 w-4" />
-                    Print Cut Plan
+                  <Button 
+                    className="gradient-primary text-primary-foreground"
+                    onClick={() => {
+                      const order = getOrder(selectedPlan.orderId);
+                      if (order) {
+                        exportCutPlanPDF(selectedPlan, order);
+                        toast({ title: 'Cut Plan PDF exported!' });
+                      }
+                    }}
+                  >
+                    <Download className="mr-2 h-4 w-4" />
+                    Export PDF
                   </Button>
                 </div>
               </div>
@@ -444,9 +454,19 @@ const CuttingPlans = () => {
                   <Button variant="outline" onClick={() => setSelectedLaySheet(null)}>
                     Close
                   </Button>
-                  <Button className="gradient-primary text-primary-foreground">
-                    <Printer className="mr-2 h-4 w-4" />
-                    Print Lay Sheet
+                  <Button 
+                    className="gradient-primary text-primary-foreground"
+                    onClick={() => {
+                      const cutPlan = cutPlans.find(cp => cp.id === selectedLaySheet.cutPlanId);
+                      const order = cutPlan ? getOrder(cutPlan.orderId) : null;
+                      if (cutPlan && order) {
+                        exportLaySheetPDF(selectedLaySheet, cutPlan, order);
+                        toast({ title: 'Lay Sheet PDF exported!' });
+                      }
+                    }}
+                  >
+                    <Download className="mr-2 h-4 w-4" />
+                    Export PDF
                   </Button>
                 </div>
               </div>
