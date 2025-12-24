@@ -15,6 +15,7 @@ import {
 import { Plus, Eye, Edit, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { OrderForm } from '@/components/forms/OrderForm';
+import { Separator } from '@/components/ui/separator';
 
 const statusStyles = {
   pending: 'bg-muted text-muted-foreground',
@@ -83,9 +84,16 @@ const Orders = () => {
           </Dialog>
         </div>
 
-        {/* Orders Grid */}
-        <div className="grid gap-4">
-          {orders.map((order) => (
+        <Separator className="my-2" />
+
+        {/* Section: Orders List */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-3">
+            <h2 className="text-lg font-semibold text-foreground">Order List ({orders.length} orders)</h2>
+            <Separator className="flex-1" />
+          </div>
+          <div className="grid gap-4">
+            {orders.map((order) => (
             <Card key={order.id} className="shadow-card transition-all hover:shadow-lg">
               <CardHeader className="pb-2">
                 <div className="flex items-start justify-between">
@@ -151,8 +159,10 @@ const Orders = () => {
                   </div>
                 </div>
 
+                <Separator className="my-4" />
+
                 {/* Size Quantities Preview */}
-                <div className="mt-4 pt-4 border-t border-border">
+                <div>
                   <p className="text-xs text-muted-foreground mb-2">Size Distribution</p>
                   <div className="flex flex-wrap gap-2">
                     {SIZES.map((size) => {
@@ -176,7 +186,8 @@ const Orders = () => {
                 </div>
               </CardContent>
             </Card>
-          ))}
+            ))}
+          </div>
         </div>
 
         {/* Order Detail Modal */}

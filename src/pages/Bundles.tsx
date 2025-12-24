@@ -24,6 +24,7 @@ import {
 import { Plus, Printer, Package, Tag, FileText, ArrowRight, Download } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { exportBundleGuidePDF, exportBundleTagsPDF, exportAllBundleTagsByPart } from '@/lib/pdfExport';
+import { Separator } from '@/components/ui/separator';
 const PARTS = [
   'FRONT', 'BACK', 'SLEEVE', 'COLLAR', 'POCKET', 'FLAP',
   'L FRONT', 'R FRONT', 'FRT SLV', 'BCK SLV', 'U.COLLAR', 'T COLLER',
@@ -98,8 +99,15 @@ const Bundles = () => {
           </CardContent>
         </Card>
 
-        {/* Generator Card */}
-        <Card className="shadow-card">
+        <Separator className="my-2" />
+
+        {/* Section: Generator */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-3">
+            <h2 className="text-lg font-semibold text-foreground">Bundle Generator</h2>
+            <Separator className="flex-1" />
+          </div>
+          <Card className="shadow-card">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Tag className="h-5 w-5 text-primary" />
@@ -171,13 +179,21 @@ const Bundles = () => {
               </div>
             </div>
           </CardContent>
-        </Card>
+          </Card>
+        </div>
 
-        {/* Cut Plans with Generated Documents */}
-        <Card className="shadow-card">
-          <CardHeader>
-            <CardTitle>Cut Plans & Documents</CardTitle>
-          </CardHeader>
+        <Separator className="my-2" />
+
+        {/* Section: Cut Plans with Generated Documents */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-3">
+            <h2 className="text-lg font-semibold text-foreground">Cut Plans & Documents</h2>
+            <Separator className="flex-1" />
+          </div>
+          <Card className="shadow-card">
+            <CardHeader>
+              <CardTitle>Cut Plans with Generated Documents</CardTitle>
+            </CardHeader>
           <CardContent>
             <div className="overflow-x-auto">
               <table className="w-full">
@@ -261,6 +277,7 @@ const Bundles = () => {
             </div>
           </CardContent>
         </Card>
+        </div>
 
         {/* Bundle Guide Modal */}
         {showBundleGuide && (

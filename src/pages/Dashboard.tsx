@@ -5,6 +5,7 @@ import { CuttingProgress } from '@/components/dashboard/CuttingProgress';
 import { FabricUsage } from '@/components/dashboard/FabricUsage';
 import { SizeBreakdown } from '@/components/dashboard/SizeBreakdown';
 import { useCuttingStore } from '@/store/cuttingStore';
+import { Separator } from '@/components/ui/separator';
 import { ClipboardList, Scissors, Package, Ruler } from 'lucide-react';
 
 const Dashboard = () => {
@@ -26,54 +27,76 @@ const Dashboard = () => {
           </p>
         </div>
 
-        {/* Stats Grid */}
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <StatCard
-            title="Active Orders"
-            value={totalOrders}
-            subtitle="In production"
-            icon={<ClipboardList className="h-6 w-6" />}
-            variant="primary"
-          />
-          <StatCard
-            title="Cut Plans"
-            value={totalCuts}
-            subtitle="This month"
-            icon={<Scissors className="h-6 w-6" />}
-            variant="default"
-          />
-          <StatCard
-            title="Pieces Cut"
-            value={totalQtyCut}
-            subtitle="Total quantity"
-            icon={<Package className="h-6 w-6" />}
-            variant="success"
-          />
-          <StatCard
-            title="Fabric Used"
-            value={`${totalFabricUsed.toFixed(0)} m`}
-            subtitle="Shell fabric"
-            icon={<Ruler className="h-6 w-6" />}
-            variant="warning"
-          />
-        </div>
-
-        {/* Main Content Grid */}
-        <div className="grid gap-6 lg:grid-cols-3">
-          {/* Left Column - 2 cols */}
-          <div className="lg:col-span-2 space-y-6">
-            <OrdersTable />
+        {/* Section: Statistics Overview */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-3">
+            <h2 className="text-lg font-semibold text-foreground">Statistics Overview</h2>
+            <Separator className="flex-1" />
           </div>
-
-          {/* Right Column - 1 col */}
-          <div className="space-y-6">
-            <CuttingProgress />
-            <FabricUsage />
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <StatCard
+              title="Active Orders"
+              value={totalOrders}
+              subtitle="In production"
+              icon={<ClipboardList className="h-6 w-6" />}
+              variant="primary"
+            />
+            <StatCard
+              title="Cut Plans"
+              value={totalCuts}
+              subtitle="This month"
+              icon={<Scissors className="h-6 w-6" />}
+              variant="default"
+            />
+            <StatCard
+              title="Pieces Cut"
+              value={totalQtyCut}
+              subtitle="Total quantity"
+              icon={<Package className="h-6 w-6" />}
+              variant="success"
+            />
+            <StatCard
+              title="Fabric Used"
+              value={`${totalFabricUsed.toFixed(0)} m`}
+              subtitle="Shell fabric"
+              icon={<Ruler className="h-6 w-6" />}
+              variant="warning"
+            />
           </div>
         </div>
 
-        {/* Size Breakdown */}
-        <div className="grid gap-6 lg:grid-cols-2">
+        <Separator className="my-2" />
+
+        {/* Section: Orders & Progress */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-3">
+            <h2 className="text-lg font-semibold text-foreground">Orders & Progress</h2>
+            <Separator className="flex-1" />
+          </div>
+          <div className="grid gap-6 lg:grid-cols-3">
+            {/* Left Column - 2 cols */}
+            <div className="lg:col-span-2 space-y-6">
+              <OrdersTable />
+            </div>
+
+            {/* Right Column - 1 col */}
+            <div className="space-y-6">
+              <CuttingProgress />
+              <Separator />
+              <FabricUsage />
+            </div>
+          </div>
+        </div>
+
+        <Separator className="my-2" />
+
+        {/* Section: Size Breakdown & Recent Activity */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-3">
+            <h2 className="text-lg font-semibold text-foreground">Details & Recent Activity</h2>
+            <Separator className="flex-1" />
+          </div>
+          <div className="grid gap-6 lg:grid-cols-2">
           <SizeBreakdown />
           
           {/* Recent Activity */}
@@ -110,6 +133,7 @@ const Dashboard = () => {
               ))}
             </div>
           </div>
+        </div>
         </div>
       </div>
     </MainLayout>
