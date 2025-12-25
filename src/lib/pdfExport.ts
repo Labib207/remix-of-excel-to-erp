@@ -228,45 +228,111 @@ export const exportLaySheetPDF = async (laySheet: LaySheet, cutPlan: CutPlan, or
   doc.save(`LaySheet_${laySheet.layNo}_Cut${cutPlan.cutNo}_${docNumber}.pdf`);
 };
 
-export const exportBundleGuidePDF = async (guides: BundleGuide[], cutPlan: CutPlan, order: Order) => {
+export const exportBundleGuidePDF = async (guides: BundleGuide[], cutPlan: CutPlan, order: Order, bundles?: Bundle[]) => {
   const doc = new jsPDF();
   const docNumber = getNextDocNumber('BG');
   
   await addHeader(doc, `Bundle Guide - Cut #${cutPlan.cutNo}`, `Order: ${order.orderNumber} | Style: ${order.styleNo}`, docNumber);
   
+  // Header info - Excel style
   autoTable(doc, {
     startY: 40,
-    head: [['Order', 'Style', 'Shade', 'Cut No', 'Total Qty']],
-    body: [[order.orderNumber, order.styleNo, cutPlan.shade, cutPlan.cutNo.toString(), cutPlan.totalQty.toString()]],
-    theme: 'grid',
-    headStyles: { fillColor: [59, 130, 246], fontStyle: 'bold' },
-    styles: { fontSize: 9, halign: 'center' },
+    body: [
+      ['STYLE NO:', `${order.styleNo} - ${order.styleName}`, 'CUT:', cutPlan.cutNo.toString()],
+      ['COLOUR:', cutPlan.shade, 'PLIES:', cutPlan.plies.toString()],
+      ['CUSTOMER:', order.customer, 'TOTAL QTY:', order.totalQty.toString()],
+      ['DATE:', new Date(cutPlan.date).toLocaleDateString(), '', ''],
+    ],
+    theme: 'plain',
+    styles: { fontSize: 9 },
+    columnStyles: {
+      0: { fontStyle: 'bold', cellWidth: 25 },
+      1: { cellWidth: 60 },
+      2: { fontStyle: 'bold', cellWidth: 25 },
+      3: { cellWidth: 40 },
+    },
   });
   
-  // Bundle guide table
+  // Size ratio table
+  const sizesInCut = Object.keys(cutPlan.sizes).filter(s => cutPlan.sizes[s] > 0);
+  autoTable(doc, {
+    startY: doc.lastAutoTable.finalY + 5,
+    head: [['SIZE', ...sizesInCut, 'TOTAL']],
+    body: [['Ratio', ...sizesInCut.map(() => '1'), sizesInCut.length.toString()]],
+    theme: 'grid',
+    headStyles: { fillColor: [59, 130, 246], fontStyle: 'bold', halign: 'center' },
+    styles: { fontSize: 8, halign: 'center' },
+  });
+  
+  // Bundle guide table - Excel format with S/NO, SIZE, BUNDLE NO, START NO - END NO, QTY, TOTAL
+  if (bundles && bundles.length > 0) {
+    let runningTotal = 0;
+    const bundleRows = bundles.map((bundle, idx) => {
+      runningTotal += bundle.quantity;
+      const isLast = idx === bundles.length - 1;
+      return [
+        (idx + 1).toString(),
+        bundle.size,
+        bundle.bundleNo.toString(),
+        `${bundle.startNo} - ${bundle.endNo}`,
+        bundle.quantity.toString(),
+        isLast ? runningTotal.toString() : ''
+      ];
+    });
+    
+    autoTable(doc, {
+      startY: doc.lastAutoTable.finalY + 10,
+      head: [['S/NO', 'SIZE', 'BUNDLE NO', 'START NO - END NO', 'QTY', 'TOTAL']],
+      body: bundleRows,
+      theme: 'grid',
+      headStyles: { fillColor: [34, 197, 94], fontStyle: 'bold', halign: 'center' },
+      styles: { fontSize: 9, halign: 'center' },
+      columnStyles: {
+        1: { fontStyle: 'bold' },
+        5: { fontStyle: 'bold' },
+      },
+    });
+  } else {
+    // Fallback to old format if no bundles provided
+    autoTable(doc, {
+      startY: doc.lastAutoTable.finalY + 10,
+      head: [['Size', 'Total Qty', 'Bundle Size', 'Full Bundles', 'Remainder', 'Total Bundles']],
+      body: guides.map(g => [
+        g.size,
+        g.totalQty.toString(),
+        g.bundleSize.toString(),
+        Math.floor(g.totalQty / g.bundleSize).toString(),
+        g.remainderQty.toString(),
+        g.bundles.toString()
+      ]),
+      foot: [[
+        'TOTAL',
+        guides.reduce((sum, g) => sum + g.totalQty, 0).toString(),
+        '-',
+        guides.reduce((sum, g) => sum + Math.floor(g.totalQty / g.bundleSize), 0).toString(),
+        '-',
+        guides.reduce((sum, g) => sum + g.bundles, 0).toString()
+      ]],
+      theme: 'grid',
+      headStyles: { fillColor: [34, 197, 94], fontStyle: 'bold' },
+      footStyles: { fillColor: [229, 231, 235], fontStyle: 'bold' },
+      styles: { fontSize: 9, halign: 'center' },
+    });
+  }
+  
+  // Order Qty summary table
+  const orderSizes = SIZES.filter(s => order.sizeQuantities[s.code] > 0);
   autoTable(doc, {
     startY: doc.lastAutoTable.finalY + 10,
-    head: [['Size', 'Total Qty', 'Bundle Size', 'Full Bundles', 'Remainder', 'Total Bundles']],
-    body: guides.map(g => [
-      g.size,
-      g.totalQty.toString(),
-      g.bundleSize.toString(),
-      Math.floor(g.totalQty / g.bundleSize).toString(),
-      g.remainderQty.toString(),
-      g.bundles.toString()
-    ]),
-    foot: [[
-      'TOTAL',
-      guides.reduce((sum, g) => sum + g.totalQty, 0).toString(),
-      '-',
-      guides.reduce((sum, g) => sum + Math.floor(g.totalQty / g.bundleSize), 0).toString(),
-      '-',
-      guides.reduce((sum, g) => sum + g.bundles, 0).toString()
-    ]],
+    head: [['SIZE', ...orderSizes.map(s => s.code), 'TOT']],
+    body: [
+      ['Order Qty', ...orderSizes.map(s => order.sizeQuantities[s.code].toString()), order.totalQty.toString()],
+      ['TOTAL QTY', ...orderSizes.map(s => order.sizeQuantities[s.code].toString()), order.totalQty.toString()],
+    ],
     theme: 'grid',
-    headStyles: { fillColor: [34, 197, 94], fontStyle: 'bold' },
-    footStyles: { fillColor: [229, 231, 235], fontStyle: 'bold' },
-    styles: { fontSize: 9, halign: 'center' },
+    headStyles: { fillColor: [59, 130, 246], fontStyle: 'bold', halign: 'center' },
+    styles: { fontSize: 7, halign: 'center' },
+    bodyStyles: { fontSize: 7 },
   });
   
   addFooter(doc, 1, 1, docNumber);

@@ -353,10 +353,10 @@ const Bundles = () => {
         </Card>
         </div>
 
-        {/* Bundle Guide Modal */}
+        {/* Bundle Guide Modal - Excel Format */}
         {showBundleGuide && (
           <Dialog open={!!showBundleGuide} onOpenChange={() => setShowBundleGuide(null)}>
-            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-3">
                   <FileText className="h-5 w-5 text-primary" />
@@ -365,61 +365,145 @@ const Bundles = () => {
               </DialogHeader>
               
               <div className="space-y-4 py-4">
-                {/* Header Info */}
-                <div className="grid grid-cols-4 gap-4 rounded-lg border border-border bg-muted/30 p-4">
-                  <div>
-                    <p className="text-xs text-muted-foreground">Order</p>
-                    <p className="font-medium">{getOrder(showBundleGuide.orderId)?.orderNumber}</p>
+                {/* Header Info - Excel Style */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1 text-sm">
+                    <div className="flex gap-2">
+                      <span className="text-muted-foreground w-24">STYLE NO:</span>
+                      <span className="font-bold">{getOrder(showBundleGuide.orderId)?.styleNo} - {getOrder(showBundleGuide.orderId)?.styleName}</span>
+                    </div>
+                    <div className="flex gap-2">
+                      <span className="text-muted-foreground w-24">COLOUR:</span>
+                      <span className="font-bold">{showBundleGuide.shade}</span>
+                    </div>
+                    <div className="flex gap-2">
+                      <span className="text-muted-foreground w-24">CUT:</span>
+                      <span className="font-bold">{showBundleGuide.cutNo}</span>
+                    </div>
+                    <div className="flex gap-2">
+                      <span className="text-muted-foreground w-24">PLIES:</span>
+                      <span className="font-bold">{showBundleGuide.plies}</span>
+                    </div>
+                    <div className="flex gap-2">
+                      <span className="text-muted-foreground w-24">DATE:</span>
+                      <span className="font-bold">{new Date(showBundleGuide.date).toLocaleDateString()}</span>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">Style</p>
-                    <p className="font-medium">{getOrder(showBundleGuide.orderId)?.styleNo}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">Cut No</p>
-                    <p className="font-mono font-bold">{showBundleGuide.cutNo}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">Total Qty</p>
-                    <p className="font-mono font-bold text-primary">{showBundleGuide.totalQty}</p>
+                  
+                  {/* Size Ratio Table */}
+                  <div className="border border-border rounded overflow-hidden">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="bg-muted">
+                          <th className="px-2 py-1 text-center border-r border-border" colSpan={Object.keys(showBundleGuide.sizes).length + 1}>SIZE</th>
+                        </tr>
+                        <tr className="bg-muted/50">
+                          {Object.keys(showBundleGuide.sizes).map(size => (
+                            <th key={size} className="px-2 py-1 text-center border-r border-border font-mono">{size}</th>
+                          ))}
+                          <th className="px-2 py-1 text-center font-mono">TOTAL</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          {Object.keys(showBundleGuide.sizes).map(size => (
+                            <td key={size} className="px-2 py-1 text-center border-r border-border font-mono">1</td>
+                          ))}
+                          <td className="px-2 py-1 text-center font-mono font-bold">{Object.keys(showBundleGuide.sizes).length}</td>
+                        </tr>
+                      </tbody>
+                    </table>
                   </div>
                 </div>
 
-                {/* Bundle Guide Table */}
+                {/* Customer Info */}
+                <div className="text-center text-sm">
+                  <span className="font-bold">{getOrder(showBundleGuide.orderId)?.customer}</span>
+                  <span className="mx-4">|</span>
+                  <span className="font-bold">{getOrder(showBundleGuide.orderId)?.totalQty.toLocaleString()} QTY</span>
+                </div>
+
+                {/* Bundle Guide Table - Excel Format */}
                 <table className="w-full text-sm border border-border rounded-lg overflow-hidden">
                   <thead>
                     <tr className="bg-muted">
-                      <th className="px-4 py-3 text-left font-medium">Size</th>
-                      <th className="px-4 py-3 text-right font-medium">Total Qty</th>
-                      <th className="px-4 py-3 text-right font-medium">Bundle Size</th>
-                      <th className="px-4 py-3 text-right font-medium">Full Bundles</th>
-                      <th className="px-4 py-3 text-right font-medium">Remainder</th>
-                      <th className="px-4 py-3 text-right font-medium">Total Bundles</th>
+                      <th className="px-3 py-2 text-center font-medium border-r border-border">S/NO</th>
+                      <th className="px-3 py-2 text-center font-medium border-r border-border">SIZE</th>
+                      <th className="px-3 py-2 text-center font-medium border-r border-border">BUNDLE NO</th>
+                      <th className="px-3 py-2 text-center font-medium border-r border-border">START NO - END NO</th>
+                      <th className="px-3 py-2 text-center font-medium border-r border-border">QTY</th>
+                      <th className="px-3 py-2 text-center font-medium">TOTAL</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
-                    {planGuides.map((guide) => (
-                      <tr key={guide.id}>
-                        <td className="px-4 py-3 font-mono font-bold">{guide.size}</td>
-                        <td className="px-4 py-3 text-right font-mono">{guide.totalQty}</td>
-                        <td className="px-4 py-3 text-right font-mono">{guide.bundleSize}</td>
-                        <td className="px-4 py-3 text-right font-mono">{Math.floor(guide.totalQty / guide.bundleSize)}</td>
-                        <td className="px-4 py-3 text-right font-mono text-warning">{guide.remainderQty || '-'}</td>
-                        <td className="px-4 py-3 text-right font-mono font-bold text-primary">{guide.bundles}</td>
-                      </tr>
-                    ))}
+                    {(() => {
+                      // Get unique bundles (one per bundleNo, ignore parts for guide)
+                      const uniqueBundles = planBundles.filter((b, i, arr) => 
+                        arr.findIndex(x => x.bundleNo === b.bundleNo && x.size === b.size) === i
+                      ).sort((a, b) => a.bundleNo - b.bundleNo);
+                      
+                      let runningTotal = 0;
+                      return uniqueBundles.map((bundle, idx) => {
+                        runningTotal += bundle.quantity;
+                        const isLastRow = idx === uniqueBundles.length - 1;
+                        return (
+                          <tr key={bundle.id}>
+                            <td className="px-3 py-2 text-center font-mono border-r border-border">{idx + 1}</td>
+                            <td className="px-3 py-2 text-center font-mono font-bold border-r border-border">{bundle.size}</td>
+                            <td className="px-3 py-2 text-center font-mono border-r border-border">{bundle.bundleNo}</td>
+                            <td className="px-3 py-2 text-center font-mono border-r border-border">{bundle.startNo} - {bundle.endNo}</td>
+                            <td className="px-3 py-2 text-center font-mono border-r border-border">{bundle.quantity}</td>
+                            <td className="px-3 py-2 text-center font-mono font-bold text-primary">
+                              {isLastRow ? runningTotal : ''}
+                            </td>
+                          </tr>
+                        );
+                      });
+                    })()}
                   </tbody>
-                  <tfoot>
-                    <tr className="bg-muted/50 font-bold">
-                      <td className="px-4 py-3">TOTAL</td>
-                      <td className="px-4 py-3 text-right font-mono">{planGuides.reduce((sum, g) => sum + g.totalQty, 0)}</td>
-                      <td className="px-4 py-3 text-right">-</td>
-                      <td className="px-4 py-3 text-right">-</td>
-                      <td className="px-4 py-3 text-right">-</td>
-                      <td className="px-4 py-3 text-right font-mono text-primary">{planGuides.reduce((sum, g) => sum + g.bundles, 0)}</td>
-                    </tr>
-                  </tfoot>
                 </table>
+
+                {/* Order Qty Summary Table */}
+                <div className="space-y-2">
+                  <h4 className="text-sm font-semibold">Order Quantities</h4>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs border border-border rounded overflow-hidden">
+                      <thead>
+                        <tr className="bg-muted">
+                          <th className="px-2 py-1 text-left font-medium border-r border-border">SIZE</th>
+                          {SIZES.filter(s => getOrder(showBundleGuide.orderId)?.sizeQuantities[s.code] > 0).map(size => (
+                            <th key={size.code} className="px-2 py-1 text-center font-mono border-r border-border">{size.code}</th>
+                          ))}
+                          <th className="px-2 py-1 text-center font-mono font-bold">TOT</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td className="px-2 py-1 text-left border-r border-border text-muted-foreground">Order Qty</td>
+                          {SIZES.filter(s => getOrder(showBundleGuide.orderId)?.sizeQuantities[s.code] > 0).map(size => (
+                            <td key={size.code} className="px-2 py-1 text-center font-mono border-r border-border">
+                              {getOrder(showBundleGuide.orderId)?.sizeQuantities[size.code]}
+                            </td>
+                          ))}
+                          <td className="px-2 py-1 text-center font-mono font-bold">
+                            {getOrder(showBundleGuide.orderId)?.totalQty}
+                          </td>
+                        </tr>
+                        <tr className="bg-muted/30">
+                          <td className="px-2 py-1 text-left border-r border-border text-muted-foreground">TOTAL QTY</td>
+                          {SIZES.filter(s => getOrder(showBundleGuide.orderId)?.sizeQuantities[s.code] > 0).map(size => (
+                            <td key={size.code} className="px-2 py-1 text-center font-mono border-r border-border">
+                              {getOrder(showBundleGuide.orderId)?.sizeQuantities[size.code]}
+                            </td>
+                          ))}
+                          <td className="px-2 py-1 text-center font-mono font-bold text-primary">
+                            {getOrder(showBundleGuide.orderId)?.totalQty}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
 
                 <div className="flex justify-end gap-2 pt-4 border-t border-border">
                   <Button variant="outline" onClick={() => setShowBundleGuide(null)}>
@@ -430,7 +514,11 @@ const Bundles = () => {
                     onClick={() => {
                       const order = getOrder(showBundleGuide.orderId);
                       if (order) {
-                        exportBundleGuidePDF(planGuides, showBundleGuide, order);
+                        // Pass bundles instead of guides for new format
+                        const uniqueBundles = planBundles.filter((b, i, arr) => 
+                          arr.findIndex(x => x.bundleNo === b.bundleNo && x.size === b.size) === i
+                        ).sort((a, b) => a.bundleNo - b.bundleNo);
+                        exportBundleGuidePDF(planGuides, showBundleGuide, order, uniqueBundles);
                         toast({ title: 'Bundle Guide PDF exported!' });
                       }
                     }}
