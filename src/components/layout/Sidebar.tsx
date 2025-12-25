@@ -7,7 +7,9 @@ import {
   FileText,
   Settings,
   Ruler,
-  Scale
+  Scale,
+  Calculator,
+  Percent
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import logo from '@/assets/logo.png';
@@ -15,9 +17,11 @@ import logo from '@/assets/logo.png';
 const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
   { name: 'Orders', href: '/orders', icon: ClipboardList },
+  { name: 'Ratio Planning', href: '/ratios', icon: Percent },
   { name: 'Marker Plans', href: '/markers', icon: Ruler },
   { name: 'Cutting Plans', href: '/cutting', icon: Scissors },
   { name: 'Bundles', href: '/bundles', icon: Package },
+  { name: 'Fabric Calculation', href: '/fabric', icon: Calculator },
   { name: 'Reconciliation', href: '/reconciliation', icon: Scale },
   { name: 'Reports', href: '/reports', icon: FileText },
 ];

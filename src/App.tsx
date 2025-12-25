@@ -10,6 +10,8 @@ import CuttingPlans from "./pages/CuttingPlans";
 import Bundles from "./pages/Bundles";
 import Reports from "./pages/Reports";
 import Reconciliation from "./pages/Reconciliation";
+import RatioPlanning from "./pages/RatioPlanning";
+import FabricCalculation from "./pages/FabricCalculation";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -23,9 +25,11 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Dashboard />} />
           <Route path="/orders" element={<Orders />} />
+          <Route path="/ratios" element={<RatioPlanning />} />
           <Route path="/markers" element={<MarkerPlans />} />
           <Route path="/cutting" element={<CuttingPlans />} />
           <Route path="/bundles" element={<Bundles />} />
+          <Route path="/fabric" element={<FabricCalculation />} />
           <Route path="/reports" element={<Reports />} />
           <Route path="/reconciliation" element={<Reconciliation />} />
           <Route path="*" element={<NotFound />} />

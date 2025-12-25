@@ -45,9 +45,27 @@ export interface Ratio {
   id: string;
   orderId: string;
   ratioNumber: number;
-  sizes: SizeQuantity;
+  ratioName: string; // e.g., "RATIO-01", "RATIO-02"
+  sizes: SizeQuantity; // Size weights/flags (1 = include, 0 = exclude)
+  plannedQty: SizeQuantity; // Calculated quantities per size
   plies: number;
   totalQty: number;
+  isActive: boolean; // Currently selected ratio
+}
+
+// Fabric calculation with wastage
+export interface FabricCalculation {
+  id: string;
+  orderId: string;
+  fabricType: 'TOP' | 'FUSING' | 'TAB';
+  totalMeters: number;
+  totalYards: number;
+  wastagePercent: number; // Default 1%
+  requestWithAllowance: number; // totalMeters * (1 + wastagePercent/100)
+  receivedMeters: number;
+  usedMeters: number;
+  balance: number;
+  remarks: string;
 }
 
 export interface MarkerPlan {
@@ -97,8 +115,9 @@ export interface Bundle {
   size: string;
   part: string;
   quantity: number;
-  startNo: number;
-  endNo: number;
+  startNo: number; // Serial number start (e.g., 551)
+  endNo: number;   // Serial number end (e.g., 600)
+  serialRange: string; // Display format: "551-600"
   plyStart: number;  // Ply range start within this cut
   plyEnd: number;    // Ply range end within this cut
   shade: string;
