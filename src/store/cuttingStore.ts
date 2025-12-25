@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { Order, CutPlan, Bundle, Ratio, MarkerPlan, LaySheet, BundleGuide, SIZES, FabricRoll, LayRecord } from '@/types/cutting';
+import { Order, CutPlan, Bundle, Ratio, MarkerPlan, LaySheet, BundleGuide, SIZES, FabricRoll, LayRecord, FabricCalculation } from '@/types/cutting';
 
 interface CuttingStore {
   orders: Order[];
@@ -11,6 +11,7 @@ interface CuttingStore {
   bundleGuides: BundleGuide[];
   fabricRolls: FabricRoll[];
   layRecords: LayRecord[];
+  fabricCalculations: FabricCalculation[];
   
   // Order Actions
   addOrder: (order: Order) => void;
@@ -52,7 +53,14 @@ interface CuttingStore {
   
   // Ratio Actions
   addRatio: (ratio: Ratio) => void;
+  updateRatio: (id: string, ratio: Partial<Ratio>) => void;
   deleteRatio: (id: string) => void;
+  setActiveRatio: (orderId: string, ratioId: string) => void;
+  
+  // Fabric Calculation Actions
+  addFabricCalculation: (calc: FabricCalculation) => void;
+  updateFabricCalculation: (id: string, calc: Partial<FabricCalculation>) => void;
+  deleteFabricCalculation: (id: string) => void;
   
   // Fabric Roll Actions
   addFabricRoll: (roll: FabricRoll) => void;
@@ -196,6 +204,7 @@ export const useCuttingStore = create<CuttingStore>((set, get) => ({
   bundleGuides: [],
   fabricRolls: [],
   layRecords: [],
+  fabricCalculations: [],
   
   // Order Actions
   addOrder: (order) => set((state) => ({ orders: [...state.orders, order] })),
@@ -293,8 +302,29 @@ export const useCuttingStore = create<CuttingStore>((set, get) => ({
   
   // Ratio Actions
   addRatio: (ratio) => set((state) => ({ ratios: [...state.ratios, ratio] })),
+  updateRatio: (id, updates) => set((state) => ({
+    ratios: state.ratios.map(r => r.id === id ? { ...r, ...updates } : r)
+  })),
   deleteRatio: (id) => set((state) => ({
     ratios: state.ratios.filter(r => r.id !== id)
+  })),
+  setActiveRatio: (orderId, ratioId) => set((state) => ({
+    ratios: state.ratios.map(r => 
+      r.orderId === orderId 
+        ? { ...r, isActive: r.id === ratioId }
+        : r
+    )
+  })),
+  
+  // Fabric Calculation Actions
+  addFabricCalculation: (calc) => set((state) => ({ 
+    fabricCalculations: [...state.fabricCalculations, calc] 
+  })),
+  updateFabricCalculation: (id, updates) => set((state) => ({
+    fabricCalculations: state.fabricCalculations.map(c => c.id === id ? { ...c, ...updates } : c)
+  })),
+  deleteFabricCalculation: (id) => set((state) => ({
+    fabricCalculations: state.fabricCalculations.filter(c => c.id !== id)
   })),
   
   // Fabric Roll Actions
@@ -380,6 +410,8 @@ export const useCuttingStore = create<CuttingStore>((set, get) => ({
         const bundleQty = bundleSize * ratio;
         
         parts.forEach(part => {
+          const startNo = globalSerialNo;
+          const endNo = globalSerialNo + bundleQty - 1;
           newBundles.push({
             id: `${Date.now()}-${globalBundleNo}-${part}-${size}-${i}`,
             cutPlanId,
@@ -388,8 +420,9 @@ export const useCuttingStore = create<CuttingStore>((set, get) => ({
             size,
             part,
             quantity: bundleQty,
-            startNo: globalSerialNo,
-            endNo: globalSerialNo + bundleQty - 1,
+            startNo,
+            endNo,
+            serialRange: `${startNo}-${endNo}`,
             plyStart,
             plyEnd,
             shade: cutPlan.shade,
@@ -409,6 +442,8 @@ export const useCuttingStore = create<CuttingStore>((set, get) => ({
         const remainderQty = remainderPlies * ratio;
         
         parts.forEach(part => {
+          const startNo = globalSerialNo;
+          const endNo = globalSerialNo + remainderQty - 1;
           newBundles.push({
             id: `${Date.now()}-${globalBundleNo}-${part}-${size}-rem`,
             cutPlanId,
@@ -417,8 +452,9 @@ export const useCuttingStore = create<CuttingStore>((set, get) => ({
             size,
             part,
             quantity: remainderQty,
-            startNo: globalSerialNo,
-            endNo: globalSerialNo + remainderQty - 1,
+            startNo,
+            endNo,
+            serialRange: `${startNo}-${endNo}`,
             plyStart,
             plyEnd,
             shade: cutPlan.shade,
@@ -535,6 +571,8 @@ export const useCuttingStore = create<CuttingStore>((set, get) => ({
           const bundleQty = bundleSize * ratio;
           
           parts.forEach(part => {
+            const startNo = serialNo;
+            const endNo = serialNo + bundleQty - 1;
             newBundles.push({
               id: `${Date.now()}-${globalBundleNo}-${part}-${size}-${cutIndex}-${i}`,
               cutPlanId,
@@ -543,8 +581,9 @@ export const useCuttingStore = create<CuttingStore>((set, get) => ({
               size,
               part,
               quantity: bundleQty,
-              startNo: serialNo,
-              endNo: serialNo + bundleQty - 1,
+              startNo,
+              endNo,
+              serialRange: `${startNo}-${endNo}`,
               plyStart,
               plyEnd,
               shade: order.shade,
@@ -563,6 +602,8 @@ export const useCuttingStore = create<CuttingStore>((set, get) => ({
           const remainderQty = remainderPlies * ratio;
           
           parts.forEach(part => {
+            const startNo = serialNo;
+            const endNo = serialNo + remainderQty - 1;
             newBundles.push({
               id: `${Date.now()}-${globalBundleNo}-${part}-${size}-${cutIndex}-rem`,
               cutPlanId,
@@ -571,8 +612,9 @@ export const useCuttingStore = create<CuttingStore>((set, get) => ({
               size,
               part,
               quantity: remainderQty,
-              startNo: serialNo,
-              endNo: serialNo + remainderQty - 1,
+              startNo,
+              endNo,
+              serialRange: `${startNo}-${endNo}`,
               plyStart,
               plyEnd,
               shade: order.shade,
