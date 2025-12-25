@@ -9,7 +9,9 @@ import {
   Ruler,
   Scale,
   Calculator,
-  Percent
+  Percent,
+  Layers,
+  Send
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import logo from '@/assets/logo.png';
@@ -20,8 +22,10 @@ const navigation = [
   { name: 'Ratio Planning', href: '/ratios', icon: Percent },
   { name: 'Marker Plans', href: '/markers', icon: Ruler },
   { name: 'Cutting Plans', href: '/cutting', icon: Scissors },
+  { name: 'Lay Sheets', href: '/laysheets', icon: Layers },
   { name: 'Bundles', href: '/bundles', icon: Package },
   { name: 'Fabric Calculation', href: '/fabric', icon: Calculator },
+  { name: 'Delivery Notes', href: '/delivery-notes', icon: Send },
   { name: 'Reconciliation', href: '/reconciliation', icon: Scale },
   { name: 'Reports', href: '/reports', icon: FileText },
 ];

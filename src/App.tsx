@@ -8,6 +8,8 @@ import Orders from "./pages/Orders";
 import MarkerPlans from "./pages/MarkerPlans";
 import CuttingPlans from "./pages/CuttingPlans";
 import Bundles from "./pages/Bundles";
+import LaySheets from "./pages/LaySheets";
+import DeliveryNotes from "./pages/DeliveryNotes";
 import Reports from "./pages/Reports";
 import Reconciliation from "./pages/Reconciliation";
 import RatioPlanning from "./pages/RatioPlanning";
@@ -28,10 +30,12 @@ const App = () => (
           <Route path="/ratios" element={<RatioPlanning />} />
           <Route path="/markers" element={<MarkerPlans />} />
           <Route path="/cutting" element={<CuttingPlans />} />
+          <Route path="/laysheets" element={<LaySheets />} />
           <Route path="/bundles" element={<Bundles />} />
           <Route path="/fabric" element={<FabricCalculation />} />
-          <Route path="/reports" element={<Reports />} />
+          <Route path="/delivery-notes" element={<DeliveryNotes />} />
           <Route path="/reconciliation" element={<Reconciliation />} />
+          <Route path="/reports" element={<Reports />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
