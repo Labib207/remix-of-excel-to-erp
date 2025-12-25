@@ -21,7 +21,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { Plus, Calculator, Scissors, ArrowRight, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Calculator, Scissors, ArrowRight, Pencil, Trash2, FileText, Download } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from '@/components/ui/separator';
 import {
@@ -35,6 +35,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import { exportFabricRequestPDF } from '@/lib/fabricReport';
 
 const FabricCalculationPage = () => {
   const { 
@@ -96,8 +97,11 @@ const FabricCalculationPage = () => {
     });
   };
 
+  // Exact conversion factor: meters to yards
+  const METERS_TO_YARDS = 1.0936133;
+
   const calculateDerived = () => {
-    const totalYards = formData.totalMeters * 1.09361;
+    const totalYards = formData.totalMeters * METERS_TO_YARDS;
     const requestWithAllowance = formData.totalMeters * (1 + formData.wastagePercent / 100);
     const balance = formData.receivedMeters - formData.usedMeters;
     return { totalYards, requestWithAllowance, balance };
@@ -214,10 +218,24 @@ const FabricCalculationPage = () => {
                   </Select>
                 </div>
                 {selectedOrderId && (
-                  <Button onClick={openCreate} className="gradient-primary text-primary-foreground">
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add Calculation
-                  </Button>
+                  <>
+                    <Button 
+                      variant="outline"
+                      onClick={() => {
+                        if (selectedOrder) {
+                          exportFabricRequestPDF(selectedOrder, cutPlans, fabricCalculations);
+                          toast({ title: 'Fabric Request Report exported!' });
+                        }
+                      }}
+                    >
+                      <Download className="mr-2 h-4 w-4" />
+                      Export Report
+                    </Button>
+                    <Button onClick={openCreate} className="gradient-primary text-primary-foreground">
+                      <Plus className="mr-2 h-4 w-4" />
+                      Add Calculation
+                    </Button>
+                  </>
                 )}
               </div>
             </CardContent>
@@ -267,7 +285,7 @@ const FabricCalculationPage = () => {
                         <Calculator className="h-6 w-6 text-warning" />
                       </div>
                       <div>
-                        <p className="text-2xl font-bold font-mono">{(totalFabricFromCuts * 1.09361).toFixed(2)}</p>
+                        <p className="text-2xl font-bold font-mono">{(totalFabricFromCuts * 1.0936133).toFixed(2)}</p>
                         <p className="text-sm text-muted-foreground">Total Yards</p>
                       </div>
                     </div>
