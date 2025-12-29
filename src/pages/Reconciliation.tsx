@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { useCuttingStore } from '@/store/cuttingStore';
 import { LayRecord } from '@/types/cutting';
+import { ExcelImportDialog } from '@/components/ExcelImportDialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -267,6 +268,7 @@ const Reconciliation = () => {
             <p className="text-muted-foreground">Track fabric usage, wastage, and balance per cut</p>
           </div>
           <div className="flex gap-2">
+            <ExcelImportDialog />
             <Dialog open={isRollDialogOpen} onOpenChange={setIsRollDialogOpen}>
               <DialogTrigger asChild>
                 <Button variant="outline">
