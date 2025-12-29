@@ -33,6 +33,8 @@ import {
 import { Plus, FileText, Calculator, Package, TrendingDown, TrendingUp, Scissors } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
+const METERS_TO_YARDS = 1.0936133;
+
 const Reconciliation = () => {
   const { orders, cutPlans, layRecords, fabricRolls, addLayRecord, addFabricRoll } = useCuttingStore();
   const { toast } = useToast();
@@ -41,6 +43,67 @@ const Reconciliation = () => {
   const [isLayDialogOpen, setIsLayDialogOpen] = useState(false);
   const [isRollDialogOpen, setIsRollDialogOpen] = useState(false);
   const [fabricType, setFabricType] = useState<'SHELL' | 'FUSING' | 'TAB'>('SHELL');
+
+  // Calculate order-wise fabric consumption summary
+  const getOrderWiseConsumption = () => {
+    const orderSummary: Record<string, {
+      order: typeof orders[0];
+      shellMeters: number;
+      shellYards: number;
+      fusingMeters: number;
+      fusingYards: number;
+      tabMeters: number;
+      tabYards: number;
+      totalMeters: number;
+      totalYards: number;
+    }> = {};
+
+    orders.forEach(order => {
+      // Get all cut plans for this order
+      const orderCutPlanIds = cutPlans
+        .filter(cp => cp.orderId === order.id)
+        .map(cp => cp.id);
+
+      // Get all lay records for these cut plans
+      const orderLayRecords = layRecords.filter(lr => 
+        orderCutPlanIds.includes(lr.cutPlanId)
+      );
+
+      // Calculate consumption by fabric type (using totalUsage from lay records)
+      let shellMeters = 0;
+      let fusingMeters = 0;
+      let tabMeters = 0;
+
+      orderLayRecords.forEach(lr => {
+        // Default to shell fabric if not specified
+        shellMeters += lr.totalUsage || 0;
+      });
+
+      // Also add cut plan fabric usage as baseline
+      const cutPlanUsage = cutPlans
+        .filter(cp => cp.orderId === order.id)
+        .reduce((sum, cp) => sum + (cp.fabricUsed || 0), 0);
+
+      // If no lay records, use cut plan data
+      if (orderLayRecords.length === 0 && cutPlanUsage > 0) {
+        shellMeters = cutPlanUsage;
+      }
+
+      orderSummary[order.id] = {
+        order,
+        shellMeters,
+        shellYards: shellMeters * METERS_TO_YARDS,
+        fusingMeters,
+        fusingYards: fusingMeters * METERS_TO_YARDS,
+        tabMeters,
+        tabYards: tabMeters * METERS_TO_YARDS,
+        totalMeters: shellMeters + fusingMeters + tabMeters,
+        totalYards: (shellMeters + fusingMeters + tabMeters) * METERS_TO_YARDS,
+      };
+    });
+
+    return Object.values(orderSummary);
+  };
 
   // New Roll Form State
   const [newRoll, setNewRoll] = useState({
@@ -557,12 +620,96 @@ const Reconciliation = () => {
         )}
 
         {/* Tabs for different views */}
-        <Tabs defaultValue="lay-records" className="space-y-4">
+        <Tabs defaultValue="order-consumption" className="space-y-4">
           <TabsList>
+            <TabsTrigger value="order-consumption">Order Consumption</TabsTrigger>
             <TabsTrigger value="lay-records">Lay Records</TabsTrigger>
             <TabsTrigger value="fabric-rolls">Fabric Rolls</TabsTrigger>
             <TabsTrigger value="summary-report">Summary Report</TabsTrigger>
           </TabsList>
+
+          {/* Order-wise Consumption Summary */}
+          <TabsContent value="order-consumption" className="space-y-4">
+            <Card className="shadow-card">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <FileText className="h-5 w-5 text-primary" />
+                  Order-wise Fabric Consumption Summary
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-muted/50">
+                        <TableHead className="font-semibold">Order No</TableHead>
+                        <TableHead className="font-semibold">Style</TableHead>
+                        <TableHead className="font-semibold">Customer</TableHead>
+                        <TableHead className="font-semibold text-right">Shell (yds)</TableHead>
+                        <TableHead className="font-semibold text-right">Fusing (yds)</TableHead>
+                        <TableHead className="font-semibold text-right">Tab (yds)</TableHead>
+                        <TableHead className="font-semibold text-right">Total (yds)</TableHead>
+                        <TableHead className="font-semibold text-right">Total (m)</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {getOrderWiseConsumption().length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
+                            No orders found. Add orders and cutting data to see consumption.
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        <>
+                          {getOrderWiseConsumption().map((item) => (
+                            <TableRow key={item.order.id} className="hover:bg-muted/30">
+                              <TableCell className="font-medium">{item.order.orderNumber}</TableCell>
+                              <TableCell>{item.order.styleName}</TableCell>
+                              <TableCell className="text-muted-foreground">{item.order.customer}</TableCell>
+                              <TableCell className="text-right font-mono">
+                                {item.shellYards > 0 ? item.shellYards.toFixed(2) : '-'}
+                              </TableCell>
+                              <TableCell className="text-right font-mono">
+                                {item.fusingYards > 0 ? item.fusingYards.toFixed(2) : '-'}
+                              </TableCell>
+                              <TableCell className="text-right font-mono">
+                                {item.tabYards > 0 ? item.tabYards.toFixed(2) : '-'}
+                              </TableCell>
+                              <TableCell className="text-right font-mono font-semibold text-primary">
+                                {item.totalYards.toFixed(2)}
+                              </TableCell>
+                              <TableCell className="text-right font-mono text-muted-foreground">
+                                {item.totalMeters.toFixed(2)}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                          {/* Grand Total Row */}
+                          <TableRow className="bg-primary/5 font-semibold border-t-2">
+                            <TableCell colSpan={3}>GRAND TOTAL</TableCell>
+                            <TableCell className="text-right font-mono">
+                              {getOrderWiseConsumption().reduce((sum, i) => sum + i.shellYards, 0).toFixed(2)}
+                            </TableCell>
+                            <TableCell className="text-right font-mono">
+                              {getOrderWiseConsumption().reduce((sum, i) => sum + i.fusingYards, 0).toFixed(2)}
+                            </TableCell>
+                            <TableCell className="text-right font-mono">
+                              {getOrderWiseConsumption().reduce((sum, i) => sum + i.tabYards, 0).toFixed(2)}
+                            </TableCell>
+                            <TableCell className="text-right font-mono text-primary">
+                              {getOrderWiseConsumption().reduce((sum, i) => sum + i.totalYards, 0).toFixed(2)}
+                            </TableCell>
+                            <TableCell className="text-right font-mono text-muted-foreground">
+                              {getOrderWiseConsumption().reduce((sum, i) => sum + i.totalMeters, 0).toFixed(2)}
+                            </TableCell>
+                          </TableRow>
+                        </>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
 
           <TabsContent value="lay-records" className="space-y-4">
             <Card className="shadow-card">
