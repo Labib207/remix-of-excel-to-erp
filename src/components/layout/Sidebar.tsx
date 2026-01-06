@@ -1,4 +1,4 @@
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, 
   ClipboardList, 
@@ -12,10 +12,16 @@ import {
   Percent,
   Layers,
   Send,
-  FileBox
+  FileBox,
+  LogOut,
+  Shield,
+  User
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import logo from '@/assets/logo.png';
+import { useAuth } from '@/contexts/AuthContext';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
@@ -34,6 +40,13 @@ const navigation = [
 
 export function Sidebar() {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, role, signOut, isAdmin } = useAuth();
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/auth');
+  };
 
   return (
     <div className="flex h-screen w-64 flex-col bg-sidebar">
@@ -42,8 +55,29 @@ export function Sidebar() {
         <img src={logo} alt="Ghoush Logo" className="h-16 w-auto object-contain" />
       </div>
 
+      {/* User Info */}
+      {user && (
+        <div className="border-b border-sidebar-border px-4 py-3">
+          <div className="flex items-center gap-2">
+            <div className="h-8 w-8 rounded-full bg-sidebar-accent flex items-center justify-center">
+              {isAdmin ? (
+                <Shield className="h-4 w-4 text-sidebar-primary" />
+              ) : (
+                <User className="h-4 w-4 text-sidebar-foreground" />
+              )}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs text-sidebar-foreground/70 truncate">{user.email}</p>
+              <Badge variant={isAdmin ? 'default' : 'secondary'} className="text-xs mt-0.5">
+                {role || 'user'}
+              </Badge>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Navigation */}
-      <nav className="flex-1 space-y-1 px-3 py-4">
+      <nav className="flex-1 space-y-1 px-3 py-4 overflow-y-auto">
         {navigation.map((item) => {
           const isActive = location.pathname === item.href;
           return (
@@ -64,8 +98,8 @@ export function Sidebar() {
         })}
       </nav>
 
-      {/* Settings */}
-      <div className="border-t border-sidebar-border p-3">
+      {/* Bottom section */}
+      <div className="border-t border-sidebar-border p-3 space-y-1">
         <Link
           to="/settings"
           className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-sidebar-foreground/70 transition-all hover:bg-sidebar-accent hover:text-sidebar-foreground"
@@ -73,6 +107,14 @@ export function Sidebar() {
           <Settings className="h-5 w-5" />
           Settings
         </Link>
+        <Button
+          variant="ghost"
+          className="w-full justify-start gap-3 px-3 py-2.5 text-sm font-medium text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+          onClick={handleSignOut}
+        >
+          <LogOut className="h-5 w-5" />
+          Sign Out
+        </Button>
       </div>
     </div>
   );
