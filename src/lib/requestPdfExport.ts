@@ -1,5 +1,6 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import logoImage from '@/assets/logo.png';
 
 interface RequestItem {
   slNo: number;
@@ -32,7 +33,7 @@ interface RequestForm {
 }
 
 const getNextDocNumber = (prefix: string): string => {
-  const key = `docNumber_${prefix}`;
+  const key = `docNumber_pdf_${prefix}`;
   const stored = localStorage.getItem(key);
   const now = new Date();
   const yearMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
@@ -49,36 +50,58 @@ const getNextDocNumber = (prefix: string): string => {
   return `${prefix}-${String(counter).padStart(2, '0')}-2024`;
 };
 
+const loadLogoAsBase64 = (): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'Anonymous';
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.drawImage(img, 0, 0);
+        resolve(canvas.toDataURL('image/png'));
+      } else {
+        reject(new Error('Could not get canvas context'));
+      }
+    };
+    img.onerror = reject;
+    img.src = logoImage;
+  });
+};
+
 const formatDate = (dateStr: string): string => {
   const date = new Date(dateStr);
   return date.toLocaleDateString('en-GB');
 };
 
-export const exportRawMaterialRequestPDF = (form: RequestForm, items: RequestItem[]): void => {
-  const doc = new jsPDF('landscape', 'mm', 'a4');
+const addHeader = async (doc: jsPDF, title: string, docNumber: string): Promise<void> => {
   const pageWidth = doc.internal.pageSize.getWidth();
-  const docNumber = getNextDocNumber('RMR');
   
   // Border
   doc.setDrawColor(0);
   doc.setLineWidth(0.5);
   doc.rect(10, 10, pageWidth - 20, 190);
 
-  // Header with logo placeholder and title
-  doc.setFillColor(34, 139, 34);
-  doc.triangle(25, 20, 20, 35, 30, 35, 'F');
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'bold');
-  doc.text('GHOUSH', 35, 28);
-  doc.setFontSize(7);
-  doc.setFont('helvetica', 'normal');
-  doc.text('MILITARY & SAFETY UNIFORMS', 35, 32);
-  doc.text('OF ADEEM UNIFORM FACTORY', 35, 36);
+  // Add logo
+  try {
+    const logoBase64 = await loadLogoAsBase64();
+    doc.addImage(logoBase64, 'PNG', 15, 15, 50, 25);
+  } catch (error) {
+    console.error('Failed to load logo:', error);
+    // Fallback to text
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.text('GHOUSH', 20, 28);
+  }
 
   // Title
   doc.setFontSize(22);
   doc.setFont('helvetica', 'bold');
-  doc.text('RAW MATERIAL REQUEST', 95, 30);
+  const titleX = title === 'RAW MATERIAL REQUEST' ? 95 : 
+                 title === 'GENERAL SUPPLIES REQUEST' ? 85 : 105;
+  doc.text(title, titleX, 30);
 
   // Document info line
   doc.setLineWidth(0.3);
@@ -90,14 +113,70 @@ export const exportRawMaterialRequestPDF = (form: RequestForm, items: RequestIte
   doc.text('Issue Number', 180, 48);
   doc.setFont('helvetica', 'normal');
   doc.text('GAU-VER 01-JAN-2024', 210, 48);
+};
 
-  // Date and Department
+const addFormInfo = (doc: jsPDF, form: RequestForm): void => {
+  const pageWidth = doc.internal.pageSize.getWidth();
+  
+  doc.setLineWidth(0.3);
   doc.line(15, 52, pageWidth - 15, 52);
   doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
   doc.text(`Date: ${formatDate(form.date)}`, 15, 58);
   doc.line(15, 62, pageWidth - 15, 62);
   doc.text(`Department: ${form.department}`, 15, 68);
   doc.line(15, 72, pageWidth - 15, 72);
+};
+
+const addSignatures = (
+  doc: jsPDF, 
+  type: 'raw' | 'general' | 'return'
+): void => {
+  const signatureY = 165;
+  
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'bold');
+  
+  if (type === 'return') {
+    doc.text('Returned By', 30, signatureY);
+  } else {
+    doc.text('Requested By', 30, signatureY);
+  }
+  doc.text('Approved By', 100, signatureY);
+  doc.text('ASWAQ Transaction Report Number', 160, signatureY);
+  if (type === 'return') {
+    doc.text('Received By', 245, signatureY);
+  } else {
+    doc.text('Issued By', 245, signatureY);
+  }
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  doc.setTextColor(150);
+  doc.text('Name & Signature', 30, signatureY + 15);
+  doc.text('Name & Signature', 100, signatureY + 15);
+  doc.text('Name & Signature', 245, signatureY + 15);
+  
+  doc.setTextColor(0);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Line Leader', 30, signatureY + 22);
+  doc.text(type === 'raw' ? 'Production Manager' : 'Line Manager', 100, signatureY + 22);
+  doc.text(type === 'return' ? 'Warehouse Incharge' : 'Warehouse In Charge', 245, signatureY + 22);
+
+  // Lines for signatures
+  doc.setLineWidth(0.2);
+  doc.line(25, signatureY + 12, 70, signatureY + 12);
+  doc.line(95, signatureY + 12, 140, signatureY + 12);
+  doc.line(155, signatureY + 12, 230, signatureY + 12);
+  doc.line(240, signatureY + 12, 280, signatureY + 12);
+};
+
+export const exportRawMaterialRequestPDF = async (form: RequestForm, items: RequestItem[]): Promise<void> => {
+  const doc = new jsPDF('landscape', 'mm', 'a4');
+  const docNumber = getNextDocNumber('RMR');
+  
+  await addHeader(doc, 'RAW MATERIAL REQUEST', docNumber);
+  addFormInfo(doc, form);
 
   // Table
   const tableData = items.length > 0 
@@ -143,84 +222,16 @@ export const exportRawMaterialRequestPDF = (form: RequestForm, items: RequestIte
     margin: { left: 15, right: 15 }
   });
 
-  // Signatures
-  const signatureY = 165;
-  
-  // Signature boxes
-  doc.setFontSize(9);
-  doc.setFont('helvetica', 'bold');
-  doc.text('Requested By', 30, signatureY);
-  doc.text('Approved By', 100, signatureY);
-  doc.text('ASWAQ Transaction Report Number', 160, signatureY);
-  doc.text('Issued By', 245, signatureY);
-
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8);
-  doc.setTextColor(150);
-  doc.text('Name & Signature', 30, signatureY + 15);
-  doc.text('Name & Signature', 100, signatureY + 15);
-  doc.text('Name & Signature', 245, signatureY + 15);
-  
-  doc.setTextColor(0);
-  doc.setFont('helvetica', 'bold');
-  doc.text('Line Leader', 30, signatureY + 22);
-  doc.text('Production Manager', 100, signatureY + 22);
-  doc.text('Warehouse In Charge', 245, signatureY + 22);
-
-  // Lines for signatures
-  doc.setLineWidth(0.2);
-  doc.line(25, signatureY + 12, 70, signatureY + 12);
-  doc.line(95, signatureY + 12, 140, signatureY + 12);
-  doc.line(155, signatureY + 12, 230, signatureY + 12);
-  doc.line(240, signatureY + 12, 280, signatureY + 12);
-
+  addSignatures(doc, 'raw');
   doc.save(`Raw_Material_Request_${docNumber}.pdf`);
 };
 
-export const exportGeneralSuppliesRequestPDF = (form: RequestForm, items: RequestItem[]): void => {
+export const exportGeneralSuppliesRequestPDF = async (form: RequestForm, items: RequestItem[]): Promise<void> => {
   const doc = new jsPDF('landscape', 'mm', 'a4');
-  const pageWidth = doc.internal.pageSize.getWidth();
   const docNumber = getNextDocNumber('GSR');
   
-  // Border
-  doc.setDrawColor(0);
-  doc.setLineWidth(0.5);
-  doc.rect(10, 10, pageWidth - 20, 190);
-
-  // Header with logo placeholder and title
-  doc.setFillColor(34, 139, 34);
-  doc.triangle(25, 20, 20, 35, 30, 35, 'F');
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'bold');
-  doc.text('GHOUSH', 35, 28);
-  doc.setFontSize(7);
-  doc.setFont('helvetica', 'normal');
-  doc.text('MILITARY & SAFETY UNIFORMS', 35, 32);
-  doc.text('OF ADEEM UNIFORM FACTORY', 35, 36);
-
-  // Title
-  doc.setFontSize(22);
-  doc.setFont('helvetica', 'bold');
-  doc.text('GENERAL SUPPLIES REQUEST', 85, 30);
-
-  // Document info line
-  doc.setLineWidth(0.3);
-  doc.line(15, 42, pageWidth - 15, 42);
-  
-  doc.setFontSize(9);
-  doc.setFont('helvetica', 'bold');
-  doc.text(`Document ID: ${docNumber}`, 15, 48);
-  doc.text('Issue Number', 180, 48);
-  doc.setFont('helvetica', 'normal');
-  doc.text('GAU-VER 01-JAN-2024', 210, 48);
-
-  // Date and Department
-  doc.line(15, 52, pageWidth - 15, 52);
-  doc.setFont('helvetica', 'normal');
-  doc.text(`Date: ${formatDate(form.date)}`, 15, 58);
-  doc.line(15, 62, pageWidth - 15, 62);
-  doc.text(`Department: ${form.department}`, 15, 68);
-  doc.line(15, 72, pageWidth - 15, 72);
+  await addHeader(doc, 'GENERAL SUPPLIES REQUEST', docNumber);
+  addFormInfo(doc, form);
 
   // Table
   const tableData = items.length > 0 
@@ -266,83 +277,16 @@ export const exportGeneralSuppliesRequestPDF = (form: RequestForm, items: Reques
     margin: { left: 15, right: 15 }
   });
 
-  // Signatures
-  const signatureY = 165;
-  
-  doc.setFontSize(9);
-  doc.setFont('helvetica', 'bold');
-  doc.text('Requested By', 30, signatureY);
-  doc.text('Approved By', 100, signatureY);
-  doc.text('ASWAQ Transaction Report Number', 160, signatureY);
-  doc.text('Issued By', 245, signatureY);
-
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8);
-  doc.setTextColor(150);
-  doc.text('Name & Signature', 30, signatureY + 15);
-  doc.text('Name & Signature', 100, signatureY + 15);
-  doc.text('Name & Signature', 245, signatureY + 15);
-  
-  doc.setTextColor(0);
-  doc.setFont('helvetica', 'bold');
-  doc.text('Line Leader', 30, signatureY + 22);
-  doc.text('Line Manager', 100, signatureY + 22);
-  doc.text('Warehouse In Charge', 245, signatureY + 22);
-
-  // Lines for signatures
-  doc.setLineWidth(0.2);
-  doc.line(25, signatureY + 12, 70, signatureY + 12);
-  doc.line(95, signatureY + 12, 140, signatureY + 12);
-  doc.line(155, signatureY + 12, 230, signatureY + 12);
-  doc.line(240, signatureY + 12, 280, signatureY + 12);
-
+  addSignatures(doc, 'general');
   doc.save(`General_Supplies_Request_${docNumber}.pdf`);
 };
 
-export const exportMaterialReturnSlipPDF = (form: RequestForm, items: ReturnItem[]): void => {
+export const exportMaterialReturnSlipPDF = async (form: RequestForm, items: ReturnItem[]): Promise<void> => {
   const doc = new jsPDF('landscape', 'mm', 'a4');
-  const pageWidth = doc.internal.pageSize.getWidth();
   const docNumber = getNextDocNumber('MRS');
   
-  // Border
-  doc.setDrawColor(0);
-  doc.setLineWidth(0.5);
-  doc.rect(10, 10, pageWidth - 20, 190);
-
-  // Header with logo placeholder and title
-  doc.setFillColor(34, 139, 34);
-  doc.triangle(25, 20, 20, 35, 30, 35, 'F');
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'bold');
-  doc.text('GHOUSH', 35, 28);
-  doc.setFontSize(7);
-  doc.setFont('helvetica', 'normal');
-  doc.text('MILITARY & SAFETY UNIFORMS', 35, 32);
-  doc.text('OF ADEEM UNIFORM FACTORY', 35, 36);
-
-  // Title
-  doc.setFontSize(22);
-  doc.setFont('helvetica', 'bold');
-  doc.text('MATERIAL RETURN SLIP', 105, 30);
-
-  // Document info line
-  doc.setLineWidth(0.3);
-  doc.line(15, 42, pageWidth - 15, 42);
-  
-  doc.setFontSize(9);
-  doc.setFont('helvetica', 'bold');
-  doc.text(`Document ID: ${docNumber}`, 15, 48);
-  doc.text('Issue Number', 180, 48);
-  doc.setFont('helvetica', 'normal');
-  doc.text('GAU-VER 01-JAN-2024', 210, 48);
-
-  // Date and Department
-  doc.line(15, 52, pageWidth - 15, 52);
-  doc.setFont('helvetica', 'normal');
-  doc.text(`Date: ${formatDate(form.date)}`, 15, 58);
-  doc.line(15, 62, pageWidth - 15, 62);
-  doc.text(`Department: ${form.department}`, 15, 68);
-  doc.line(15, 72, pageWidth - 15, 72);
+  await addHeader(doc, 'MATERIAL RETURN SLIP', docNumber);
+  addFormInfo(doc, form);
 
   // Table
   const tableData = items.length > 0 
@@ -386,35 +330,6 @@ export const exportMaterialReturnSlipPDF = (form: RequestForm, items: ReturnItem
     margin: { left: 15, right: 15 }
   });
 
-  // Signatures
-  const signatureY = 165;
-  
-  doc.setFontSize(9);
-  doc.setFont('helvetica', 'bold');
-  doc.text('Returned By', 30, signatureY);
-  doc.text('Approved By', 100, signatureY);
-  doc.text('ASWAQ Transaction Report Number', 160, signatureY);
-  doc.text('Received By', 245, signatureY);
-
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8);
-  doc.setTextColor(150);
-  doc.text('Name & Signature', 30, signatureY + 15);
-  doc.text('Name & Signature', 100, signatureY + 15);
-  doc.text('Name & Signature', 245, signatureY + 15);
-  
-  doc.setTextColor(0);
-  doc.setFont('helvetica', 'bold');
-  doc.text('Line Leader', 30, signatureY + 22);
-  doc.text('Line Manager', 100, signatureY + 22);
-  doc.text('Warehouse Incharge', 245, signatureY + 22);
-
-  // Lines for signatures
-  doc.setLineWidth(0.2);
-  doc.line(25, signatureY + 12, 70, signatureY + 12);
-  doc.line(95, signatureY + 12, 140, signatureY + 12);
-  doc.line(155, signatureY + 12, 230, signatureY + 12);
-  doc.line(240, signatureY + 12, 280, signatureY + 12);
-
+  addSignatures(doc, 'return');
   doc.save(`Material_Return_Slip_${docNumber}.pdf`);
 };
