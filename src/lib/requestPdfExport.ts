@@ -542,3 +542,40 @@ export const exportMaterialReturnSlipPDF = async (form: RequestForm, items: Retu
 
   doc.save(`Material_Return_Slip_${docNumber}.pdf`);
 };
+
+// Empty form exports for manual use
+export const exportEmptyRawMaterialPDF = async (): Promise<void> => {
+  const emptyForm: RequestForm = {
+    date: '',
+    department: '',
+    requestedBy: '',
+    approvedBy: '',
+    issuedBy: '',
+    aswaqNumber: '',
+  };
+  await exportRawMaterialRequestPDF(emptyForm, [], 'RMR-__-____');
+};
+
+export const exportEmptyGeneralSuppliesPDF = async (): Promise<void> => {
+  const emptyForm: RequestForm = {
+    date: '',
+    department: '',
+    requestedBy: '',
+    approvedBy: '',
+    issuedBy: '',
+    aswaqNumber: '',
+  };
+  await exportGeneralSuppliesRequestPDF(emptyForm, [], 'GSR-__-____');
+};
+
+export const exportEmptyMaterialReturnPDF = async (): Promise<void> => {
+  const emptyForm: RequestForm = {
+    date: '',
+    department: '',
+    requestedBy: '',
+    approvedBy: '',
+    issuedBy: '',
+    aswaqNumber: '',
+  };
+  await exportMaterialReturnSlipPDF(emptyForm, [], 'MRS-__-____');
+};
