@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Search, Download, FileText, Package, Undo2, Eye } from 'lucide-react';
+import { Search, Download, FileText, Package, Undo2, Eye, FileSpreadsheet } from 'lucide-react';
 import { format } from 'date-fns';
 import { useRequestStore } from '@/store/requestStore';
 import {
@@ -32,6 +32,7 @@ import {
   exportGeneralSuppliesRequestPDF,
   exportMaterialReturnSlipPDF,
 } from '@/lib/requestPdfExport';
+import * as XLSX from 'xlsx';
 
 interface RequestItem {
   id: string;
@@ -133,6 +134,98 @@ export function RequestHistoryTable() {
     } else {
       exportMaterialReturnSlipPDF(request.form, request.items as ReturnItem[], request.docNumber);
     }
+  };
+
+  const exportToExcel = (type: 'raw-material' | 'general-supplies' | 'material-return' | 'all') => {
+    const requests = type === 'all' 
+      ? submittedRequests 
+      : submittedRequests.filter(r => r.type === type);
+    
+    if (requests.length === 0) {
+      return;
+    }
+
+    const wb = XLSX.utils.book_new();
+    
+    if (type === 'all' || type === 'raw-material') {
+      const rawMaterialRequests = requests.filter(r => r.type === 'raw-material');
+      if (rawMaterialRequests.length > 0) {
+        const data = rawMaterialRequests.flatMap(request => 
+          (request.items as RequestItem[]).map(item => ({
+            'Doc Number': request.docNumber,
+            'Date': format(new Date(request.form.date), 'dd/MM/yyyy'),
+            'Department': request.form.department,
+            'Requested By': request.form.requestedBy,
+            'SL No': item.slNo,
+            'Item Code': item.itemCode,
+            'Description': item.description,
+            'UOM': item.uom,
+            'Requested Qty': item.requestedQty,
+            'Issued Qty': item.issuedQty,
+            'Remaining Qty': item.remainingQty,
+            'Remarks': item.remarks,
+            'Submitted At': format(new Date(request.submittedAt), 'dd/MM/yyyy HH:mm'),
+          }))
+        );
+        const ws = XLSX.utils.json_to_sheet(data);
+        XLSX.utils.book_append_sheet(wb, ws, 'Raw Material Requests');
+      }
+    }
+    
+    if (type === 'all' || type === 'general-supplies') {
+      const generalSuppliesRequests = requests.filter(r => r.type === 'general-supplies');
+      if (generalSuppliesRequests.length > 0) {
+        const data = generalSuppliesRequests.flatMap(request => 
+          (request.items as RequestItem[]).map(item => ({
+            'Doc Number': request.docNumber,
+            'Date': format(new Date(request.form.date), 'dd/MM/yyyy'),
+            'Department': request.form.department,
+            'Requested By': request.form.requestedBy,
+            'SL No': item.slNo,
+            'Item Code': item.itemCode,
+            'Description': item.description,
+            'UOM': item.uom,
+            'Requested Qty': item.requestedQty,
+            'Issued Qty': item.issuedQty,
+            'Remaining Qty': item.remainingQty,
+            'Remarks': item.remarks,
+            'Submitted At': format(new Date(request.submittedAt), 'dd/MM/yyyy HH:mm'),
+          }))
+        );
+        const ws = XLSX.utils.json_to_sheet(data);
+        XLSX.utils.book_append_sheet(wb, ws, 'General Supplies Requests');
+      }
+    }
+    
+    if (type === 'all' || type === 'material-return') {
+      const materialReturnRequests = requests.filter(r => r.type === 'material-return');
+      if (materialReturnRequests.length > 0) {
+        const data = materialReturnRequests.flatMap(request => 
+          (request.items as ReturnItem[]).map(item => ({
+            'Doc Number': request.docNumber,
+            'Date': format(new Date(request.form.date), 'dd/MM/yyyy'),
+            'Department': request.form.department,
+            'Returned By': request.form.requestedBy,
+            'SL No': item.slNo,
+            'Item Code': item.itemCode,
+            'Description': item.description,
+            'UOM': item.uom,
+            'Qty Returned': item.qtyReturned,
+            'Qty Received': item.qtyReceived,
+            'Remarks': item.remarks,
+            'Submitted At': format(new Date(request.submittedAt), 'dd/MM/yyyy HH:mm'),
+          }))
+        );
+        const ws = XLSX.utils.json_to_sheet(data);
+        XLSX.utils.book_append_sheet(wb, ws, 'Material Return Slips');
+      }
+    }
+
+    const fileName = type === 'all' 
+      ? `All_Requests_${format(new Date(), 'yyyy-MM-dd')}.xlsx`
+      : `${typeLabels[type].replace(' ', '_')}_Requests_${format(new Date(), 'yyyy-MM-dd')}.xlsx`;
+    
+    XLSX.writeFile(wb, fileName);
   };
 
   const renderItemsTable = (request: SubmittedRequest) => {
@@ -301,6 +394,56 @@ export function RequestHistoryTable() {
                 )}
               </TableBody>
             </Table>
+          </div>
+
+          {/* Export to Excel Section */}
+          <div className="border rounded-lg p-4 bg-muted/30">
+            <h4 className="font-medium mb-3 flex items-center gap-2">
+              <FileSpreadsheet className="h-4 w-4" />
+              Export Records to Excel
+            </h4>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => exportToExcel('raw-material')}
+                disabled={submittedRequests.filter(r => r.type === 'raw-material').length === 0}
+                className="gap-2"
+              >
+                <Package className="h-4 w-4" />
+                Raw Material ({submittedRequests.filter(r => r.type === 'raw-material').length})
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => exportToExcel('general-supplies')}
+                disabled={submittedRequests.filter(r => r.type === 'general-supplies').length === 0}
+                className="gap-2"
+              >
+                <FileText className="h-4 w-4" />
+                General Supplies ({submittedRequests.filter(r => r.type === 'general-supplies').length})
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => exportToExcel('material-return')}
+                disabled={submittedRequests.filter(r => r.type === 'material-return').length === 0}
+                className="gap-2"
+              >
+                <Undo2 className="h-4 w-4" />
+                Material Return ({submittedRequests.filter(r => r.type === 'material-return').length})
+              </Button>
+              <Button
+                variant="default"
+                size="sm"
+                onClick={() => exportToExcel('all')}
+                disabled={submittedRequests.length === 0}
+                className="gap-2"
+              >
+                <FileSpreadsheet className="h-4 w-4" />
+                Export All Records
+              </Button>
+            </div>
           </div>
 
           {/* Summary */}
