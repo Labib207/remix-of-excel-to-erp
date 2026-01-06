@@ -18,8 +18,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Search, Download, FileText, Package, Undo2, Eye, FileSpreadsheet } from 'lucide-react';
-import { format } from 'date-fns';
+import { Search, Download, FileText, Package, Undo2, Eye, FileSpreadsheet, CalendarIcon } from 'lucide-react';
+import { format, isWithinInterval, startOfDay, endOfDay, parseISO } from 'date-fns';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
 import { useRequestStore } from '@/store/requestStore';
 import {
   Dialog,
@@ -97,6 +99,8 @@ export function RequestHistoryTable() {
   const { submittedRequests } = useRequestStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('all');
+  const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
+  const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
   const [selectedRequest, setSelectedRequest] = useState<SubmittedRequest | null>(null);
 
   const filteredRequests = useMemo(() => {
@@ -105,6 +109,24 @@ export function RequestHistoryTable() {
         // Type filter
         if (typeFilter !== 'all' && request.type !== typeFilter) {
           return false;
+        }
+
+        // Date range filter
+        if (dateFrom || dateTo) {
+          const requestDate = new Date(request.form.date);
+          if (dateFrom && dateTo) {
+            if (!isWithinInterval(requestDate, { start: startOfDay(dateFrom), end: endOfDay(dateTo) })) {
+              return false;
+            }
+          } else if (dateFrom) {
+            if (requestDate < startOfDay(dateFrom)) {
+              return false;
+            }
+          } else if (dateTo) {
+            if (requestDate > endOfDay(dateTo)) {
+              return false;
+            }
+          }
         }
 
         // Search filter
@@ -124,7 +146,7 @@ export function RequestHistoryTable() {
         return true;
       })
       .sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime());
-  }, [submittedRequests, searchQuery, typeFilter]);
+  }, [submittedRequests, searchQuery, typeFilter, dateFrom, dateTo]);
 
   const handleDownloadPDF = (request: SubmittedRequest) => {
     if (request.type === 'raw-material') {
@@ -136,97 +158,170 @@ export function RequestHistoryTable() {
     }
   };
 
+  const getFilteredRequestsForExport = () => {
+    return submittedRequests.filter((request) => {
+      // Date range filter
+      if (dateFrom || dateTo) {
+        const requestDate = new Date(request.form.date);
+        if (dateFrom && dateTo) {
+          if (!isWithinInterval(requestDate, { start: startOfDay(dateFrom), end: endOfDay(dateTo) })) {
+            return false;
+          }
+        } else if (dateFrom) {
+          if (requestDate < startOfDay(dateFrom)) {
+            return false;
+          }
+        } else if (dateTo) {
+          if (requestDate > endOfDay(dateTo)) {
+            return false;
+          }
+        }
+      }
+      return true;
+    });
+  };
+
   const exportToExcel = (type: 'raw-material' | 'general-supplies' | 'material-return' | 'all') => {
+    const allFilteredRequests = getFilteredRequestsForExport();
     const requests = type === 'all' 
-      ? submittedRequests 
-      : submittedRequests.filter(r => r.type === type);
+      ? allFilteredRequests 
+      : allFilteredRequests.filter(r => r.type === type);
     
     if (requests.length === 0) {
       return;
     }
 
     const wb = XLSX.utils.book_new();
+    const dateRangeText = dateFrom && dateTo 
+      ? `${format(dateFrom, 'dd-MM-yyyy')}_to_${format(dateTo, 'dd-MM-yyyy')}`
+      : dateFrom 
+        ? `from_${format(dateFrom, 'dd-MM-yyyy')}`
+        : dateTo 
+          ? `to_${format(dateTo, 'dd-MM-yyyy')}`
+          : format(new Date(), 'yyyy-MM-dd');
     
     if (type === 'all' || type === 'raw-material') {
-      const rawMaterialRequests = requests.filter(r => r.type === 'raw-material');
+      const rawMaterialRequests = (type === 'all' ? allFilteredRequests : requests)
+        .filter(r => r.type === 'raw-material')
+        .sort((a, b) => new Date(a.form.date).getTime() - new Date(b.form.date).getTime());
+      
       if (rawMaterialRequests.length > 0) {
         const data = rawMaterialRequests.flatMap(request => 
-          (request.items as RequestItem[]).map(item => ({
-            'Doc Number': request.docNumber,
-            'Date': format(new Date(request.form.date), 'dd/MM/yyyy'),
-            'Department': request.form.department,
-            'Requested By': request.form.requestedBy,
-            'SL No': item.slNo,
-            'Item Code': item.itemCode,
-            'Description': item.description,
-            'UOM': item.uom,
-            'Requested Qty': item.requestedQty,
-            'Issued Qty': item.issuedQty,
-            'Remaining Qty': item.remainingQty,
-            'Remarks': item.remarks,
-            'Submitted At': format(new Date(request.submittedAt), 'dd/MM/yyyy HH:mm'),
-          }))
+          (request.items as RequestItem[])
+            .sort((a, b) => a.slNo - b.slNo)
+            .map(item => ({
+              'Order': request.docNumber,
+              'Date': format(new Date(request.form.date), 'dd/MM/yyyy'),
+              'Department': request.form.department,
+              'Requested By': request.form.requestedBy,
+              'SL No': item.slNo,
+              'Item Code': item.itemCode,
+              'Description': item.description,
+              'UOM': item.uom,
+              'Requested Qty': item.requestedQty,
+              'Issued Qty': item.issuedQty,
+              'Remaining Qty': item.remainingQty,
+              'Remarks': item.remarks,
+              'Submitted At': format(new Date(request.submittedAt), 'dd/MM/yyyy HH:mm'),
+            }))
         );
         const ws = XLSX.utils.json_to_sheet(data);
-        XLSX.utils.book_append_sheet(wb, ws, 'Raw Material Requests');
+        ws['!cols'] = [
+          { wch: 15 }, { wch: 12 }, { wch: 15 }, { wch: 15 }, { wch: 8 },
+          { wch: 15 }, { wch: 30 }, { wch: 8 }, { wch: 12 }, { wch: 12 },
+          { wch: 12 }, { wch: 20 }, { wch: 18 }
+        ];
+        XLSX.utils.book_append_sheet(wb, ws, 'Raw Material');
       }
     }
     
     if (type === 'all' || type === 'general-supplies') {
-      const generalSuppliesRequests = requests.filter(r => r.type === 'general-supplies');
+      const generalSuppliesRequests = (type === 'all' ? allFilteredRequests : requests)
+        .filter(r => r.type === 'general-supplies')
+        .sort((a, b) => new Date(a.form.date).getTime() - new Date(b.form.date).getTime());
+      
       if (generalSuppliesRequests.length > 0) {
         const data = generalSuppliesRequests.flatMap(request => 
-          (request.items as RequestItem[]).map(item => ({
-            'Doc Number': request.docNumber,
-            'Date': format(new Date(request.form.date), 'dd/MM/yyyy'),
-            'Department': request.form.department,
-            'Requested By': request.form.requestedBy,
-            'SL No': item.slNo,
-            'Item Code': item.itemCode,
-            'Description': item.description,
-            'UOM': item.uom,
-            'Requested Qty': item.requestedQty,
-            'Issued Qty': item.issuedQty,
-            'Remaining Qty': item.remainingQty,
-            'Remarks': item.remarks,
-            'Submitted At': format(new Date(request.submittedAt), 'dd/MM/yyyy HH:mm'),
-          }))
+          (request.items as RequestItem[])
+            .sort((a, b) => a.slNo - b.slNo)
+            .map(item => ({
+              'Order': request.docNumber,
+              'Date': format(new Date(request.form.date), 'dd/MM/yyyy'),
+              'Department': request.form.department,
+              'Requested By': request.form.requestedBy,
+              'SL No': item.slNo,
+              'Item Code': item.itemCode,
+              'Description': item.description,
+              'UOM': item.uom,
+              'Requested Qty': item.requestedQty,
+              'Issued Qty': item.issuedQty,
+              'Remaining Qty': item.remainingQty,
+              'Remarks': item.remarks,
+              'Submitted At': format(new Date(request.submittedAt), 'dd/MM/yyyy HH:mm'),
+            }))
         );
         const ws = XLSX.utils.json_to_sheet(data);
-        XLSX.utils.book_append_sheet(wb, ws, 'General Supplies Requests');
+        ws['!cols'] = [
+          { wch: 15 }, { wch: 12 }, { wch: 15 }, { wch: 15 }, { wch: 8 },
+          { wch: 15 }, { wch: 30 }, { wch: 8 }, { wch: 12 }, { wch: 12 },
+          { wch: 12 }, { wch: 20 }, { wch: 18 }
+        ];
+        XLSX.utils.book_append_sheet(wb, ws, 'General Supplies');
       }
     }
     
     if (type === 'all' || type === 'material-return') {
-      const materialReturnRequests = requests.filter(r => r.type === 'material-return');
+      const materialReturnRequests = (type === 'all' ? allFilteredRequests : requests)
+        .filter(r => r.type === 'material-return')
+        .sort((a, b) => new Date(a.form.date).getTime() - new Date(b.form.date).getTime());
+      
       if (materialReturnRequests.length > 0) {
         const data = materialReturnRequests.flatMap(request => 
-          (request.items as ReturnItem[]).map(item => ({
-            'Doc Number': request.docNumber,
-            'Date': format(new Date(request.form.date), 'dd/MM/yyyy'),
-            'Department': request.form.department,
-            'Returned By': request.form.requestedBy,
-            'SL No': item.slNo,
-            'Item Code': item.itemCode,
-            'Description': item.description,
-            'UOM': item.uom,
-            'Qty Returned': item.qtyReturned,
-            'Qty Received': item.qtyReceived,
-            'Remarks': item.remarks,
-            'Submitted At': format(new Date(request.submittedAt), 'dd/MM/yyyy HH:mm'),
-          }))
+          (request.items as ReturnItem[])
+            .sort((a, b) => a.slNo - b.slNo)
+            .map(item => ({
+              'Order': request.docNumber,
+              'Date': format(new Date(request.form.date), 'dd/MM/yyyy'),
+              'Department': request.form.department,
+              'Returned By': request.form.requestedBy,
+              'SL No': item.slNo,
+              'Item Code': item.itemCode,
+              'Description': item.description,
+              'UOM': item.uom,
+              'Qty Returned': item.qtyReturned,
+              'Qty Received': item.qtyReceived,
+              'Remarks': item.remarks,
+              'Submitted At': format(new Date(request.submittedAt), 'dd/MM/yyyy HH:mm'),
+            }))
         );
         const ws = XLSX.utils.json_to_sheet(data);
-        XLSX.utils.book_append_sheet(wb, ws, 'Material Return Slips');
+        ws['!cols'] = [
+          { wch: 15 }, { wch: 12 }, { wch: 15 }, { wch: 15 }, { wch: 8 },
+          { wch: 15 }, { wch: 30 }, { wch: 8 }, { wch: 12 }, { wch: 12 },
+          { wch: 20 }, { wch: 18 }
+        ];
+        XLSX.utils.book_append_sheet(wb, ws, 'Material Return');
       }
     }
 
     const fileName = type === 'all' 
-      ? `All_Requests_${format(new Date(), 'yyyy-MM-dd')}.xlsx`
-      : `${typeLabels[type].replace(' ', '_')}_Requests_${format(new Date(), 'yyyy-MM-dd')}.xlsx`;
+      ? `All_Requests_${dateRangeText}.xlsx`
+      : `${typeLabels[type].replace(' ', '_')}_${dateRangeText}.xlsx`;
     
     XLSX.writeFile(wb, fileName);
   };
+
+  const getExportCounts = () => {
+    const filtered = getFilteredRequestsForExport();
+    return {
+      rawMaterial: filtered.filter(r => r.type === 'raw-material').length,
+      generalSupplies: filtered.filter(r => r.type === 'general-supplies').length,
+      materialReturn: filtered.filter(r => r.type === 'material-return').length,
+      total: filtered.length,
+    };
+  };
+
+  const exportCounts = getExportCounts();
 
   const renderItemsTable = (request: SubmittedRequest) => {
     if (request.type === 'material-return') {
@@ -305,8 +400,8 @@ export function RequestHistoryTable() {
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Filters */}
-          <div className="flex gap-4">
-            <div className="relative flex-1">
+          <div className="flex flex-wrap gap-4">
+            <div className="relative flex-1 min-w-[200px]">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Search by doc number, department, item..."
@@ -326,6 +421,57 @@ export function RequestHistoryTable() {
                 <SelectItem value="material-return">Material Return</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+
+          {/* Date Range Filter */}
+          <div className="flex flex-wrap gap-4 items-center">
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">From:</span>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="w-[140px] justify-start text-left font-normal">
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {dateFrom ? format(dateFrom, 'dd/MM/yyyy') : 'Pick date'}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={dateFrom}
+                    onSelect={setDateFrom}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">To:</span>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="w-[140px] justify-start text-left font-normal">
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {dateTo ? format(dateTo, 'dd/MM/yyyy') : 'Pick date'}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={dateTo}
+                    onSelect={setDateTo}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+            {(dateFrom || dateTo) && (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => { setDateFrom(undefined); setDateTo(undefined); }}
+              >
+                Clear Dates
+              </Button>
+            )}
           </div>
 
           {/* Results Table */}
@@ -401,47 +547,52 @@ export function RequestHistoryTable() {
             <h4 className="font-medium mb-3 flex items-center gap-2">
               <FileSpreadsheet className="h-4 w-4" />
               Export Records to Excel
+              {(dateFrom || dateTo) && (
+                <span className="text-xs text-muted-foreground ml-2">
+                  (Filtered by date range)
+                </span>
+              )}
             </h4>
             <div className="flex flex-wrap gap-2">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => exportToExcel('raw-material')}
-                disabled={submittedRequests.filter(r => r.type === 'raw-material').length === 0}
+                disabled={exportCounts.rawMaterial === 0}
                 className="gap-2"
               >
                 <Package className="h-4 w-4" />
-                Raw Material ({submittedRequests.filter(r => r.type === 'raw-material').length})
+                Raw Material ({exportCounts.rawMaterial})
               </Button>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => exportToExcel('general-supplies')}
-                disabled={submittedRequests.filter(r => r.type === 'general-supplies').length === 0}
+                disabled={exportCounts.generalSupplies === 0}
                 className="gap-2"
               >
                 <FileText className="h-4 w-4" />
-                General Supplies ({submittedRequests.filter(r => r.type === 'general-supplies').length})
+                General Supplies ({exportCounts.generalSupplies})
               </Button>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => exportToExcel('material-return')}
-                disabled={submittedRequests.filter(r => r.type === 'material-return').length === 0}
+                disabled={exportCounts.materialReturn === 0}
                 className="gap-2"
               >
                 <Undo2 className="h-4 w-4" />
-                Material Return ({submittedRequests.filter(r => r.type === 'material-return').length})
+                Material Return ({exportCounts.materialReturn})
               </Button>
               <Button
                 variant="default"
                 size="sm"
                 onClick={() => exportToExcel('all')}
-                disabled={submittedRequests.length === 0}
+                disabled={exportCounts.total === 0}
                 className="gap-2"
               >
                 <FileSpreadsheet className="h-4 w-4" />
-                Export All Records
+                Export All ({exportCounts.total})
               </Button>
             </div>
           </div>
