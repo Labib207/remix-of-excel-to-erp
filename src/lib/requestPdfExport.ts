@@ -88,50 +88,44 @@ export const exportRawMaterialRequestPDF = async (form: RequestForm, items: Requ
   doc.setLineWidth(0.5);
   doc.rect(5, 5, pageWidth - 10, pageHeight - 10);
 
-  // Add logo on left
+  // Add logo on left - nicely positioned
   try {
     const logoBase64 = await loadLogoAsBase64();
-    doc.addImage(logoBase64, 'PNG', 10, 8, 45, 22);
+    doc.addImage(logoBase64, 'PNG', 12, 10, 40, 18);
   } catch (error) {
     doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
     doc.text('GHOUSH', 15, 20);
   }
 
-  // Title - RAW MATERIAL REQUEST (center-right area)
-  doc.setFontSize(18);
+  // Title - RAW MATERIAL REQUEST (centered)
+  doc.setFontSize(16);
   doc.setFont('helvetica', 'bold');
-  doc.text('RAW MATERIAL REQUEST', 115, 18);
-  
-  // Subtitle
-  doc.setFontSize(8);
-  doc.setFont('helvetica', 'normal');
-  doc.text('MILITARY & SAFETY UNIFORMS', 60, 25);
-  doc.text('UNIFORM FACTORY', 60, 29);
+  doc.text('RAW MATERIAL REQUEST', pageWidth / 2, 20, { align: 'center' });
 
   // Document ID and Issue Number line
   doc.setLineWidth(0.3);
-  doc.line(10, 33, pageWidth - 10, 33);
+  doc.line(10, 30, pageWidth - 10, 30);
   
   doc.setFontSize(9);
   doc.setFont('helvetica', 'bold');
-  doc.text(`Document ID: ${docNumber}`, 12, 39);
-  doc.text('Issue Number', 180, 39);
+  doc.text(`Document ID: ${docNumber}`, 12, 36);
+  doc.text('Issue Number', 200, 36);
   doc.setFont('helvetica', 'normal');
-  doc.text('GAU-VER 01-JAN-2024', 210, 39);
+  doc.text('GAU-VER 01-JAN-2024', 230, 36);
   
-  doc.line(10, 42, pageWidth - 10, 42);
+  doc.line(10, 39, pageWidth - 10, 39);
 
   // Date row
   doc.setFont('helvetica', 'normal');
-  doc.text(`Date: ${formatDate(form.date)}`, 12, 48);
-  doc.line(10, 51, pageWidth - 10, 51);
+  doc.text(`Date: ${formatDate(form.date)}`, 12, 45);
+  doc.line(10, 48, pageWidth - 10, 48);
 
   // Department row
-  doc.text(`Department: ${form.department}`, 12, 57);
-  doc.line(10, 60, pageWidth - 10, 60);
+  doc.text(`Department: ${form.department}`, 12, 54);
+  doc.line(10, 57, pageWidth - 10, 57);
 
-  // Table - ensure minimum 10 rows
+  // Table - ensure minimum 10 rows + 3 additional empty rows for manual notes
   const tableRows = items.length > 0 
     ? items.map(item => [
         item.slNo.toString(),
@@ -145,13 +139,14 @@ export const exportRawMaterialRequestPDF = async (form: RequestForm, items: Requ
       ])
     : [];
   
-  // Pad to minimum 10 rows
-  while (tableRows.length < 10) {
+  // Pad to minimum 10 rows + 3 additional empty rows for manual writing
+  const minRows = Math.max(10, items.length + 3);
+  while (tableRows.length < minRows) {
     tableRows.push(['', '', '', '', '', '', '', '']);
   }
 
   autoTable(doc, {
-    startY: 62,
+    startY: 59,
     head: [['SL No', 'ITEM CODE', 'DESCRIPTION', 'UOM', 'REQUESTED\nQUANTITY', 'ISSUED\nQUANTITY', 'REMAINING\nQUANTITY', 'Remarks for Merchandize']],
     body: tableRows,
     theme: 'grid',
@@ -247,50 +242,44 @@ export const exportGeneralSuppliesRequestPDF = async (form: RequestForm, items: 
   doc.setLineWidth(0.5);
   doc.rect(5, 5, pageWidth - 10, pageHeight - 10);
 
-  // Add logo on left
+  // Add logo on left - nicely positioned
   try {
     const logoBase64 = await loadLogoAsBase64();
-    doc.addImage(logoBase64, 'PNG', 10, 8, 45, 22);
+    doc.addImage(logoBase64, 'PNG', 12, 10, 40, 18);
   } catch (error) {
     doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
     doc.text('GHOUSH', 15, 20);
   }
 
-  // Title - GENERAL SUPPLIES REQUEST
-  doc.setFontSize(18);
+  // Title - GENERAL SUPPLIES REQUEST (centered)
+  doc.setFontSize(16);
   doc.setFont('helvetica', 'bold');
-  doc.text('GENERAL SUPPLIES REQUEST', 105, 18);
-  
-  // Subtitle
-  doc.setFontSize(8);
-  doc.setFont('helvetica', 'normal');
-  doc.text('MILITARY & SAFETY UNIFORMS', 60, 25);
-  doc.text('OF ADEEM UNIFORM FACTORY', 60, 29);
+  doc.text('GENERAL SUPPLIES REQUEST', pageWidth / 2, 20, { align: 'center' });
 
   // Document ID and Issue Number line
   doc.setLineWidth(0.3);
-  doc.line(10, 33, pageWidth - 10, 33);
+  doc.line(10, 30, pageWidth - 10, 30);
   
   doc.setFontSize(9);
   doc.setFont('helvetica', 'bold');
-  doc.text(`Document ID: ${docNumber}`, 12, 39);
-  doc.text('Issue Number', 180, 39);
+  doc.text(`Document ID: ${docNumber}`, 12, 36);
+  doc.text('Issue Number', 200, 36);
   doc.setFont('helvetica', 'normal');
-  doc.text('GAU-VER 01-JAN-2024', 210, 39);
+  doc.text('GAU-VER 01-JAN-2024', 230, 36);
   
-  doc.line(10, 42, pageWidth - 10, 42);
+  doc.line(10, 39, pageWidth - 10, 39);
 
   // Date row
   doc.setFont('helvetica', 'normal');
-  doc.text(`Date: ${formatDate(form.date)}`, 12, 48);
-  doc.line(10, 51, pageWidth - 10, 51);
+  doc.text(`Date: ${formatDate(form.date)}`, 12, 45);
+  doc.line(10, 48, pageWidth - 10, 48);
 
   // Department row
-  doc.text(`Department: ${form.department}`, 12, 57);
-  doc.line(10, 60, pageWidth - 10, 60);
+  doc.text(`Department: ${form.department}`, 12, 54);
+  doc.line(10, 57, pageWidth - 10, 57);
 
-  // Table
+  // Table - ensure minimum 10 rows + 3 additional empty rows for manual notes
   const tableRows = items.length > 0 
     ? items.map(item => [
         item.slNo.toString(),
@@ -304,13 +293,15 @@ export const exportGeneralSuppliesRequestPDF = async (form: RequestForm, items: 
       ])
     : [];
   
-  while (tableRows.length < 10) {
+  // Pad to minimum 10 rows + 3 additional empty rows for manual writing
+  const minRows = Math.max(10, items.length + 3);
+  while (tableRows.length < minRows) {
     tableRows.push(['', '', '', '', '', '', '', '']);
   }
 
   autoTable(doc, {
-    startY: 62,
-    head: [['SL', 'ITEM CODE', 'DESCRIPTION', 'UOM', 'REQUESTED\nQUANTITY', 'ISSUED\nQUANTITY', 'REMAINING\nQUANTITY', 'Remarks for Procurement']],
+    startY: 59,
+    head: [['SL No', 'ITEM CODE', 'DESCRIPTION', 'UOM', 'REQUESTED\nQUANTITY', 'ISSUED\nQUANTITY', 'REMAINING\nQUANTITY', 'Remarks for Procurement']],
     body: tableRows,
     theme: 'grid',
     styles: { 
@@ -402,49 +393,44 @@ export const exportMaterialReturnSlipPDF = async (form: RequestForm, items: Retu
   doc.setLineWidth(0.5);
   doc.rect(5, 5, pageWidth - 10, pageHeight - 10);
 
-  // Add logo on left
+  // Add logo on left - nicely positioned
   try {
     const logoBase64 = await loadLogoAsBase64();
-    doc.addImage(logoBase64, 'PNG', 10, 8, 45, 22);
+    doc.addImage(logoBase64, 'PNG', 12, 10, 40, 18);
   } catch (error) {
     doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
     doc.text('GHOUSH', 15, 20);
   }
 
-  // Title - MATERIAL RETURN SLIP
-  doc.setFontSize(18);
+  // Title - MATERIAL RETURN SLIP (centered)
+  doc.setFontSize(16);
   doc.setFont('helvetica', 'bold');
-  doc.text('MATERIAL RETURN SLIP', 120, 18);
-  
-  // Subtitle
-  doc.setFontSize(8);
-  doc.setFont('helvetica', 'normal');
-  doc.text('MILITARY & SAFETY UNIFORMS', 60, 25);
+  doc.text('MATERIAL RETURN SLIP', pageWidth / 2, 20, { align: 'center' });
 
   // Document ID and Issue Number line
   doc.setLineWidth(0.3);
-  doc.line(10, 33, pageWidth - 10, 33);
+  doc.line(10, 30, pageWidth - 10, 30);
   
   doc.setFontSize(9);
   doc.setFont('helvetica', 'bold');
-  doc.text(`Document ID: ${docNumber}`, 12, 39);
-  doc.text('Issue Number', 180, 39);
+  doc.text(`Document ID: ${docNumber}`, 12, 36);
+  doc.text('Issue Number', 200, 36);
   doc.setFont('helvetica', 'normal');
-  doc.text('GAU-VER 01-JAN-2024', 210, 39);
+  doc.text('GAU-VER 01-JAN-2024', 230, 36);
   
-  doc.line(10, 42, pageWidth - 10, 42);
+  doc.line(10, 39, pageWidth - 10, 39);
 
   // Date row
   doc.setFont('helvetica', 'normal');
-  doc.text(`Date: ${formatDate(form.date)}`, 12, 48);
-  doc.line(10, 51, pageWidth - 10, 51);
+  doc.text(`Date: ${formatDate(form.date)}`, 12, 45);
+  doc.line(10, 48, pageWidth - 10, 48);
 
   // Department row
-  doc.text(`Department: ${form.department}`, 12, 57);
-  doc.line(10, 60, pageWidth - 10, 60);
+  doc.text(`Department: ${form.department}`, 12, 54);
+  doc.line(10, 57, pageWidth - 10, 57);
 
-  // Table
+  // Table - ensure minimum 10 rows + 3 additional empty rows for manual notes
   const tableRows = items.length > 0 
     ? items.map(item => [
         item.slNo.toString(),
@@ -457,12 +443,14 @@ export const exportMaterialReturnSlipPDF = async (form: RequestForm, items: Retu
       ])
     : [];
   
-  while (tableRows.length < 10) {
+  // Pad to minimum 10 rows + 3 additional empty rows for manual writing
+  const minRows = Math.max(10, items.length + 3);
+  while (tableRows.length < minRows) {
     tableRows.push(['', '', '', '', '', '', '']);
   }
 
   autoTable(doc, {
-    startY: 62,
+    startY: 59,
     head: [['SL No', 'ITEM CODE', 'DESCRIPTION', 'UOM', 'QUANTITY\nRETURNED', 'QUANTITY\nRECEIVED', 'Remarks']],
     body: tableRows,
     theme: 'grid',
