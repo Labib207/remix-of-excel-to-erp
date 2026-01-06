@@ -13,8 +13,22 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Plus, Trash2, Printer, Download, Package, Undo2, FileBox } from 'lucide-react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Plus, Trash2, Download, Package, Undo2, FileBox, Send, FileSpreadsheet, Calendar } from 'lucide-react';
 import { format } from 'date-fns';
+import { toast } from 'sonner';
+import { useRequestStore } from '@/store/requestStore';
+import {
+  exportRawMaterialRequestPDF,
+  exportGeneralSuppliesRequestPDF,
+  exportMaterialReturnSlipPDF,
+} from '@/lib/requestPdfExport';
 
 interface RequestItem {
   id: string;
@@ -68,40 +82,33 @@ const getNextDocNumber = (prefix: string) => {
   return `${prefix}-${String(counter).padStart(4, '0')}-${yearMonth}`;
 };
 
+const emptyRequestForm = (): RequestForm => ({
+  date: format(new Date(), 'yyyy-MM-dd'),
+  department: '',
+  requestedBy: '',
+  approvedBy: '',
+  issuedBy: '',
+  aswaqNumber: '',
+});
+
 export default function Requests() {
   const [activeTab, setActiveTab] = useState('raw-material');
+  const { addRequest, exportMonthlyExcel, submittedRequests } = useRequestStore();
+  
+  // Month/Year selector for export
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth().toString());
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear().toString());
   
   // Raw Material Request State
-  const [rawMaterialForm, setRawMaterialForm] = useState<RequestForm>({
-    date: format(new Date(), 'yyyy-MM-dd'),
-    department: '',
-    requestedBy: '',
-    approvedBy: '',
-    issuedBy: '',
-    aswaqNumber: '',
-  });
+  const [rawMaterialForm, setRawMaterialForm] = useState<RequestForm>(emptyRequestForm());
   const [rawMaterialItems, setRawMaterialItems] = useState<RequestItem[]>([]);
 
   // General Supplies Request State
-  const [generalSuppliesForm, setGeneralSuppliesForm] = useState<RequestForm>({
-    date: format(new Date(), 'yyyy-MM-dd'),
-    department: '',
-    requestedBy: '',
-    approvedBy: '',
-    issuedBy: '',
-    aswaqNumber: '',
-  });
+  const [generalSuppliesForm, setGeneralSuppliesForm] = useState<RequestForm>(emptyRequestForm());
   const [generalSuppliesItems, setGeneralSuppliesItems] = useState<RequestItem[]>([]);
 
   // Material Return Slip State
-  const [materialReturnForm, setMaterialReturnForm] = useState<RequestForm>({
-    date: format(new Date(), 'yyyy-MM-dd'),
-    department: '',
-    requestedBy: '',
-    approvedBy: '',
-    issuedBy: '',
-    aswaqNumber: '',
-  });
+  const [materialReturnForm, setMaterialReturnForm] = useState<RequestForm>(emptyRequestForm());
   const [materialReturnItems, setMaterialReturnItems] = useState<ReturnItem[]>([]);
 
   const addRequestItem = (type: 'raw' | 'general') => {
@@ -171,186 +178,91 @@ export default function Requests() {
     setMaterialReturnItems(filtered.map((item, idx) => ({ ...item, slNo: idx + 1 })));
   };
 
-  const printRequest = (type: 'raw' | 'general' | 'return') => {
+  // Download PDF function
+  const downloadPDF = (type: 'raw' | 'general' | 'return') => {
+    if (type === 'raw') {
+      if (rawMaterialItems.length === 0) {
+        toast.error('Please add at least one item before downloading');
+        return;
+      }
+      exportRawMaterialRequestPDF(rawMaterialForm, rawMaterialItems);
+      toast.success('Raw Material Request PDF downloaded');
+    } else if (type === 'general') {
+      if (generalSuppliesItems.length === 0) {
+        toast.error('Please add at least one item before downloading');
+        return;
+      }
+      exportGeneralSuppliesRequestPDF(generalSuppliesForm, generalSuppliesItems);
+      toast.success('General Supplies Request PDF downloaded');
+    } else {
+      if (materialReturnItems.length === 0) {
+        toast.error('Please add at least one item before downloading');
+        return;
+      }
+      exportMaterialReturnSlipPDF(materialReturnForm, materialReturnItems);
+      toast.success('Material Return Slip PDF downloaded');
+    }
+  };
+
+  // Submit function - saves to store for monthly Excel export
+  const submitRequest = (type: 'raw' | 'general' | 'return') => {
     const docNumber = getNextDocNumber(
       type === 'raw' ? 'RMR' : type === 'general' ? 'GSR' : 'MRS'
     );
-    
-    let title = '';
-    let form: RequestForm;
-    let tableHeaders: string[] = [];
-    let tableRows: string[][] = [];
-    let signatories: { role: string; name: string }[] = [];
 
     if (type === 'raw') {
-      title = 'RAW MATERIAL REQUEST';
-      form = rawMaterialForm;
-      tableHeaders = ['SL No', 'Item Code', 'Description', 'UOM', 'Requested Qty', 'Issued Qty', 'Remaining Qty', 'Remarks for Merchandize'];
-      tableRows = rawMaterialItems.map(item => [
-        item.slNo.toString(),
-        item.itemCode,
-        item.description,
-        item.uom,
-        item.requestedQty.toString(),
-        item.issuedQty.toString(),
-        item.remainingQty.toString(),
-        item.remarks,
-      ]);
-      signatories = [
-        { role: 'Line Leader', name: form.requestedBy },
-        { role: 'Production Manager', name: form.approvedBy },
-        { role: 'Warehouse In Charge', name: form.issuedBy },
-      ];
+      if (rawMaterialItems.length === 0) {
+        toast.error('Please add at least one item before submitting');
+        return;
+      }
+      addRequest({
+        type: 'raw-material',
+        docNumber,
+        form: rawMaterialForm,
+        items: rawMaterialItems,
+      });
+      setRawMaterialForm(emptyRequestForm());
+      setRawMaterialItems([]);
+      toast.success(`Raw Material Request ${docNumber} submitted successfully`);
     } else if (type === 'general') {
-      title = 'GENERAL SUPPLIES REQUEST';
-      form = generalSuppliesForm;
-      tableHeaders = ['SL', 'Item Code', 'Description', 'UOM', 'Requested Quantity', 'Issued Quantity', 'Remaining Quantity', 'Remarks for Procurement'];
-      tableRows = generalSuppliesItems.map(item => [
-        item.slNo.toString(),
-        item.itemCode,
-        item.description,
-        item.uom,
-        item.requestedQty.toString(),
-        item.issuedQty.toString(),
-        item.remainingQty.toString(),
-        item.remarks,
-      ]);
-      signatories = [
-        { role: 'Line Leader', name: form.requestedBy },
-        { role: 'Line Manager', name: form.approvedBy },
-        { role: 'Warehouse In Charge', name: form.issuedBy },
-      ];
+      if (generalSuppliesItems.length === 0) {
+        toast.error('Please add at least one item before submitting');
+        return;
+      }
+      addRequest({
+        type: 'general-supplies',
+        docNumber,
+        form: generalSuppliesForm,
+        items: generalSuppliesItems,
+      });
+      setGeneralSuppliesForm(emptyRequestForm());
+      setGeneralSuppliesItems([]);
+      toast.success(`General Supplies Request ${docNumber} submitted successfully`);
     } else {
-      title = 'MATERIAL RETURN SLIP';
-      form = materialReturnForm;
-      tableHeaders = ['SL No', 'Item Code', 'Description', 'UOM', 'Quantity Returned', 'Quantity Received', 'Remarks'];
-      tableRows = materialReturnItems.map(item => [
-        item.slNo.toString(),
-        item.itemCode,
-        item.description,
-        item.uom,
-        item.qtyReturned.toString(),
-        item.qtyReceived.toString(),
-        item.remarks,
-      ]);
-      signatories = [
-        { role: 'Line Leader', name: form.requestedBy },
-        { role: 'Line Manager', name: form.approvedBy },
-        { role: 'Warehouse Incharge', name: form.issuedBy },
-      ];
+      if (materialReturnItems.length === 0) {
+        toast.error('Please add at least one item before submitting');
+        return;
+      }
+      addRequest({
+        type: 'material-return',
+        docNumber,
+        form: materialReturnForm,
+        items: materialReturnItems,
+      });
+      setMaterialReturnForm(emptyRequestForm());
+      setMaterialReturnItems([]);
+      toast.success(`Material Return Slip ${docNumber} submitted successfully`);
     }
-
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) return;
-
-    const html = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>${title} - ${docNumber}</title>
-        <style>
-          * { box-sizing: border-box; margin: 0; padding: 0; }
-          body { font-family: Arial, sans-serif; padding: 20px; font-size: 12px; }
-          .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; border-bottom: 2px solid #000; padding-bottom: 15px; }
-          .logo-section { display: flex; align-items: center; gap: 10px; }
-          .logo { width: 60px; height: 60px; background: linear-gradient(135deg, #f59e0b, #d97706); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 10px; text-align: center; }
-          .company-name { font-size: 16px; font-weight: bold; }
-          .company-subtitle { font-size: 10px; color: #666; }
-          .doc-info { text-align: right; }
-          .doc-title { font-size: 18px; font-weight: bold; margin-bottom: 5px; }
-          .doc-number { font-size: 11px; color: #666; }
-          .form-info { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
-          .form-field { display: flex; gap: 10px; }
-          .form-label { font-weight: bold; min-width: 80px; }
-          .form-value { border-bottom: 1px solid #ccc; flex: 1; min-width: 150px; }
-          table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-          th, td { border: 1px solid #000; padding: 6px 8px; text-align: left; }
-          th { background: #f0f0f0; font-weight: bold; }
-          .signatures { display: grid; grid-template-columns: repeat(3, 1fr); gap: 30px; margin-top: 40px; }
-          .signature-box { text-align: center; }
-          .signature-line { border-top: 1px solid #000; margin-top: 40px; padding-top: 5px; }
-          .signature-role { font-size: 10px; color: #666; }
-          .aswaq { margin-top: 20px; padding-top: 10px; border-top: 1px solid #ccc; }
-          @media print { body { padding: 0; } }
-        </style>
-      </head>
-      <body>
-        <div class="header">
-          <div class="logo-section">
-            <div class="logo">GHOUSH</div>
-            <div>
-              <div class="company-name">GHOUSH</div>
-              <div class="company-subtitle">MILITARY & SAFETY UNIFORMS</div>
-              <div class="company-subtitle">OF ADEEM UNIFORM FACTORY</div>
-            </div>
-          </div>
-          <div class="doc-info">
-            <div class="doc-title">${title}</div>
-            <div class="doc-number">Document ID: ${docNumber}</div>
-            <div class="doc-number">Issue Number: GAU-VER 01-JAN-2024</div>
-          </div>
-        </div>
-
-        <div class="form-info">
-          <div class="form-field">
-            <span class="form-label">Date:</span>
-            <span class="form-value">${format(new Date(form.date), 'dd/MM/yyyy')}</span>
-          </div>
-          <div class="form-field">
-            <span class="form-label">Department:</span>
-            <span class="form-value">${form.department}</span>
-          </div>
-        </div>
-
-        <table>
-          <thead>
-            <tr>
-              ${tableHeaders.map(h => `<th>${h}</th>`).join('')}
-            </tr>
-          </thead>
-          <tbody>
-            ${tableRows.length > 0 ? tableRows.map(row => `
-              <tr>
-                ${row.map(cell => `<td>${cell}</td>`).join('')}
-              </tr>
-            `).join('') : `
-              <tr>
-                ${tableHeaders.map(() => '<td>&nbsp;</td>').join('')}
-              </tr>
-              <tr>
-                ${tableHeaders.map(() => '<td>&nbsp;</td>').join('')}
-              </tr>
-              <tr>
-                ${tableHeaders.map(() => '<td>&nbsp;</td>').join('')}
-              </tr>
-            `}
-          </tbody>
-        </table>
-
-        <div class="signatures">
-          ${signatories.map((s, i) => `
-            <div class="signature-box">
-              <div>${i === 0 ? 'Requested By' : i === 1 ? 'Approved By' : 'Issued By'}</div>
-              <div class="signature-line">${s.name || 'Name & Signature'}</div>
-              <div class="signature-role">${s.role}</div>
-            </div>
-          `).join('')}
-        </div>
-
-        <div class="aswaq">
-          <strong>ASWAQ Transaction Report Number:</strong> ${form.aswaqNumber || '_______________'}
-        </div>
-
-        <script>
-          window.onload = function() { window.print(); }
-        </script>
-      </body>
-      </html>
-    `;
-
-    printWindow.document.write(html);
-    printWindow.document.close();
   };
+
+  const handleExportMonthlyExcel = () => {
+    exportMonthlyExcel(parseInt(selectedYear), parseInt(selectedMonth));
+  };
+
+  const monthNames = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ];
 
   const renderRequestForm = (
     type: 'raw' | 'general',
@@ -372,10 +284,16 @@ export default function Requests() {
             </p>
           </div>
         </div>
-        <Button onClick={() => printRequest(type)} variant="outline" className="gap-2">
-          <Printer className="h-4 w-4" />
-          Print
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={() => downloadPDF(type)} variant="outline" className="gap-2">
+            <Download className="h-4 w-4" />
+            Download PDF
+          </Button>
+          <Button onClick={() => submitRequest(type)} className="gap-2">
+            <Send className="h-4 w-4" />
+            Submit
+          </Button>
+        </div>
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Form Header */}
@@ -540,11 +458,53 @@ export default function Requests() {
   return (
     <MainLayout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Material Requests</h1>
-          <p className="text-muted-foreground mt-1">
-            Manage raw material requests, general supplies, and material returns
-          </p>
+        <div className="flex items-start justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Material Requests</h1>
+            <p className="text-muted-foreground mt-1">
+              Manage raw material requests, general supplies, and material returns
+            </p>
+          </div>
+          
+          {/* Monthly Excel Export Section */}
+          <Card className="p-4">
+            <div className="flex items-center gap-3">
+              <Calendar className="h-5 w-5 text-muted-foreground" />
+              <div className="flex gap-2">
+                <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+                  <SelectTrigger className="w-32">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {monthNames.map((month, idx) => (
+                      <SelectItem key={idx} value={idx.toString()}>
+                        {month}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select value={selectedYear} onValueChange={setSelectedYear}>
+                  <SelectTrigger className="w-24">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[2024, 2025, 2026].map(year => (
+                      <SelectItem key={year} value={year.toString()}>
+                        {year}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button onClick={handleExportMonthlyExcel} variant="outline" className="gap-2">
+                <FileSpreadsheet className="h-4 w-4" />
+                Export Excel
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground mt-2">
+              {submittedRequests.length} requests submitted
+            </p>
+          </Card>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -599,10 +559,16 @@ export default function Requests() {
                     </p>
                   </div>
                 </div>
-                <Button onClick={() => printRequest('return')} variant="outline" className="gap-2">
-                  <Printer className="h-4 w-4" />
-                  Print
-                </Button>
+                <div className="flex gap-2">
+                  <Button onClick={() => downloadPDF('return')} variant="outline" className="gap-2">
+                    <Download className="h-4 w-4" />
+                    Download PDF
+                  </Button>
+                  <Button onClick={() => submitRequest('return')} className="gap-2">
+                    <Send className="h-4 w-4" />
+                    Submit
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent className="space-y-6">
                 {/* Form Header */}
