@@ -33,21 +33,24 @@ interface RequestForm {
 }
 
 const getNextDocNumber = (prefix: string): string => {
-  const key = `docNumber_pdf_${prefix}`;
-  const stored = localStorage.getItem(key);
+  const key = `docNumber_${prefix}`;
   const now = new Date();
-  const yearMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const currentYear = now.getFullYear();
+  const yearKey = `${key}_${currentYear}`;
   
+  // Get the last used number for this prefix and year
+  const stored = localStorage.getItem(yearKey);
   let counter = 1;
+  
   if (stored) {
-    const [storedYearMonth, storedCounter] = stored.split('-');
-    if (storedYearMonth === yearMonth) {
-      counter = parseInt(storedCounter) + 1;
-    }
+    counter = parseInt(stored) + 1;
   }
   
-  localStorage.setItem(key, `${yearMonth}-${counter}`);
-  return `${prefix}-${String(counter).padStart(2, '0')}-2024`;
+  // Save the new counter
+  localStorage.setItem(yearKey, counter.toString());
+  
+  // Format: PREFIX-XX-YYYY (e.g., RMR-01-2026)
+  return `${prefix}-${String(counter).padStart(2, '0')}-${currentYear}`;
 };
 
 const loadLogoAsBase64 = (): Promise<string> => {
