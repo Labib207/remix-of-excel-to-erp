@@ -3,6 +3,8 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { AuthProvider } from "@/contexts/AuthContext";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Dashboard from "./pages/Dashboard";
 import Orders from "./pages/Orders";
 import MarkerPlans from "./pages/MarkerPlans";
@@ -15,6 +17,7 @@ import Reconciliation from "./pages/Reconciliation";
 import RatioPlanning from "./pages/RatioPlanning";
 import FabricCalculation from "./pages/FabricCalculation";
 import Requests from "./pages/Requests";
+import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -25,21 +28,24 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/orders" element={<Orders />} />
-          <Route path="/ratios" element={<RatioPlanning />} />
-          <Route path="/markers" element={<MarkerPlans />} />
-          <Route path="/cutting" element={<CuttingPlans />} />
-          <Route path="/laysheets" element={<LaySheets />} />
-          <Route path="/bundles" element={<Bundles />} />
-          <Route path="/fabric" element={<FabricCalculation />} />
-          <Route path="/requests" element={<Requests />} />
-          <Route path="/delivery-notes" element={<DeliveryNotes />} />
-          <Route path="/reconciliation" element={<Reconciliation />} />
-          <Route path="/reports" element={<Reports />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+        <AuthProvider>
+          <Routes>
+            <Route path="/auth" element={<Auth />} />
+            <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+            <Route path="/orders" element={<ProtectedRoute><Orders /></ProtectedRoute>} />
+            <Route path="/ratios" element={<ProtectedRoute><RatioPlanning /></ProtectedRoute>} />
+            <Route path="/markers" element={<ProtectedRoute><MarkerPlans /></ProtectedRoute>} />
+            <Route path="/cutting" element={<ProtectedRoute><CuttingPlans /></ProtectedRoute>} />
+            <Route path="/laysheets" element={<ProtectedRoute><LaySheets /></ProtectedRoute>} />
+            <Route path="/bundles" element={<ProtectedRoute><Bundles /></ProtectedRoute>} />
+            <Route path="/fabric" element={<ProtectedRoute><FabricCalculation /></ProtectedRoute>} />
+            <Route path="/requests" element={<ProtectedRoute><Requests /></ProtectedRoute>} />
+            <Route path="/delivery-notes" element={<ProtectedRoute><DeliveryNotes /></ProtectedRoute>} />
+            <Route path="/reconciliation" element={<ProtectedRoute><Reconciliation /></ProtectedRoute>} />
+            <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
