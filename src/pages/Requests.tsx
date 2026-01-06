@@ -20,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Plus, Trash2, Download, Package, Undo2, FileBox, Send, FileSpreadsheet, Calendar, History } from 'lucide-react';
+import { Plus, Trash2, Download, Package, Undo2, FileBox, Send, FileSpreadsheet, Calendar, History, FileDown } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { useRequestStore } from '@/store/requestStore';
@@ -28,6 +28,9 @@ import {
   exportRawMaterialRequestPDF,
   exportGeneralSuppliesRequestPDF,
   exportMaterialReturnSlipPDF,
+  exportEmptyRawMaterialPDF,
+  exportEmptyGeneralSuppliesPDF,
+  exportEmptyMaterialReturnPDF,
 } from '@/lib/requestPdfExport';
 import { RequestHistoryTable } from '@/components/requests/RequestHistoryTable';
 
@@ -459,7 +462,7 @@ export default function Requests() {
   return (
     <MainLayout>
       <div className="space-y-6">
-        <div className="flex items-start justify-between">
+        <div className="flex items-start justify-between flex-wrap gap-4">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Material Requests</h1>
             <p className="text-muted-foreground mt-1">
@@ -467,45 +470,84 @@ export default function Requests() {
             </p>
           </div>
           
-          {/* Monthly Excel Export Section */}
-          <Card className="p-4">
-            <div className="flex items-center gap-3">
-              <Calendar className="h-5 w-5 text-muted-foreground" />
-              <div className="flex gap-2">
-                <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-                  <SelectTrigger className="w-32">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {monthNames.map((month, idx) => (
-                      <SelectItem key={idx} value={idx.toString()}>
-                        {month}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Select value={selectedYear} onValueChange={setSelectedYear}>
-                  <SelectTrigger className="w-24">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {[2024, 2025, 2026].map(year => (
-                      <SelectItem key={year} value={year.toString()}>
-                        {year}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+          <div className="flex gap-3 flex-wrap">
+            {/* Empty Forms Download Section */}
+            <Card className="p-4">
+              <div className="flex items-center gap-3">
+                <FileDown className="h-5 w-5 text-muted-foreground" />
+                <span className="text-sm font-medium">Empty Forms:</span>
+                <div className="flex gap-2">
+                  <Button 
+                    onClick={() => exportEmptyRawMaterialPDF()} 
+                    variant="outline" 
+                    size="sm"
+                    className="gap-1"
+                  >
+                    <FileBox className="h-3 w-3" />
+                    Raw Material
+                  </Button>
+                  <Button 
+                    onClick={() => exportEmptyGeneralSuppliesPDF()} 
+                    variant="outline" 
+                    size="sm"
+                    className="gap-1"
+                  >
+                    <Package className="h-3 w-3" />
+                    General Supplies
+                  </Button>
+                  <Button 
+                    onClick={() => exportEmptyMaterialReturnPDF()} 
+                    variant="outline" 
+                    size="sm"
+                    className="gap-1"
+                  >
+                    <Undo2 className="h-3 w-3" />
+                    Material Return
+                  </Button>
+                </div>
               </div>
-              <Button onClick={handleExportMonthlyExcel} variant="outline" className="gap-2">
-                <FileSpreadsheet className="h-4 w-4" />
-                Export Excel
-              </Button>
-            </div>
-            <p className="text-xs text-muted-foreground mt-2">
-              {submittedRequests.length} requests submitted
-            </p>
-          </Card>
+            </Card>
+
+            {/* Monthly Excel Export Section */}
+            <Card className="p-4">
+              <div className="flex items-center gap-3">
+                <Calendar className="h-5 w-5 text-muted-foreground" />
+                <div className="flex gap-2">
+                  <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+                    <SelectTrigger className="w-32">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {monthNames.map((month, idx) => (
+                        <SelectItem key={idx} value={idx.toString()}>
+                          {month}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Select value={selectedYear} onValueChange={setSelectedYear}>
+                    <SelectTrigger className="w-24">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {[2024, 2025, 2026].map(year => (
+                        <SelectItem key={year} value={year.toString()}>
+                          {year}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button onClick={handleExportMonthlyExcel} variant="outline" className="gap-2">
+                  <FileSpreadsheet className="h-4 w-4" />
+                  Export Excel
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">
+                {submittedRequests.length} requests submitted
+              </p>
+            </Card>
+          </div>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
