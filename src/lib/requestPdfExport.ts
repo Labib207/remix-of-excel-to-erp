@@ -171,9 +171,9 @@ const addSignatures = (
   doc.line(240, signatureY + 12, 280, signatureY + 12);
 };
 
-export const exportRawMaterialRequestPDF = async (form: RequestForm, items: RequestItem[]): Promise<void> => {
+export const exportRawMaterialRequestPDF = async (form: RequestForm, items: RequestItem[], existingDocNumber?: string): Promise<void> => {
   const doc = new jsPDF('landscape', 'mm', 'a4');
-  const docNumber = getNextDocNumber('RMR');
+  const docNumber = existingDocNumber || getNextDocNumber('RMR');
   
   await addHeader(doc, 'RAW MATERIAL REQUEST', docNumber);
   addFormInfo(doc, form);
@@ -226,9 +226,9 @@ export const exportRawMaterialRequestPDF = async (form: RequestForm, items: Requ
   doc.save(`Raw_Material_Request_${docNumber}.pdf`);
 };
 
-export const exportGeneralSuppliesRequestPDF = async (form: RequestForm, items: RequestItem[]): Promise<void> => {
+export const exportGeneralSuppliesRequestPDF = async (form: RequestForm, items: RequestItem[], existingDocNumber?: string): Promise<void> => {
   const doc = new jsPDF('landscape', 'mm', 'a4');
-  const docNumber = getNextDocNumber('GSR');
+  const docNumber = existingDocNumber || getNextDocNumber('GSR');
   
   await addHeader(doc, 'GENERAL SUPPLIES REQUEST', docNumber);
   addFormInfo(doc, form);
@@ -281,9 +281,9 @@ export const exportGeneralSuppliesRequestPDF = async (form: RequestForm, items: 
   doc.save(`General_Supplies_Request_${docNumber}.pdf`);
 };
 
-export const exportMaterialReturnSlipPDF = async (form: RequestForm, items: ReturnItem[]): Promise<void> => {
+export const exportMaterialReturnSlipPDF = async (form: RequestForm, items: ReturnItem[], existingDocNumber?: string): Promise<void> => {
   const doc = new jsPDF('landscape', 'mm', 'a4');
-  const docNumber = getNextDocNumber('MRS');
+  const docNumber = existingDocNumber || getNextDocNumber('MRS');
   
   await addHeader(doc, 'MATERIAL RETURN SLIP', docNumber);
   addFormInfo(doc, form);

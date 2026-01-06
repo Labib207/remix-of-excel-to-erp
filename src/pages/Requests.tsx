@@ -20,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Plus, Trash2, Download, Package, Undo2, FileBox, Send, FileSpreadsheet, Calendar } from 'lucide-react';
+import { Plus, Trash2, Download, Package, Undo2, FileBox, Send, FileSpreadsheet, Calendar, History } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { useRequestStore } from '@/store/requestStore';
@@ -29,6 +29,7 @@ import {
   exportGeneralSuppliesRequestPDF,
   exportMaterialReturnSlipPDF,
 } from '@/lib/requestPdfExport';
+import { RequestHistoryTable } from '@/components/requests/RequestHistoryTable';
 
 interface RequestItem {
   id: string;
@@ -508,7 +509,7 @@ export default function Requests() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="raw-material" className="gap-2">
               <FileBox className="h-4 w-4" />
               Raw Material Request
@@ -520,6 +521,10 @@ export default function Requests() {
             <TabsTrigger value="material-return" className="gap-2">
               <Undo2 className="h-4 w-4" />
               Material Return
+            </TabsTrigger>
+            <TabsTrigger value="history" className="gap-2">
+              <History className="h-4 w-4" />
+              History
             </TabsTrigger>
           </TabsList>
 
@@ -720,6 +725,10 @@ export default function Requests() {
                 </div>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="history" className="mt-6">
+            <RequestHistoryTable />
           </TabsContent>
         </Tabs>
       </div>
