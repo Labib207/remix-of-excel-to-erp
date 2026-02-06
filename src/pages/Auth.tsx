@@ -10,7 +10,8 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { Loader2, LogIn, UserPlus } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { Loader2, LogIn, UserPlus, KeyRound, ArrowLeft } from 'lucide-react';
 import logo from '@/assets/logo.png';
 
 const loginSchema = z.object({
@@ -28,12 +29,19 @@ const signupSchema = z.object({
   path: ['confirmPassword'],
 });
 
+const forgotPasswordSchema = z.object({
+  email: z.string().email('Invalid email address'),
+});
+
 type LoginFormData = z.infer<typeof loginSchema>;
 type SignupFormData = z.infer<typeof signupSchema>;
+type ForgotPasswordFormData = z.infer<typeof forgotPasswordSchema>;
 
 export default function Auth() {
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('login');
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [resetEmailSent, setResetEmailSent] = useState(false);
   const { signIn, signUp, user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -59,6 +67,13 @@ export default function Auth() {
       email: '',
       password: '',
       confirmPassword: '',
+    },
+  });
+
+  const forgotPasswordForm = useForm<ForgotPasswordFormData>({
+    resolver: zodResolver(forgotPasswordSchema),
+    defaultValues: {
+      email: '',
     },
   });
 
@@ -105,6 +120,117 @@ export default function Auth() {
       navigate('/');
     }
   };
+
+  const handleForgotPassword = async (data: ForgotPasswordFormData) => {
+    setIsLoading(true);
+    const redirectUrl = `${window.location.origin}/auth`;
+    
+    const { error } = await supabase.auth.resetPasswordForEmail(data.email, {
+      redirectTo: redirectUrl,
+    });
+    setIsLoading(false);
+
+    if (error) {
+      toast({
+        variant: 'destructive',
+        title: 'Reset Failed',
+        description: error.message || 'Failed to send reset email',
+      });
+    } else {
+      setResetEmailSent(true);
+      toast({
+        title: 'Check your email',
+        description: 'We sent you a password reset link.',
+      });
+    }
+  };
+
+  const handleBackToLogin = () => {
+    setShowForgotPassword(false);
+    setResetEmailSent(false);
+    forgotPasswordForm.reset();
+  };
+
+  if (showForgotPassword) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted p-4">
+        <Card className="w-full max-w-md shadow-xl">
+          <CardHeader className="text-center space-y-4">
+            <div className="flex justify-center">
+              <img src={logo} alt="Logo" className="h-16 w-auto" />
+            </div>
+            <CardTitle className="text-2xl">Reset Password</CardTitle>
+            <CardDescription>
+              {resetEmailSent 
+                ? "Check your email for the reset link" 
+                : "Enter your email to receive a password reset link"}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {resetEmailSent ? (
+              <div className="space-y-4 text-center">
+                <div className="p-4 bg-muted rounded-lg">
+                  <KeyRound className="h-12 w-12 mx-auto text-primary mb-2" />
+                  <p className="text-sm text-muted-foreground">
+                    We've sent a password reset link to your email address. 
+                    Please check your inbox and follow the instructions.
+                  </p>
+                </div>
+                <Button 
+                  variant="outline" 
+                  className="w-full gap-2" 
+                  onClick={handleBackToLogin}
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  Back to Login
+                </Button>
+              </div>
+            ) : (
+              <Form {...forgotPasswordForm}>
+                <form onSubmit={forgotPasswordForm.handleSubmit(handleForgotPassword)} className="space-y-4">
+                  <FormField
+                    control={forgotPasswordForm.control}
+                    name="email"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Email</FormLabel>
+                        <FormControl>
+                          <Input placeholder="you@example.com" type="email" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <Button type="submit" className="w-full" disabled={isLoading}>
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Sending...
+                      </>
+                    ) : (
+                      <>
+                        <KeyRound className="mr-2 h-4 w-4" />
+                        Send Reset Link
+                      </>
+                    )}
+                  </Button>
+                  <Button 
+                    type="button" 
+                    variant="ghost" 
+                    className="w-full gap-2" 
+                    onClick={handleBackToLogin}
+                  >
+                    <ArrowLeft className="h-4 w-4" />
+                    Back to Login
+                  </Button>
+                </form>
+              </Form>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted p-4">
@@ -158,6 +284,16 @@ export default function Auth() {
                       </FormItem>
                     )}
                   />
+                  <div className="flex justify-end">
+                    <Button 
+                      type="button" 
+                      variant="link" 
+                      className="px-0 text-sm text-muted-foreground hover:text-primary"
+                      onClick={() => setShowForgotPassword(true)}
+                    >
+                      Forgot password?
+                    </Button>
+                  </div>
                   <Button type="submit" className="w-full" disabled={isLoading}>
                     {isLoading ? (
                       <>
