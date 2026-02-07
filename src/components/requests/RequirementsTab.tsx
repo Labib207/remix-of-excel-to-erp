@@ -18,12 +18,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Plus, Trash2, ClipboardList, Package } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import { Plus, Trash2, ClipboardList, Package, PlusCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { useRequirementStore, MaterialRequirement } from '@/store/requirementStore';
 import { useCuttingStore } from '@/store/cuttingStore';
 import { Badge } from '@/components/ui/badge';
 import { DescriptionAutocomplete } from './DescriptionAutocomplete';
+import { format } from 'date-fns';
 
 interface NewRequirement {
   itemCode: string;
@@ -31,6 +39,17 @@ interface NewRequirement {
   uom: string;
   requiredQty: number;
   remarks: string;
+}
+
+interface NewOrder {
+  orderNumber: string;
+  customer: string;
+  styleNo: string;
+  styleName: string;
+  shade: string;
+  totalQty: number;
+  fabricWidth: number;
+  deliveryDate: string;
 }
 
 const emptyRequirement = (): NewRequirement => ({
@@ -41,8 +60,19 @@ const emptyRequirement = (): NewRequirement => ({
   remarks: '',
 });
 
+const emptyOrder = (): NewOrder => ({
+  orderNumber: '',
+  customer: '',
+  styleNo: '',
+  styleName: '',
+  shade: '',
+  totalQty: 0,
+  fabricWidth: 145,
+  deliveryDate: format(new Date(), 'yyyy-MM-dd'),
+});
+
 export function RequirementsTab() {
-  const { orders } = useCuttingStore();
+  const { orders, addOrder } = useCuttingStore();
   const { 
     requirements, 
     addRequirement, 
@@ -53,9 +83,39 @@ export function RequirementsTab() {
   
   const [selectedOrderId, setSelectedOrderId] = useState<string>('');
   const [newItems, setNewItems] = useState<NewRequirement[]>([emptyRequirement()]);
+  const [isAddOrderOpen, setIsAddOrderOpen] = useState(false);
+  const [newOrder, setNewOrder] = useState<NewOrder>(emptyOrder());
   
   const selectedOrder = orders.find(o => o.id === selectedOrderId);
   const orderRequirements = requirements.filter(r => r.orderId === selectedOrderId);
+
+  const handleAddOrder = () => {
+    if (!newOrder.orderNumber || !newOrder.customer) {
+      toast.error('Please fill in Order Number and Customer');
+      return;
+    }
+
+    const orderId = Math.random().toString(36).substr(2, 9);
+    addOrder({
+      id: orderId,
+      orderNumber: newOrder.orderNumber,
+      customer: newOrder.customer,
+      styleNo: newOrder.styleNo,
+      styleName: newOrder.styleName,
+      shade: newOrder.shade || 'X',
+      totalQty: newOrder.totalQty,
+      sizeQuantities: {},
+      fabricWidth: newOrder.fabricWidth,
+      orderDate: format(new Date(), 'yyyy-MM-dd'),
+      deliveryDate: newOrder.deliveryDate,
+      status: 'pending',
+    });
+
+    setSelectedOrderId(orderId);
+    setNewOrder(emptyOrder());
+    setIsAddOrderOpen(false);
+    toast.success(`Order ${newOrder.orderNumber} created successfully`);
+  };
 
   const addNewItemRow = () => {
     setNewItems([...newItems, emptyRequirement()]);
@@ -132,7 +192,7 @@ export function RequirementsTab() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <ClipboardList className="h-5 w-5" />
-            Select Order
+            Select or Create Order
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -152,10 +212,105 @@ export function RequirementsTab() {
                 </SelectContent>
               </Select>
             </div>
+            
+            <Dialog open={isAddOrderOpen} onOpenChange={setIsAddOrderOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline" className="gap-2">
+                  <PlusCircle className="h-4 w-4" />
+                  Add New Order
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-lg">
+                <DialogHeader>
+                  <DialogTitle>Add New Order</DialogTitle>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Order Number *</Label>
+                      <Input
+                        value={newOrder.orderNumber}
+                        onChange={(e) => setNewOrder({ ...newOrder, orderNumber: e.target.value })}
+                        placeholder="e.g., ORD-2024-001"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Customer *</Label>
+                      <Input
+                        value={newOrder.customer}
+                        onChange={(e) => setNewOrder({ ...newOrder, customer: e.target.value })}
+                        placeholder="Customer name"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Style No</Label>
+                      <Input
+                        value={newOrder.styleNo}
+                        onChange={(e) => setNewOrder({ ...newOrder, styleNo: e.target.value })}
+                        placeholder="e.g., BDU-001"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Style Name</Label>
+                      <Input
+                        value={newOrder.styleName}
+                        onChange={(e) => setNewOrder({ ...newOrder, styleName: e.target.value })}
+                        placeholder="e.g., Combat Uniform"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label>Shade</Label>
+                      <Input
+                        value={newOrder.shade}
+                        onChange={(e) => setNewOrder({ ...newOrder, shade: e.target.value })}
+                        placeholder="e.g., X, A, B"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Total Qty</Label>
+                      <Input
+                        type="number"
+                        value={newOrder.totalQty || ''}
+                        onChange={(e) => setNewOrder({ ...newOrder, totalQty: parseInt(e.target.value) || 0 })}
+                        placeholder="0"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Fabric Width (cm)</Label>
+                      <Input
+                        type="number"
+                        value={newOrder.fabricWidth || ''}
+                        onChange={(e) => setNewOrder({ ...newOrder, fabricWidth: parseInt(e.target.value) || 145 })}
+                        placeholder="145"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Delivery Date</Label>
+                    <Input
+                      type="date"
+                      value={newOrder.deliveryDate}
+                      onChange={(e) => setNewOrder({ ...newOrder, deliveryDate: e.target.value })}
+                    />
+                  </div>
+                </div>
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" onClick={() => setIsAddOrderOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button onClick={handleAddOrder}>
+                    Create Order
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+
             {selectedOrder && (
-              <div className="text-sm text-muted-foreground">
-                <Badge variant="outline">{selectedOrder.totalQty} pcs</Badge>
-              </div>
+              <Badge variant="outline">{selectedOrder.totalQty} pcs</Badge>
             )}
           </div>
         </CardContent>
