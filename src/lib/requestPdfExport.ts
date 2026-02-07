@@ -35,23 +35,17 @@ interface RequestForm {
 
 const getNextDocNumber = (prefix: string): string => {
   const key = `docNumber_${prefix}`;
-  const now = new Date();
-  const currentYear = now.getFullYear();
-  const yearKey = `${key}_${currentYear}`;
-  
-  // Get the last used number for this prefix and year
-  const stored = localStorage.getItem(yearKey);
+  const stored = localStorage.getItem(key);
   let counter = 1;
-  
+
   if (stored) {
     counter = parseInt(stored) + 1;
   }
-  
-  // Save the new counter
-  localStorage.setItem(yearKey, counter.toString());
-  
-  // Format: PREFIX-XX-YYYY (e.g., RMR-01-2026)
-  return `${prefix}-${String(counter).padStart(2, '0')}-${currentYear}`;
+
+  localStorage.setItem(key, counter.toString());
+
+  // Format: PREFIX-00001 (e.g., DOC-00038)
+  return `${prefix}-${String(counter).padStart(5, '0')}`;
 };
 
 const loadLogoAsBase64 = (): Promise<string> => {
@@ -91,7 +85,8 @@ const drawPageHeader = (
   form: RequestForm,
   marginLeft: number,
   contentWidth: number,
-  pageWidth: number
+  pageWidth: number,
+  showOrderRow: boolean
 ): number => {
   const headerTop = 10;
   const headerHeight = 30;
@@ -163,14 +158,17 @@ const drawPageHeader = (
   doc.text(form.department || '', marginLeft + 35, deptRowY + 5.5);
   doc.line(marginLeft, deptRowY + deptRowHeight, pageWidth - marginLeft, deptRowY + deptRowHeight);
 
-  // Order / PO row
-  const orderRowY = deptRowY + deptRowHeight;
-  const orderRowHeight = 8;
-  doc.text('Order / PO:', marginLeft + 3, orderRowY + 5.5);
-  doc.text(form.orderName || '', marginLeft + 32, orderRowY + 5.5);
-  doc.line(marginLeft, orderRowY + orderRowHeight, pageWidth - marginLeft, orderRowY + orderRowHeight);
+  if (showOrderRow) {
+    const orderRowY = deptRowY + deptRowHeight;
+    const orderRowHeight = 8;
+    doc.text('Order / PO:', marginLeft + 3, orderRowY + 5.5);
+    doc.text(form.orderName || '', marginLeft + 32, orderRowY + 5.5);
+    doc.line(marginLeft, orderRowY + orderRowHeight, pageWidth - marginLeft, orderRowY + orderRowHeight);
 
-  return orderRowY + orderRowHeight; // Return table start Y
+    return orderRowY + orderRowHeight; // Return table start Y
+  }
+
+  return deptRowY + deptRowHeight;
 };
 
 // Helper to draw signature section on every page
@@ -290,7 +288,7 @@ export const exportRawMaterialRequestPDF = async (form: RequestForm, items: Requ
   }
 
   // Draw initial header and signature
-  const tableStartY = drawPageHeader(doc, logoBase64, 'RAW MATERIAL REQUEST', docNumber, issueNumber, form, marginLeft, contentWidth, pageWidth);
+  const tableStartY = drawPageHeader(doc, logoBase64, 'RAW MATERIAL REQUEST', docNumber, issueNumber, form, marginLeft, contentWidth, pageWidth, false);
   drawSignatureSection(doc, form, marginLeft, contentWidth, sigY, 'raw');
 
   // Prepare table rows
@@ -349,7 +347,7 @@ export const exportRawMaterialRequestPDF = async (form: RequestForm, items: Requ
     didDrawPage: (data) => {
       // Draw header and signature on each new page
       if (data.pageNumber > 1) {
-        drawPageHeader(doc, logoBase64, 'RAW MATERIAL REQUEST', docNumber, issueNumber, form, marginLeft, contentWidth, pageWidth);
+        drawPageHeader(doc, logoBase64, 'RAW MATERIAL REQUEST', docNumber, issueNumber, form, marginLeft, contentWidth, pageWidth, false);
         drawSignatureSection(doc, form, marginLeft, contentWidth, sigY, 'raw');
       }
     }
@@ -379,7 +377,7 @@ export const exportGeneralSuppliesRequestPDF = async (form: RequestForm, items: 
   }
 
   // Draw initial header and signature
-  const tableStartY = drawPageHeader(doc, logoBase64, 'GENERAL SUPPLIES REQUEST', docNumber, issueNumber, form, marginLeft, contentWidth, pageWidth);
+  const tableStartY = drawPageHeader(doc, logoBase64, 'GENERAL SUPPLIES REQUEST', docNumber, issueNumber, form, marginLeft, contentWidth, pageWidth, true);
   drawSignatureSection(doc, form, marginLeft, contentWidth, sigY, 'general');
 
   const tableRows = items.length > 0 
@@ -436,7 +434,7 @@ export const exportGeneralSuppliesRequestPDF = async (form: RequestForm, items: 
     didDrawPage: (data) => {
       // Draw header and signature on each new page
       if (data.pageNumber > 1) {
-        drawPageHeader(doc, logoBase64, 'GENERAL SUPPLIES REQUEST', docNumber, issueNumber, form, marginLeft, contentWidth, pageWidth);
+        drawPageHeader(doc, logoBase64, 'GENERAL SUPPLIES REQUEST', docNumber, issueNumber, form, marginLeft, contentWidth, pageWidth, true);
         drawSignatureSection(doc, form, marginLeft, contentWidth, sigY, 'general');
       }
     }
@@ -466,7 +464,7 @@ export const exportMaterialReturnSlipPDF = async (form: RequestForm, items: Retu
   }
 
   // Draw initial header and signature
-  const tableStartY = drawPageHeader(doc, logoBase64, 'MATERIAL RETURN SLIP', docNumber, issueNumber, form, marginLeft, contentWidth, pageWidth);
+  const tableStartY = drawPageHeader(doc, logoBase64, 'MATERIAL RETURN SLIP', docNumber, issueNumber, form, marginLeft, contentWidth, pageWidth, true);
   drawSignatureSection(doc, form, marginLeft, contentWidth, sigY, 'return');
 
   const tableRows = items.length > 0 
@@ -521,7 +519,7 @@ export const exportMaterialReturnSlipPDF = async (form: RequestForm, items: Retu
     didDrawPage: (data) => {
       // Draw header and signature on each new page
       if (data.pageNumber > 1) {
-        drawPageHeader(doc, logoBase64, 'MATERIAL RETURN SLIP', docNumber, issueNumber, form, marginLeft, contentWidth, pageWidth);
+        drawPageHeader(doc, logoBase64, 'MATERIAL RETURN SLIP', docNumber, issueNumber, form, marginLeft, contentWidth, pageWidth, true);
         drawSignatureSection(doc, form, marginLeft, contentWidth, sigY, 'return');
       }
     }
@@ -541,7 +539,7 @@ export const exportEmptyRawMaterialPDF = async (): Promise<void> => {
     issuedBy: '',
     aswaqNumber: '',
   };
-  await exportRawMaterialRequestPDF(emptyForm, [], 'RMR-__-____');
+  await exportRawMaterialRequestPDF(emptyForm, [], 'DOC-_____');
 };
 
 export const exportEmptyGeneralSuppliesPDF = async (): Promise<void> => {

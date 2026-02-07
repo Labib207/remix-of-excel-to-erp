@@ -56,19 +56,13 @@ interface RequestStore {
 const getNextDocNumber = (prefix: string): string => {
   const key = `docNumber_submit_${prefix}`;
   const stored = localStorage.getItem(key);
-  const now = new Date();
-  const yearMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-  
   let counter = 1;
   if (stored) {
-    const [storedYearMonth, storedCounter] = stored.split('-');
-    if (storedYearMonth === yearMonth) {
-      counter = parseInt(storedCounter) + 1;
-    }
+    counter = parseInt(stored) + 1;
   }
-  
-  localStorage.setItem(key, `${yearMonth}-${counter}`);
-  return `${prefix}-${String(counter).padStart(4, '0')}-${yearMonth}`;
+
+  localStorage.setItem(key, counter.toString());
+  return `${prefix}-${String(counter).padStart(5, '0')}`;
 };
 
 export const useRequestStore = create<RequestStore>()(
