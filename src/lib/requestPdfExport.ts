@@ -81,7 +81,7 @@ const formatDate = (dateStr: string): string => {
 };
 
 export const exportRawMaterialRequestPDF = async (form: RequestForm, items: RequestItem[], existingDocNumber?: string): Promise<void> => {
-  const doc = new jsPDF('portrait', 'mm', 'a4');
+  const doc = new jsPDF('landscape', 'mm', 'a4');
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
   const docNumber = existingDocNumber || getNextDocNumber('DOC');
@@ -214,14 +214,14 @@ export const exportRawMaterialRequestPDF = async (form: RequestForm, items: Requ
       minCellHeight: 12
     },
     columnStyles: {
-      0: { cellWidth: 12, halign: 'center' },
-      1: { cellWidth: 28 },
-      2: { cellWidth: 42 },
-      3: { cellWidth: 15, halign: 'center' },
-      4: { cellWidth: 24, halign: 'center' },
-      5: { cellWidth: 22, halign: 'center' },
-      6: { cellWidth: 24, halign: 'center' },
-      7: { cellWidth: 23 }
+      0: { cellWidth: 15, halign: 'center' },
+      1: { cellWidth: 35 },
+      2: { cellWidth: 70 },
+      3: { cellWidth: 20, halign: 'center' },
+      4: { cellWidth: 30, halign: 'center' },
+      5: { cellWidth: 28, halign: 'center' },
+      6: { cellWidth: 30, halign: 'center' },
+      7: { cellWidth: 49 }
     },
     margin: { left: marginLeft, right: marginRight },
     tableWidth: contentWidth
@@ -321,7 +321,7 @@ export const exportRawMaterialRequestPDF = async (form: RequestForm, items: Requ
 };
 
 export const exportGeneralSuppliesRequestPDF = async (form: RequestForm, items: RequestItem[], existingDocNumber?: string): Promise<void> => {
-  const doc = new jsPDF('portrait', 'mm', 'a4');
+  const doc = new jsPDF('landscape', 'mm', 'a4');
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
   const docNumber = existingDocNumber || getNextDocNumber('DOC');
@@ -428,14 +428,14 @@ export const exportGeneralSuppliesRequestPDF = async (form: RequestForm, items: 
       minCellHeight: 12
     },
     columnStyles: {
-      0: { cellWidth: 12, halign: 'center' },
-      1: { cellWidth: 28 },
-      2: { cellWidth: 45 },
-      3: { cellWidth: 15, halign: 'center' },
-      4: { cellWidth: 22, halign: 'center' },
-      5: { cellWidth: 20, halign: 'center' },
-      6: { cellWidth: 22, halign: 'center' },
-      7: { cellWidth: 26 }
+      0: { cellWidth: 15, halign: 'center' },
+      1: { cellWidth: 35 },
+      2: { cellWidth: 70 },
+      3: { cellWidth: 20, halign: 'center' },
+      4: { cellWidth: 30, halign: 'center' },
+      5: { cellWidth: 28, halign: 'center' },
+      6: { cellWidth: 30, halign: 'center' },
+      7: { cellWidth: 49 }
     },
     margin: { left: 10, right: 10 },
     tableWidth: pageWidth - 20
@@ -528,7 +528,7 @@ export const exportGeneralSuppliesRequestPDF = async (form: RequestForm, items: 
 };
 
 export const exportMaterialReturnSlipPDF = async (form: RequestForm, items: ReturnItem[], existingDocNumber?: string): Promise<void> => {
-  const doc = new jsPDF('portrait', 'mm', 'a4');
+  const doc = new jsPDF('landscape', 'mm', 'a4');
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
   const docNumber = existingDocNumber || getNextDocNumber('DOC');
@@ -634,13 +634,13 @@ export const exportMaterialReturnSlipPDF = async (form: RequestForm, items: Retu
       minCellHeight: 12
     },
     columnStyles: {
-      0: { cellWidth: 15, halign: 'center' },
-      1: { cellWidth: 30 },
-      2: { cellWidth: 55 },
-      3: { cellWidth: 20, halign: 'center' },
-      4: { cellWidth: 25, halign: 'center' },
-      5: { cellWidth: 25, halign: 'center' },
-      6: { cellWidth: 20 }
+      0: { cellWidth: 18, halign: 'center' },
+      1: { cellWidth: 40 },
+      2: { cellWidth: 90 },
+      3: { cellWidth: 25, halign: 'center' },
+      4: { cellWidth: 35, halign: 'center' },
+      5: { cellWidth: 35, halign: 'center' },
+      6: { cellWidth: 34 }
     },
     margin: { left: 10, right: 10 },
     tableWidth: pageWidth - 20
