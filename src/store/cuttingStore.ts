@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import { Order, CutPlan, Bundle, Ratio, MarkerPlan, LaySheet, BundleGuide, SIZES, FabricRoll, LayRecord, FabricCalculation } from '@/types/cutting';
 
 interface CuttingStore {
@@ -194,7 +195,9 @@ const sampleLaySheets: LaySheet[] = [
   { id: 'l3', cutPlanId: '3', layNo: 1, plies: 100, layLength: 12.9154, fabricRoll: 'ROLL-003' }
 ];
 
-export const useCuttingStore = create<CuttingStore>((set, get) => ({
+export const useCuttingStore = create<CuttingStore>()(
+  persist(
+    (set, get) => ({
   orders: [sampleOrder],
   cutPlans: sampleCutPlans,
   bundles: [],
@@ -641,4 +644,9 @@ export const useCuttingStore = create<CuttingStore>((set, get) => ({
       bundles: newBundles.length
     };
   }
-}));
+}),
+    {
+      name: 'cutting-storage',
+    }
+  )
+);
