@@ -81,54 +81,82 @@ const formatDate = (dateStr: string): string => {
 };
 
 export const exportRawMaterialRequestPDF = async (form: RequestForm, items: RequestItem[], existingDocNumber?: string): Promise<void> => {
-  const doc = new jsPDF('landscape', 'mm', 'a4');
+  const doc = new jsPDF('portrait', 'mm', 'a4');
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
-  const docNumber = existingDocNumber || getNextDocNumber('RMR');
+  const docNumber = existingDocNumber || getNextDocNumber('DOC');
+  const issueNumber = `ISS-${docNumber.split('-')[1]}`;
   
   // Outer border
   doc.setDrawColor(0);
   doc.setLineWidth(0.5);
-  doc.rect(5, 5, pageWidth - 10, pageHeight - 10);
+  doc.rect(10, 10, pageWidth - 20, pageHeight - 20);
 
-  // Add logo on left - nicely positioned
+  // Header section with logo and title
+  let headerY = 18;
+  
+  // Add logo on left
   try {
     const logoBase64 = await loadLogoAsBase64();
-    doc.addImage(logoBase64, 'PNG', 12, 10, 40, 18);
+    doc.addImage(logoBase64, 'PNG', 15, 15, 35, 20);
   } catch (error) {
-    doc.setFontSize(12);
+    doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
-    doc.text('GHOUSH', 15, 20);
+    doc.text('GHOUSH', 20, 25);
+    doc.setFontSize(6);
+    doc.text('MILITARY & SAFETY UNIFORMS', 20, 30);
   }
 
-  // Title - RAW MATERIAL REQUEST (centered)
-  doc.setFontSize(16);
+  // Title - RAW MATERIAL REQUEST (next to logo)
+  doc.setFontSize(18);
   doc.setFont('helvetica', 'bold');
-  doc.text('RAW MATERIAL REQUEST', pageWidth / 2, 20, { align: 'center' });
+  doc.text('RAW MATERIAL REQUEST', 55, 28);
 
-  // Document ID and Issue Number line
+  // Header bottom line
+  const headerBottom = 40;
   doc.setLineWidth(0.3);
-  doc.line(10, 30, pageWidth - 10, 30);
+  doc.line(10, headerBottom, pageWidth - 10, headerBottom);
+
+  // Document ID and Issue Number row (table format)
+  const docIdRowY = headerBottom;
+  const docIdRowHeight = 10;
   
-  doc.setFontSize(9);
-  doc.setFont('helvetica', 'bold');
-  doc.text(`Document ID: ${docNumber}`, 12, 36);
-  doc.text('Issue Number', 200, 36);
+  // Document ID label and value
+  doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
-  doc.text('GAU-VER 01-JAN-2024', 230, 36);
+  doc.text('Document ID', 15, docIdRowY + 7);
+  doc.setFont('helvetica', 'bold');
+  doc.text(docNumber, 50, docIdRowY + 7);
   
-  doc.line(10, 39, pageWidth - 10, 39);
+  // Vertical divider
+  doc.line(pageWidth / 2, docIdRowY, pageWidth / 2, docIdRowY + docIdRowHeight);
+  
+  // Issue Number label and value
+  doc.setFont('helvetica', 'normal');
+  doc.text('Issue Number', pageWidth / 2 + 5, docIdRowY + 7);
+  doc.setFont('helvetica', 'bold');
+  doc.text(issueNumber, pageWidth / 2 + 40, docIdRowY + 7);
+  
+  doc.line(10, docIdRowY + docIdRowHeight, pageWidth - 10, docIdRowY + docIdRowHeight);
 
   // Date row
+  const dateRowY = docIdRowY + docIdRowHeight;
+  const dateRowHeight = 8;
   doc.setFont('helvetica', 'normal');
-  doc.text(`Date: ${formatDate(form.date)}`, 12, 45);
-  doc.line(10, 48, pageWidth - 10, 48);
+  doc.setFontSize(10);
+  doc.text(`Date:  ${formatDate(form.date)}`, 15, dateRowY + 6);
+  doc.line(10, dateRowY + dateRowHeight, pageWidth - 10, dateRowY + dateRowHeight);
 
   // Department row
-  doc.text(`Department: ${form.department}`, 12, 54);
-  doc.line(10, 57, pageWidth - 10, 57);
+  const deptRowY = dateRowY + dateRowHeight;
+  const deptRowHeight = 8;
+  doc.text(`Department:  ${form.department}`, 15, deptRowY + 6);
+  doc.line(10, deptRowY + deptRowHeight, pageWidth - 10, deptRowY + deptRowHeight);
 
-  // Table - ensure minimum 10 rows + 3 additional empty rows for manual notes
+  // Table starting position
+  const tableStartY = deptRowY + deptRowHeight;
+
+  // Prepare table rows - ensure minimum 10 rows + 3 additional empty rows for manual notes
   const tableRows = items.length > 0 
     ? items.map(item => [
         item.slNo.toString(),
@@ -142,23 +170,24 @@ export const exportRawMaterialRequestPDF = async (form: RequestForm, items: Requ
       ])
     : [];
   
-  // Pad to minimum 10 rows + 3 additional empty rows for manual writing
-  const minRows = Math.max(10, items.length + 3);
+  // Pad to minimum 12 rows for proper layout
+  const minRows = Math.max(12, items.length + 3);
   while (tableRows.length < minRows) {
     tableRows.push(['', '', '', '', '', '', '', '']);
   }
 
   autoTable(doc, {
-    startY: 59,
+    startY: tableStartY,
     head: [['SL No', 'ITEM CODE', 'DESCRIPTION', 'UOM', 'REQUESTED\nQUANTITY', 'ISSUED\nQUANTITY', 'REMAINING\nQUANTITY', 'Remarks for Merchandize']],
     body: tableRows,
     theme: 'grid',
     styles: { 
       fontSize: 8, 
-      cellPadding: 1.5,
+      cellPadding: 2,
       lineColor: [0, 0, 0],
       lineWidth: 0.2,
-      minCellHeight: 6
+      minCellHeight: 8,
+      valign: 'middle'
     },
     headStyles: { 
       fillColor: [255, 255, 255], 
@@ -166,123 +195,180 @@ export const exportRawMaterialRequestPDF = async (form: RequestForm, items: Requ
       fontStyle: 'bold',
       halign: 'center',
       valign: 'middle',
-      minCellHeight: 10
+      minCellHeight: 12
     },
     columnStyles: {
-      0: { cellWidth: 15, halign: 'center' },
-      1: { cellWidth: 30 },
-      2: { cellWidth: 65 },
-      3: { cellWidth: 18, halign: 'center' },
-      4: { cellWidth: 28, halign: 'center' },
-      5: { cellWidth: 28, halign: 'center' },
-      6: { cellWidth: 28, halign: 'center' },
-      7: { cellWidth: 55 }
+      0: { cellWidth: 12, halign: 'center' },
+      1: { cellWidth: 28 },
+      2: { cellWidth: 45 },
+      3: { cellWidth: 15, halign: 'center' },
+      4: { cellWidth: 22, halign: 'center' },
+      5: { cellWidth: 20, halign: 'center' },
+      6: { cellWidth: 22, halign: 'center' },
+      7: { cellWidth: 26 }
     },
-    margin: { left: 10, right: 10 }
+    margin: { left: 10, right: 10 },
+    tableWidth: pageWidth - 20
   });
 
-  // Signature section at bottom
-  const sigY = 158;
+  // Get the final Y position after table
+  const finalY = (doc as any).lastAutoTable.finalY;
+
+  // Signature section - 4 columns
+  const sigY = Math.max(finalY + 5, pageHeight - 55);
+  const sigBoxWidth = (pageWidth - 20) / 4;
+  const sigBoxHeight = 35;
+
+  // Draw signature boxes
+  doc.setLineWidth(0.3);
   
-  doc.setFontSize(9);
+  // Box 1 - Requested By
+  doc.rect(10, sigY, sigBoxWidth, sigBoxHeight);
+  doc.setFontSize(10);
   doc.setFont('helvetica', 'bold');
-  doc.text('Requested By', 25, sigY);
-  doc.text('Approved By', 95, sigY);
-  doc.text('ASWAQ Transaction Report Number', 155, sigY);
-  doc.text('Issued By', 250, sigY);
-
-  // Signature lines
+  doc.text('Requested By', 10 + sigBoxWidth / 2, sigY + 6, { align: 'center' });
+  
+  // Signature line and labels
   doc.setLineWidth(0.2);
-  doc.line(20, sigY + 12, 70, sigY + 12);
-  doc.line(90, sigY + 12, 140, sigY + 12);
-  doc.line(150, sigY + 12, 230, sigY + 12);
-  doc.line(245, sigY + 12, 285, sigY + 12);
-
-  // Labels under signature lines
-  doc.setFont('helvetica', 'normal');
+  doc.line(10 + 5, sigY + 22, 10 + sigBoxWidth - 5, sigY + 22);
+  doc.setFont('helvetica', 'italic');
   doc.setFontSize(7);
   doc.setTextColor(100);
-  doc.text('Name & Signature', 25, sigY + 17);
-  doc.text('Name & Signature', 95, sigY + 17);
-  doc.text('Name & Signature', 250, sigY + 17);
-  
+  doc.text('Name & Signature', 10 + sigBoxWidth / 2, sigY + 27, { align: 'center' });
   doc.setTextColor(0);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8);
-  doc.text('Line Leader', 25, sigY + 23);
-  doc.text('Production Manager', 95, sigY + 23);
-  doc.text('Warehouse In Charge', 250, sigY + 23);
+  doc.text('Line Leader', 10 + sigBoxWidth / 2, sigY + 32, { align: 'center' });
+
+  // Box 2 - Approved By
+  doc.setLineWidth(0.3);
+  doc.rect(10 + sigBoxWidth, sigY, sigBoxWidth, sigBoxHeight);
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Approved By', 10 + sigBoxWidth + sigBoxWidth / 2, sigY + 6, { align: 'center' });
+  
+  doc.setLineWidth(0.2);
+  doc.line(10 + sigBoxWidth + 5, sigY + 22, 10 + sigBoxWidth * 2 - 5, sigY + 22);
+  doc.setFont('helvetica', 'italic');
+  doc.setFontSize(7);
+  doc.setTextColor(100);
+  doc.text('Name & Signature', 10 + sigBoxWidth + sigBoxWidth / 2, sigY + 27, { align: 'center' });
+  doc.setTextColor(0);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.text('Production Manager', 10 + sigBoxWidth + sigBoxWidth / 2, sigY + 32, { align: 'center' });
+
+  // Box 3 - ASWAQ Transaction Report Number
+  doc.setLineWidth(0.3);
+  doc.rect(10 + sigBoxWidth * 2, sigY, sigBoxWidth, sigBoxHeight);
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'bold');
+  doc.text('ASWAQ Transaction Report Number', 10 + sigBoxWidth * 2 + sigBoxWidth / 2, sigY + 6, { align: 'center' });
+
+  // Box 4 - Issued By
+  doc.rect(10 + sigBoxWidth * 3, sigY, sigBoxWidth, sigBoxHeight);
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Issued By', 10 + sigBoxWidth * 3 + sigBoxWidth / 2, sigY + 6, { align: 'center' });
+  
+  doc.setLineWidth(0.2);
+  doc.line(10 + sigBoxWidth * 3 + 5, sigY + 22, 10 + sigBoxWidth * 4 - 5, sigY + 22);
+  doc.setFont('helvetica', 'italic');
+  doc.setFontSize(7);
+  doc.setTextColor(100);
+  doc.text('Name & Signature', 10 + sigBoxWidth * 3 + sigBoxWidth / 2, sigY + 27, { align: 'center' });
+  doc.setTextColor(0);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.text('Warehouse In Charge', 10 + sigBoxWidth * 3 + sigBoxWidth / 2, sigY + 32, { align: 'center' });
 
   // Fill in form values if provided
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
   if (form.requestedBy) {
-    doc.setFont('helvetica', 'normal');
-    doc.text(form.requestedBy, 25, sigY + 8);
+    doc.text(form.requestedBy, 10 + sigBoxWidth / 2, sigY + 16, { align: 'center' });
   }
   if (form.approvedBy) {
-    doc.setFont('helvetica', 'normal');
-    doc.text(form.approvedBy, 95, sigY + 8);
+    doc.text(form.approvedBy, 10 + sigBoxWidth + sigBoxWidth / 2, sigY + 16, { align: 'center' });
   }
   if (form.aswaqNumber) {
-    doc.setFont('helvetica', 'normal');
-    doc.text(form.aswaqNumber, 155, sigY + 8);
+    doc.text(form.aswaqNumber, 10 + sigBoxWidth * 2 + sigBoxWidth / 2, sigY + 16, { align: 'center' });
   }
   if (form.issuedBy) {
-    doc.setFont('helvetica', 'normal');
-    doc.text(form.issuedBy, 250, sigY + 8);
+    doc.text(form.issuedBy, 10 + sigBoxWidth * 3 + sigBoxWidth / 2, sigY + 16, { align: 'center' });
   }
 
   doc.save(`Raw_Material_Request_${docNumber}.pdf`);
 };
 
 export const exportGeneralSuppliesRequestPDF = async (form: RequestForm, items: RequestItem[], existingDocNumber?: string): Promise<void> => {
-  const doc = new jsPDF('landscape', 'mm', 'a4');
+  const doc = new jsPDF('portrait', 'mm', 'a4');
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
-  const docNumber = existingDocNumber || getNextDocNumber('GSR');
+  const docNumber = existingDocNumber || getNextDocNumber('DOC');
+  const issueNumber = `ISS-${docNumber.split('-')[1]}`;
   
   // Outer border
   doc.setDrawColor(0);
   doc.setLineWidth(0.5);
-  doc.rect(5, 5, pageWidth - 10, pageHeight - 10);
+  doc.rect(10, 10, pageWidth - 20, pageHeight - 20);
 
-  // Add logo on left - nicely positioned
+  // Header section with logo and title
   try {
     const logoBase64 = await loadLogoAsBase64();
-    doc.addImage(logoBase64, 'PNG', 12, 10, 40, 18);
+    doc.addImage(logoBase64, 'PNG', 15, 15, 35, 20);
   } catch (error) {
-    doc.setFontSize(12);
+    doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
-    doc.text('GHOUSH', 15, 20);
+    doc.text('GHOUSH', 20, 25);
   }
 
-  // Title - GENERAL SUPPLIES REQUEST (centered)
-  doc.setFontSize(16);
+  // Title
+  doc.setFontSize(18);
   doc.setFont('helvetica', 'bold');
-  doc.text('GENERAL SUPPLIES REQUEST', pageWidth / 2, 20, { align: 'center' });
+  doc.text('GENERAL SUPPLIES REQUEST', 55, 28);
 
-  // Document ID and Issue Number line
+  // Header bottom line
+  const headerBottom = 40;
   doc.setLineWidth(0.3);
-  doc.line(10, 30, pageWidth - 10, 30);
+  doc.line(10, headerBottom, pageWidth - 10, headerBottom);
+
+  // Document ID and Issue Number row
+  const docIdRowY = headerBottom;
+  const docIdRowHeight = 10;
   
-  doc.setFontSize(9);
-  doc.setFont('helvetica', 'bold');
-  doc.text(`Document ID: ${docNumber}`, 12, 36);
-  doc.text('Issue Number', 200, 36);
+  doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
-  doc.text('GAU-VER 01-JAN-2024', 230, 36);
+  doc.text('Document ID', 15, docIdRowY + 7);
+  doc.setFont('helvetica', 'bold');
+  doc.text(docNumber, 50, docIdRowY + 7);
   
-  doc.line(10, 39, pageWidth - 10, 39);
+  doc.line(pageWidth / 2, docIdRowY, pageWidth / 2, docIdRowY + docIdRowHeight);
+  
+  doc.setFont('helvetica', 'normal');
+  doc.text('Issue Number', pageWidth / 2 + 5, docIdRowY + 7);
+  doc.setFont('helvetica', 'bold');
+  doc.text(issueNumber, pageWidth / 2 + 40, docIdRowY + 7);
+  
+  doc.line(10, docIdRowY + docIdRowHeight, pageWidth - 10, docIdRowY + docIdRowHeight);
 
   // Date row
+  const dateRowY = docIdRowY + docIdRowHeight;
+  const dateRowHeight = 8;
   doc.setFont('helvetica', 'normal');
-  doc.text(`Date: ${formatDate(form.date)}`, 12, 45);
-  doc.line(10, 48, pageWidth - 10, 48);
+  doc.setFontSize(10);
+  doc.text(`Date:  ${formatDate(form.date)}`, 15, dateRowY + 6);
+  doc.line(10, dateRowY + dateRowHeight, pageWidth - 10, dateRowY + dateRowHeight);
 
   // Department row
-  doc.text(`Department: ${form.department}`, 12, 54);
-  doc.line(10, 57, pageWidth - 10, 57);
+  const deptRowY = dateRowY + dateRowHeight;
+  const deptRowHeight = 8;
+  doc.text(`Department:  ${form.department}`, 15, deptRowY + 6);
+  doc.line(10, deptRowY + deptRowHeight, pageWidth - 10, deptRowY + deptRowHeight);
 
-  // Table - ensure minimum 10 rows + 3 additional empty rows for manual notes
+  // Table
+  const tableStartY = deptRowY + deptRowHeight;
+
   const tableRows = items.length > 0 
     ? items.map(item => [
         item.slNo.toString(),
@@ -296,23 +382,23 @@ export const exportGeneralSuppliesRequestPDF = async (form: RequestForm, items: 
       ])
     : [];
   
-  // Pad to minimum 10 rows + 3 additional empty rows for manual writing
-  const minRows = Math.max(10, items.length + 3);
+  const minRows = Math.max(12, items.length + 3);
   while (tableRows.length < minRows) {
     tableRows.push(['', '', '', '', '', '', '', '']);
   }
 
   autoTable(doc, {
-    startY: 59,
+    startY: tableStartY,
     head: [['SL No', 'ITEM CODE', 'DESCRIPTION', 'UOM', 'REQUESTED\nQUANTITY', 'ISSUED\nQUANTITY', 'REMAINING\nQUANTITY', 'Remarks for Procurement']],
     body: tableRows,
     theme: 'grid',
     styles: { 
       fontSize: 8, 
-      cellPadding: 1.5,
+      cellPadding: 2,
       lineColor: [0, 0, 0],
       lineWidth: 0.2,
-      minCellHeight: 6
+      minCellHeight: 8,
+      valign: 'middle'
     },
     headStyles: { 
       fillColor: [255, 255, 255], 
@@ -320,120 +406,176 @@ export const exportGeneralSuppliesRequestPDF = async (form: RequestForm, items: 
       fontStyle: 'bold',
       halign: 'center',
       valign: 'middle',
-      minCellHeight: 10
+      minCellHeight: 12
     },
     columnStyles: {
-      0: { cellWidth: 15, halign: 'center' },
-      1: { cellWidth: 30 },
-      2: { cellWidth: 65 },
-      3: { cellWidth: 18, halign: 'center' },
-      4: { cellWidth: 28, halign: 'center' },
-      5: { cellWidth: 28, halign: 'center' },
-      6: { cellWidth: 28, halign: 'center' },
-      7: { cellWidth: 55 }
+      0: { cellWidth: 12, halign: 'center' },
+      1: { cellWidth: 28 },
+      2: { cellWidth: 45 },
+      3: { cellWidth: 15, halign: 'center' },
+      4: { cellWidth: 22, halign: 'center' },
+      5: { cellWidth: 20, halign: 'center' },
+      6: { cellWidth: 22, halign: 'center' },
+      7: { cellWidth: 26 }
     },
-    margin: { left: 10, right: 10 }
+    margin: { left: 10, right: 10 },
+    tableWidth: pageWidth - 20
   });
 
   // Signature section
-  const sigY = 158;
+  const finalY = (doc as any).lastAutoTable.finalY;
+  const sigY = Math.max(finalY + 5, pageHeight - 55);
+  const sigBoxWidth = (pageWidth - 20) / 4;
+  const sigBoxHeight = 35;
+
+  doc.setLineWidth(0.3);
   
-  doc.setFontSize(9);
+  // Box 1 - Requested By
+  doc.rect(10, sigY, sigBoxWidth, sigBoxHeight);
+  doc.setFontSize(10);
   doc.setFont('helvetica', 'bold');
-  doc.text('Requested By', 25, sigY);
-  doc.text('Approved By', 95, sigY);
-  doc.text('ASWAQ Transaction Report Number', 155, sigY);
-  doc.text('Issued By', 250, sigY);
-
+  doc.text('Requested By', 10 + sigBoxWidth / 2, sigY + 6, { align: 'center' });
+  
   doc.setLineWidth(0.2);
-  doc.line(20, sigY + 12, 70, sigY + 12);
-  doc.line(90, sigY + 12, 140, sigY + 12);
-  doc.line(150, sigY + 12, 230, sigY + 12);
-  doc.line(245, sigY + 12, 285, sigY + 12);
-
-  doc.setFont('helvetica', 'normal');
+  doc.line(10 + 5, sigY + 22, 10 + sigBoxWidth - 5, sigY + 22);
+  doc.setFont('helvetica', 'italic');
   doc.setFontSize(7);
   doc.setTextColor(100);
-  doc.text('Name & Signature', 25, sigY + 17);
-  doc.text('Name & Signature', 95, sigY + 17);
-  doc.text('Name & Signature', 250, sigY + 17);
-  
+  doc.text('Name & Signature', 10 + sigBoxWidth / 2, sigY + 27, { align: 'center' });
   doc.setTextColor(0);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8);
-  doc.text('Line Leader', 25, sigY + 23);
-  doc.text('Line Manager', 95, sigY + 23);
-  doc.text('Warehouse In Charge', 250, sigY + 23);
+  doc.text('Line Leader', 10 + sigBoxWidth / 2, sigY + 32, { align: 'center' });
 
+  // Box 2 - Approved By
+  doc.setLineWidth(0.3);
+  doc.rect(10 + sigBoxWidth, sigY, sigBoxWidth, sigBoxHeight);
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Approved By', 10 + sigBoxWidth + sigBoxWidth / 2, sigY + 6, { align: 'center' });
+  
+  doc.setLineWidth(0.2);
+  doc.line(10 + sigBoxWidth + 5, sigY + 22, 10 + sigBoxWidth * 2 - 5, sigY + 22);
+  doc.setFont('helvetica', 'italic');
+  doc.setFontSize(7);
+  doc.setTextColor(100);
+  doc.text('Name & Signature', 10 + sigBoxWidth + sigBoxWidth / 2, sigY + 27, { align: 'center' });
+  doc.setTextColor(0);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.text('Line Manager', 10 + sigBoxWidth + sigBoxWidth / 2, sigY + 32, { align: 'center' });
+
+  // Box 3 - ASWAQ
+  doc.setLineWidth(0.3);
+  doc.rect(10 + sigBoxWidth * 2, sigY, sigBoxWidth, sigBoxHeight);
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'bold');
+  doc.text('ASWAQ Transaction Report Number', 10 + sigBoxWidth * 2 + sigBoxWidth / 2, sigY + 6, { align: 'center' });
+
+  // Box 4 - Issued By
+  doc.rect(10 + sigBoxWidth * 3, sigY, sigBoxWidth, sigBoxHeight);
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Issued By', 10 + sigBoxWidth * 3 + sigBoxWidth / 2, sigY + 6, { align: 'center' });
+  
+  doc.setLineWidth(0.2);
+  doc.line(10 + sigBoxWidth * 3 + 5, sigY + 22, 10 + sigBoxWidth * 4 - 5, sigY + 22);
+  doc.setFont('helvetica', 'italic');
+  doc.setFontSize(7);
+  doc.setTextColor(100);
+  doc.text('Name & Signature', 10 + sigBoxWidth * 3 + sigBoxWidth / 2, sigY + 27, { align: 'center' });
+  doc.setTextColor(0);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.text('Warehouse In Charge', 10 + sigBoxWidth * 3 + sigBoxWidth / 2, sigY + 32, { align: 'center' });
+
+  // Fill in form values
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
   if (form.requestedBy) {
-    doc.setFont('helvetica', 'normal');
-    doc.text(form.requestedBy, 25, sigY + 8);
+    doc.text(form.requestedBy, 10 + sigBoxWidth / 2, sigY + 16, { align: 'center' });
   }
   if (form.approvedBy) {
-    doc.setFont('helvetica', 'normal');
-    doc.text(form.approvedBy, 95, sigY + 8);
+    doc.text(form.approvedBy, 10 + sigBoxWidth + sigBoxWidth / 2, sigY + 16, { align: 'center' });
   }
   if (form.aswaqNumber) {
-    doc.setFont('helvetica', 'normal');
-    doc.text(form.aswaqNumber, 155, sigY + 8);
+    doc.text(form.aswaqNumber, 10 + sigBoxWidth * 2 + sigBoxWidth / 2, sigY + 16, { align: 'center' });
   }
   if (form.issuedBy) {
-    doc.setFont('helvetica', 'normal');
-    doc.text(form.issuedBy, 250, sigY + 8);
+    doc.text(form.issuedBy, 10 + sigBoxWidth * 3 + sigBoxWidth / 2, sigY + 16, { align: 'center' });
   }
 
   doc.save(`General_Supplies_Request_${docNumber}.pdf`);
 };
 
 export const exportMaterialReturnSlipPDF = async (form: RequestForm, items: ReturnItem[], existingDocNumber?: string): Promise<void> => {
-  const doc = new jsPDF('landscape', 'mm', 'a4');
+  const doc = new jsPDF('portrait', 'mm', 'a4');
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
-  const docNumber = existingDocNumber || getNextDocNumber('MRS');
+  const docNumber = existingDocNumber || getNextDocNumber('DOC');
+  const issueNumber = `ISS-${docNumber.split('-')[1]}`;
   
   // Outer border
   doc.setDrawColor(0);
   doc.setLineWidth(0.5);
-  doc.rect(5, 5, pageWidth - 10, pageHeight - 10);
+  doc.rect(10, 10, pageWidth - 20, pageHeight - 20);
 
-  // Add logo on left - nicely positioned
+  // Header section with logo and title
   try {
     const logoBase64 = await loadLogoAsBase64();
-    doc.addImage(logoBase64, 'PNG', 12, 10, 40, 18);
+    doc.addImage(logoBase64, 'PNG', 15, 15, 35, 20);
   } catch (error) {
-    doc.setFontSize(12);
+    doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
-    doc.text('GHOUSH', 15, 20);
+    doc.text('GHOUSH', 20, 25);
   }
 
-  // Title - MATERIAL RETURN SLIP (centered)
-  doc.setFontSize(16);
+  // Title
+  doc.setFontSize(18);
   doc.setFont('helvetica', 'bold');
-  doc.text('MATERIAL RETURN SLIP', pageWidth / 2, 20, { align: 'center' });
+  doc.text('MATERIAL RETURN SLIP', 55, 28);
 
-  // Document ID and Issue Number line
+  // Header bottom line
+  const headerBottom = 40;
   doc.setLineWidth(0.3);
-  doc.line(10, 30, pageWidth - 10, 30);
+  doc.line(10, headerBottom, pageWidth - 10, headerBottom);
+
+  // Document ID and Issue Number row
+  const docIdRowY = headerBottom;
+  const docIdRowHeight = 10;
   
-  doc.setFontSize(9);
-  doc.setFont('helvetica', 'bold');
-  doc.text(`Document ID: ${docNumber}`, 12, 36);
-  doc.text('Issue Number', 200, 36);
+  doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
-  doc.text('GAU-VER 01-JAN-2024', 230, 36);
+  doc.text('Document ID', 15, docIdRowY + 7);
+  doc.setFont('helvetica', 'bold');
+  doc.text(docNumber, 50, docIdRowY + 7);
   
-  doc.line(10, 39, pageWidth - 10, 39);
+  doc.line(pageWidth / 2, docIdRowY, pageWidth / 2, docIdRowY + docIdRowHeight);
+  
+  doc.setFont('helvetica', 'normal');
+  doc.text('Issue Number', pageWidth / 2 + 5, docIdRowY + 7);
+  doc.setFont('helvetica', 'bold');
+  doc.text(issueNumber, pageWidth / 2 + 40, docIdRowY + 7);
+  
+  doc.line(10, docIdRowY + docIdRowHeight, pageWidth - 10, docIdRowY + docIdRowHeight);
 
   // Date row
+  const dateRowY = docIdRowY + docIdRowHeight;
+  const dateRowHeight = 8;
   doc.setFont('helvetica', 'normal');
-  doc.text(`Date: ${formatDate(form.date)}`, 12, 45);
-  doc.line(10, 48, pageWidth - 10, 48);
+  doc.setFontSize(10);
+  doc.text(`Date:  ${formatDate(form.date)}`, 15, dateRowY + 6);
+  doc.line(10, dateRowY + dateRowHeight, pageWidth - 10, dateRowY + dateRowHeight);
 
   // Department row
-  doc.text(`Department: ${form.department}`, 12, 54);
-  doc.line(10, 57, pageWidth - 10, 57);
+  const deptRowY = dateRowY + dateRowHeight;
+  const deptRowHeight = 8;
+  doc.text(`Department:  ${form.department}`, 15, deptRowY + 6);
+  doc.line(10, deptRowY + deptRowHeight, pageWidth - 10, deptRowY + deptRowHeight);
 
-  // Table - ensure minimum 10 rows + 3 additional empty rows for manual notes
+  // Table
+  const tableStartY = deptRowY + deptRowHeight;
+
   const tableRows = items.length > 0 
     ? items.map(item => [
         item.slNo.toString(),
@@ -446,23 +588,23 @@ export const exportMaterialReturnSlipPDF = async (form: RequestForm, items: Retu
       ])
     : [];
   
-  // Pad to minimum 10 rows + 3 additional empty rows for manual writing
-  const minRows = Math.max(10, items.length + 3);
+  const minRows = Math.max(12, items.length + 3);
   while (tableRows.length < minRows) {
     tableRows.push(['', '', '', '', '', '', '']);
   }
 
   autoTable(doc, {
-    startY: 59,
+    startY: tableStartY,
     head: [['SL No', 'ITEM CODE', 'DESCRIPTION', 'UOM', 'QUANTITY\nRETURNED', 'QUANTITY\nRECEIVED', 'Remarks']],
     body: tableRows,
     theme: 'grid',
     styles: { 
       fontSize: 8, 
-      cellPadding: 1.5,
+      cellPadding: 2,
       lineColor: [0, 0, 0],
       lineWidth: 0.2,
-      minCellHeight: 6
+      minCellHeight: 8,
+      valign: 'middle'
     },
     headStyles: { 
       fillColor: [255, 255, 255], 
@@ -470,65 +612,102 @@ export const exportMaterialReturnSlipPDF = async (form: RequestForm, items: Retu
       fontStyle: 'bold',
       halign: 'center',
       valign: 'middle',
-      minCellHeight: 10
+      minCellHeight: 12
     },
     columnStyles: {
-      0: { cellWidth: 18, halign: 'center' },
-      1: { cellWidth: 35 },
-      2: { cellWidth: 80 },
-      3: { cellWidth: 22, halign: 'center' },
-      4: { cellWidth: 35, halign: 'center' },
-      5: { cellWidth: 35, halign: 'center' },
-      6: { cellWidth: 52 }
+      0: { cellWidth: 15, halign: 'center' },
+      1: { cellWidth: 30 },
+      2: { cellWidth: 55 },
+      3: { cellWidth: 20, halign: 'center' },
+      4: { cellWidth: 25, halign: 'center' },
+      5: { cellWidth: 25, halign: 'center' },
+      6: { cellWidth: 20 }
     },
-    margin: { left: 10, right: 10 }
+    margin: { left: 10, right: 10 },
+    tableWidth: pageWidth - 20
   });
 
   // Signature section
-  const sigY = 158;
+  const finalY = (doc as any).lastAutoTable.finalY;
+  const sigY = Math.max(finalY + 5, pageHeight - 55);
+  const sigBoxWidth = (pageWidth - 20) / 4;
+  const sigBoxHeight = 35;
+
+  doc.setLineWidth(0.3);
   
-  doc.setFontSize(9);
+  // Box 1 - Returned By
+  doc.rect(10, sigY, sigBoxWidth, sigBoxHeight);
+  doc.setFontSize(10);
   doc.setFont('helvetica', 'bold');
-  doc.text('Returned By', 25, sigY);
-  doc.text('Approved By', 95, sigY);
-  doc.text('ASWAQ Transaction Report Number', 155, sigY);
-  doc.text('Received By', 250, sigY);
-
+  doc.text('Returned By', 10 + sigBoxWidth / 2, sigY + 6, { align: 'center' });
+  
   doc.setLineWidth(0.2);
-  doc.line(20, sigY + 12, 70, sigY + 12);
-  doc.line(90, sigY + 12, 140, sigY + 12);
-  doc.line(150, sigY + 12, 230, sigY + 12);
-  doc.line(245, sigY + 12, 285, sigY + 12);
-
-  doc.setFont('helvetica', 'normal');
+  doc.line(10 + 5, sigY + 22, 10 + sigBoxWidth - 5, sigY + 22);
+  doc.setFont('helvetica', 'italic');
   doc.setFontSize(7);
   doc.setTextColor(100);
-  doc.text('Name & Signature', 25, sigY + 17);
-  doc.text('Name & Signature', 95, sigY + 17);
-  doc.text('Name & Signature', 250, sigY + 17);
-  
+  doc.text('Name & Signature', 10 + sigBoxWidth / 2, sigY + 27, { align: 'center' });
   doc.setTextColor(0);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8);
-  doc.text('Line Leader', 25, sigY + 23);
-  doc.text('Line Manager', 95, sigY + 23);
-  doc.text('Warehouse Incharge', 250, sigY + 23);
+  doc.text('Line Leader', 10 + sigBoxWidth / 2, sigY + 32, { align: 'center' });
 
+  // Box 2 - Approved By
+  doc.setLineWidth(0.3);
+  doc.rect(10 + sigBoxWidth, sigY, sigBoxWidth, sigBoxHeight);
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Approved By', 10 + sigBoxWidth + sigBoxWidth / 2, sigY + 6, { align: 'center' });
+  
+  doc.setLineWidth(0.2);
+  doc.line(10 + sigBoxWidth + 5, sigY + 22, 10 + sigBoxWidth * 2 - 5, sigY + 22);
+  doc.setFont('helvetica', 'italic');
+  doc.setFontSize(7);
+  doc.setTextColor(100);
+  doc.text('Name & Signature', 10 + sigBoxWidth + sigBoxWidth / 2, sigY + 27, { align: 'center' });
+  doc.setTextColor(0);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.text('Line Manager', 10 + sigBoxWidth + sigBoxWidth / 2, sigY + 32, { align: 'center' });
+
+  // Box 3 - ASWAQ
+  doc.setLineWidth(0.3);
+  doc.rect(10 + sigBoxWidth * 2, sigY, sigBoxWidth, sigBoxHeight);
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'bold');
+  doc.text('ASWAQ Transaction Report Number', 10 + sigBoxWidth * 2 + sigBoxWidth / 2, sigY + 6, { align: 'center' });
+
+  // Box 4 - Received By
+  doc.rect(10 + sigBoxWidth * 3, sigY, sigBoxWidth, sigBoxHeight);
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Received By', 10 + sigBoxWidth * 3 + sigBoxWidth / 2, sigY + 6, { align: 'center' });
+  
+  doc.setLineWidth(0.2);
+  doc.line(10 + sigBoxWidth * 3 + 5, sigY + 22, 10 + sigBoxWidth * 4 - 5, sigY + 22);
+  doc.setFont('helvetica', 'italic');
+  doc.setFontSize(7);
+  doc.setTextColor(100);
+  doc.text('Name & Signature', 10 + sigBoxWidth * 3 + sigBoxWidth / 2, sigY + 27, { align: 'center' });
+  doc.setTextColor(0);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.text('Warehouse In Charge', 10 + sigBoxWidth * 3 + sigBoxWidth / 2, sigY + 32, { align: 'center' });
+
+  // Fill in form values
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
   if (form.requestedBy) {
-    doc.setFont('helvetica', 'normal');
-    doc.text(form.requestedBy, 25, sigY + 8);
+    doc.text(form.requestedBy, 10 + sigBoxWidth / 2, sigY + 16, { align: 'center' });
   }
   if (form.approvedBy) {
-    doc.setFont('helvetica', 'normal');
-    doc.text(form.approvedBy, 95, sigY + 8);
+    doc.text(form.approvedBy, 10 + sigBoxWidth + sigBoxWidth / 2, sigY + 16, { align: 'center' });
   }
   if (form.aswaqNumber) {
-    doc.setFont('helvetica', 'normal');
-    doc.text(form.aswaqNumber, 155, sigY + 8);
+    doc.text(form.aswaqNumber, 10 + sigBoxWidth * 2 + sigBoxWidth / 2, sigY + 16, { align: 'center' });
   }
   if (form.issuedBy) {
-    doc.setFont('helvetica', 'normal');
-    doc.text(form.issuedBy, 250, sigY + 8);
+    doc.text(form.issuedBy, 10 + sigBoxWidth * 3 + sigBoxWidth / 2, sigY + 16, { align: 'center' });
   }
 
   doc.save(`Material_Return_Slip_${docNumber}.pdf`);
