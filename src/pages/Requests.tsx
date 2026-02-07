@@ -126,16 +126,17 @@ export default function Requests() {
 
   // Handle order selection for raw material request
   const handleOrderSelect = (orderId: string, type: 'raw' | 'general') => {
+    const actualOrderId = orderId === 'none' ? '' : orderId;
     const setForm = type === 'raw' ? setRawMaterialForm : setGeneralSuppliesForm;
     const setItems = type === 'raw' ? setRawMaterialItems : setGeneralSuppliesItems;
     const form = type === 'raw' ? rawMaterialForm : generalSuppliesForm;
     
-    setForm({ ...form, orderId });
+    setForm({ ...form, orderId: actualOrderId });
     
-    if (orderId) {
+    if (actualOrderId) {
       // Auto-fill items from requirements with pending quantity
       const orderRequirements = requirements.filter(r => 
-        r.orderId === orderId && r.pendingQty > 0
+        r.orderId === actualOrderId && r.pendingQty > 0
       );
       
       if (orderRequirements.length > 0) {
@@ -405,15 +406,15 @@ export default function Requests() {
             </Label>
             <div className="flex gap-4 items-center">
               <Select 
-                value={form.orderId} 
+                value={form.orderId || 'none'} 
                 onValueChange={(value) => handleOrderSelect(value, type)}
               >
                 <SelectTrigger className="flex-1">
                   <SelectValue placeholder="Select an order to auto-fill requirements" />
                 </SelectTrigger>
                 <SelectContent className="bg-background">
-                  <SelectItem value="">-- No Order --</SelectItem>
-                  {orders.map(order => (
+                  <SelectItem value="none">-- No Order --</SelectItem>
+                  {orders.filter(order => order.id).map(order => (
                     <SelectItem key={order.id} value={order.id}>
                       {order.orderNumber} - {order.customer} ({order.styleName})
                     </SelectItem>
