@@ -173,6 +173,101 @@ const drawPageHeader = (
   return orderRowY + orderRowHeight; // Return table start Y
 };
 
+// Helper to draw signature section on every page
+const drawSignatureSection = (
+  doc: jsPDF,
+  form: RequestForm,
+  marginLeft: number,
+  contentWidth: number,
+  sigY: number,
+  type: 'raw' | 'general' | 'return' = 'raw'
+): void => {
+  const sigBoxWidth = contentWidth / 4;
+  const sigBoxHeight = 35;
+
+  doc.setLineWidth(0.3);
+  
+  for (let i = 0; i < 4; i++) {
+    doc.rect(marginLeft + (sigBoxWidth * i), sigY, sigBoxWidth, sigBoxHeight);
+  }
+
+  // Box 1 - Requested By / Returned By
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'bold');
+  const box1Title = type === 'return' ? 'Returned By' : 'Requested By';
+  doc.text(box1Title, marginLeft + sigBoxWidth / 2, sigY + 6, { align: 'center' });
+  
+  doc.setLineWidth(0.2);
+  const sigLineY = sigY + 20;
+  doc.line(marginLeft + 5, sigLineY, marginLeft + sigBoxWidth - 5, sigLineY);
+  
+  doc.setFont('helvetica', 'italic');
+  doc.setFontSize(7);
+  doc.setTextColor(120);
+  doc.text('Name & Signature', marginLeft + sigBoxWidth / 2, sigLineY + 5, { align: 'center' });
+  doc.setTextColor(0);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.text('Line Leader', marginLeft + sigBoxWidth / 2, sigY + 32, { align: 'center' });
+
+  // Box 2 - Approved By
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Approved By', marginLeft + sigBoxWidth + sigBoxWidth / 2, sigY + 6, { align: 'center' });
+  
+  doc.setLineWidth(0.2);
+  doc.line(marginLeft + sigBoxWidth + 5, sigLineY, marginLeft + sigBoxWidth * 2 - 5, sigLineY);
+  
+  doc.setFont('helvetica', 'italic');
+  doc.setFontSize(7);
+  doc.setTextColor(120);
+  doc.text('Name & Signature', marginLeft + sigBoxWidth + sigBoxWidth / 2, sigLineY + 5, { align: 'center' });
+  doc.setTextColor(0);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  const box2Role = type === 'raw' ? 'Production Manager' : 'Line Manager';
+  doc.text(box2Role, marginLeft + sigBoxWidth + sigBoxWidth / 2, sigY + 32, { align: 'center' });
+
+  // Box 3 - ASWAQ Transaction Report Number
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'bold');
+  doc.text('ASWAQ Transaction Report Number', marginLeft + sigBoxWidth * 2 + sigBoxWidth / 2, sigY + 6, { align: 'center' });
+
+  // Box 4 - Issued By / Received By
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'bold');
+  const box4Title = type === 'return' ? 'Received By' : 'Issued By';
+  doc.text(box4Title, marginLeft + sigBoxWidth * 3 + sigBoxWidth / 2, sigY + 6, { align: 'center' });
+  
+  doc.setLineWidth(0.2);
+  doc.line(marginLeft + sigBoxWidth * 3 + 5, sigLineY, marginLeft + sigBoxWidth * 4 - 5, sigLineY);
+  
+  doc.setFont('helvetica', 'italic');
+  doc.setFontSize(7);
+  doc.setTextColor(120);
+  doc.text('Name & Signature', marginLeft + sigBoxWidth * 3 + sigBoxWidth / 2, sigLineY + 5, { align: 'center' });
+  doc.setTextColor(0);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.text('Warehouse In Charge', marginLeft + sigBoxWidth * 3 + sigBoxWidth / 2, sigY + 32, { align: 'center' });
+
+  // Fill in form values if provided
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  if (form.requestedBy) {
+    doc.text(form.requestedBy, marginLeft + sigBoxWidth / 2, sigY + 15, { align: 'center' });
+  }
+  if (form.approvedBy) {
+    doc.text(form.approvedBy, marginLeft + sigBoxWidth + sigBoxWidth / 2, sigY + 15, { align: 'center' });
+  }
+  if (form.aswaqNumber) {
+    doc.text(form.aswaqNumber, marginLeft + sigBoxWidth * 2 + sigBoxWidth / 2, sigY + 15, { align: 'center' });
+  }
+  if (form.issuedBy) {
+    doc.text(form.issuedBy, marginLeft + sigBoxWidth * 3 + sigBoxWidth / 2, sigY + 15, { align: 'center' });
+  }
+};
+
 export const exportRawMaterialRequestPDF = async (form: RequestForm, items: RequestItem[], existingDocNumber?: string): Promise<void> => {
   const doc = new jsPDF('landscape', 'mm', 'a4');
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -183,6 +278,8 @@ export const exportRawMaterialRequestPDF = async (form: RequestForm, items: Requ
   const marginLeft = 10;
   const marginRight = 10;
   const contentWidth = pageWidth - marginLeft - marginRight;
+  const sigBoxHeight = 35;
+  const sigY = pageHeight - 10 - sigBoxHeight; // Signature at bottom of each page
   
   // Load logo once
   let logoBase64: string | null = null;
@@ -192,8 +289,9 @@ export const exportRawMaterialRequestPDF = async (form: RequestForm, items: Requ
     logoBase64 = null;
   }
 
-  // Draw initial header
+  // Draw initial header and signature
   const tableStartY = drawPageHeader(doc, logoBase64, 'RAW MATERIAL REQUEST', docNumber, issueNumber, form, marginLeft, contentWidth, pageWidth);
+  drawSignatureSection(doc, form, marginLeft, contentWidth, sigY, 'raw');
 
   // Prepare table rows
   const tableRows = items.length > 0 
@@ -246,113 +344,16 @@ export const exportRawMaterialRequestPDF = async (form: RequestForm, items: Requ
       6: { cellWidth: 30, halign: 'center' },
       7: { cellWidth: 49 }
     },
-    margin: { left: marginLeft, right: marginRight, top: 76 },
+    margin: { left: marginLeft, right: marginRight, top: 76, bottom: sigBoxHeight + 15 },
     tableWidth: contentWidth,
     didDrawPage: (data) => {
-      // Draw header on each new page (except first which is already drawn)
+      // Draw header and signature on each new page
       if (data.pageNumber > 1) {
         drawPageHeader(doc, logoBase64, 'RAW MATERIAL REQUEST', docNumber, issueNumber, form, marginLeft, contentWidth, pageWidth);
+        drawSignatureSection(doc, form, marginLeft, contentWidth, sigY, 'raw');
       }
     }
   });
-
-  // Get the final Y position after table
-  const finalY = (doc as any).lastAutoTable.finalY;
-
-  // Signature section - 4 columns with boxes
-  const sigY = Math.max(finalY + 5, pageHeight - 55);
-  const sigBoxWidth = contentWidth / 4;
-  const sigBoxHeight = 35;
-
-  // Check if signature fits on current page, if not add new page
-  if (sigY + sigBoxHeight > pageHeight - 10) {
-    doc.addPage();
-    drawPageHeader(doc, logoBase64, 'RAW MATERIAL REQUEST', docNumber, issueNumber, form, marginLeft, contentWidth, pageWidth);
-  }
-  
-  const actualSigY = sigY + sigBoxHeight > pageHeight - 10 ? 76 : sigY;
-
-  // Draw signature boxes
-  doc.setLineWidth(0.3);
-  
-  for (let i = 0; i < 4; i++) {
-    doc.rect(marginLeft + (sigBoxWidth * i), actualSigY, sigBoxWidth, sigBoxHeight);
-  }
-
-  // Box 1 - Requested By
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'bold');
-  doc.text('Requested By', marginLeft + sigBoxWidth / 2, actualSigY + 6, { align: 'center' });
-  
-  // Signature line
-  doc.setLineWidth(0.2);
-  const sigLineY = actualSigY + 20;
-  doc.line(marginLeft + 5, sigLineY, marginLeft + sigBoxWidth - 5, sigLineY);
-  
-  // Labels
-  doc.setFont('helvetica', 'italic');
-  doc.setFontSize(7);
-  doc.setTextColor(120);
-  doc.text('Name & Signature', marginLeft + sigBoxWidth / 2, sigLineY + 5, { align: 'center' });
-  doc.setTextColor(0);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8);
-  doc.text('Line Leader', marginLeft + sigBoxWidth / 2, actualSigY + 32, { align: 'center' });
-
-  // Box 2 - Approved By
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'bold');
-  doc.text('Approved By', marginLeft + sigBoxWidth + sigBoxWidth / 2, actualSigY + 6, { align: 'center' });
-  
-  doc.setLineWidth(0.2);
-  doc.line(marginLeft + sigBoxWidth + 5, sigLineY, marginLeft + sigBoxWidth * 2 - 5, sigLineY);
-  
-  doc.setFont('helvetica', 'italic');
-  doc.setFontSize(7);
-  doc.setTextColor(120);
-  doc.text('Name & Signature', marginLeft + sigBoxWidth + sigBoxWidth / 2, sigLineY + 5, { align: 'center' });
-  doc.setTextColor(0);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8);
-  doc.text('Production Manager', marginLeft + sigBoxWidth + sigBoxWidth / 2, actualSigY + 32, { align: 'center' });
-
-  // Box 3 - ASWAQ Transaction Report Number
-  doc.setFontSize(8);
-  doc.setFont('helvetica', 'bold');
-  doc.text('ASWAQ Transaction Report Number', marginLeft + sigBoxWidth * 2 + sigBoxWidth / 2, actualSigY + 6, { align: 'center' });
-
-  // Box 4 - Issued By
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'bold');
-  doc.text('Issued By', marginLeft + sigBoxWidth * 3 + sigBoxWidth / 2, actualSigY + 6, { align: 'center' });
-  
-  doc.setLineWidth(0.2);
-  doc.line(marginLeft + sigBoxWidth * 3 + 5, sigLineY, marginLeft + sigBoxWidth * 4 - 5, sigLineY);
-  
-  doc.setFont('helvetica', 'italic');
-  doc.setFontSize(7);
-  doc.setTextColor(120);
-  doc.text('Name & Signature', marginLeft + sigBoxWidth * 3 + sigBoxWidth / 2, sigLineY + 5, { align: 'center' });
-  doc.setTextColor(0);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8);
-  doc.text('Warehouse In Charge', marginLeft + sigBoxWidth * 3 + sigBoxWidth / 2, actualSigY + 32, { align: 'center' });
-
-  // Fill in form values if provided
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(9);
-  if (form.requestedBy) {
-    doc.text(form.requestedBy, marginLeft + sigBoxWidth / 2, actualSigY + 15, { align: 'center' });
-  }
-  if (form.approvedBy) {
-    doc.text(form.approvedBy, marginLeft + sigBoxWidth + sigBoxWidth / 2, actualSigY + 15, { align: 'center' });
-  }
-  if (form.aswaqNumber) {
-    doc.text(form.aswaqNumber, marginLeft + sigBoxWidth * 2 + sigBoxWidth / 2, actualSigY + 15, { align: 'center' });
-  }
-  if (form.issuedBy) {
-    doc.text(form.issuedBy, marginLeft + sigBoxWidth * 3 + sigBoxWidth / 2, actualSigY + 15, { align: 'center' });
-  }
 
   doc.save(`Raw_Material_Request_${docNumber}.pdf`);
 };
@@ -366,6 +367,8 @@ export const exportGeneralSuppliesRequestPDF = async (form: RequestForm, items: 
   
   const marginLeft = 10;
   const contentWidth = pageWidth - marginLeft * 2;
+  const sigBoxHeight = 35;
+  const sigY = pageHeight - 10 - sigBoxHeight; // Signature at bottom of each page
   
   // Load logo once
   let logoBase64: string | null = null;
@@ -375,8 +378,9 @@ export const exportGeneralSuppliesRequestPDF = async (form: RequestForm, items: 
     logoBase64 = null;
   }
 
-  // Draw initial header
+  // Draw initial header and signature
   const tableStartY = drawPageHeader(doc, logoBase64, 'GENERAL SUPPLIES REQUEST', docNumber, issueNumber, form, marginLeft, contentWidth, pageWidth);
+  drawSignatureSection(doc, form, marginLeft, contentWidth, sigY, 'general');
 
   const tableRows = items.length > 0 
     ? items.map(item => [
@@ -427,105 +431,16 @@ export const exportGeneralSuppliesRequestPDF = async (form: RequestForm, items: 
       6: { cellWidth: 30, halign: 'center' },
       7: { cellWidth: 49 }
     },
-    margin: { left: marginLeft, right: marginLeft, top: 76 },
+    margin: { left: marginLeft, right: marginLeft, top: 76, bottom: sigBoxHeight + 15 },
     tableWidth: contentWidth,
     didDrawPage: (data) => {
+      // Draw header and signature on each new page
       if (data.pageNumber > 1) {
         drawPageHeader(doc, logoBase64, 'GENERAL SUPPLIES REQUEST', docNumber, issueNumber, form, marginLeft, contentWidth, pageWidth);
+        drawSignatureSection(doc, form, marginLeft, contentWidth, sigY, 'general');
       }
     }
   });
-
-  // Signature section
-  const finalY = (doc as any).lastAutoTable.finalY;
-  const sigY = Math.max(finalY + 5, pageHeight - 55);
-  const sigBoxWidth = contentWidth / 4;
-  const sigBoxHeight = 35;
-
-  // Check if signature fits on current page
-  if (sigY + sigBoxHeight > pageHeight - 10) {
-    doc.addPage();
-    drawPageHeader(doc, logoBase64, 'GENERAL SUPPLIES REQUEST', docNumber, issueNumber, form, marginLeft, contentWidth, pageWidth);
-  }
-  
-  const actualSigY = sigY + sigBoxHeight > pageHeight - 10 ? 76 : sigY;
-
-  doc.setLineWidth(0.3);
-  
-  // Box 1 - Requested By
-  doc.rect(marginLeft, actualSigY, sigBoxWidth, sigBoxHeight);
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'bold');
-  doc.text('Requested By', marginLeft + sigBoxWidth / 2, actualSigY + 6, { align: 'center' });
-  
-  doc.setLineWidth(0.2);
-  doc.line(marginLeft + 5, actualSigY + 22, marginLeft + sigBoxWidth - 5, actualSigY + 22);
-  doc.setFont('helvetica', 'italic');
-  doc.setFontSize(7);
-  doc.setTextColor(100);
-  doc.text('Name & Signature', marginLeft + sigBoxWidth / 2, actualSigY + 27, { align: 'center' });
-  doc.setTextColor(0);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8);
-  doc.text('Line Leader', marginLeft + sigBoxWidth / 2, actualSigY + 32, { align: 'center' });
-
-  // Box 2 - Approved By
-  doc.setLineWidth(0.3);
-  doc.rect(marginLeft + sigBoxWidth, actualSigY, sigBoxWidth, sigBoxHeight);
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'bold');
-  doc.text('Approved By', marginLeft + sigBoxWidth + sigBoxWidth / 2, actualSigY + 6, { align: 'center' });
-  
-  doc.setLineWidth(0.2);
-  doc.line(marginLeft + sigBoxWidth + 5, actualSigY + 22, marginLeft + sigBoxWidth * 2 - 5, actualSigY + 22);
-  doc.setFont('helvetica', 'italic');
-  doc.setFontSize(7);
-  doc.setTextColor(100);
-  doc.text('Name & Signature', marginLeft + sigBoxWidth + sigBoxWidth / 2, actualSigY + 27, { align: 'center' });
-  doc.setTextColor(0);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8);
-  doc.text('Line Manager', marginLeft + sigBoxWidth + sigBoxWidth / 2, actualSigY + 32, { align: 'center' });
-
-  // Box 3 - ASWAQ
-  doc.setLineWidth(0.3);
-  doc.rect(marginLeft + sigBoxWidth * 2, actualSigY, sigBoxWidth, sigBoxHeight);
-  doc.setFontSize(9);
-  doc.setFont('helvetica', 'bold');
-  doc.text('ASWAQ Transaction Report Number', marginLeft + sigBoxWidth * 2 + sigBoxWidth / 2, actualSigY + 6, { align: 'center' });
-
-  // Box 4 - Issued By
-  doc.rect(marginLeft + sigBoxWidth * 3, actualSigY, sigBoxWidth, sigBoxHeight);
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'bold');
-  doc.text('Issued By', marginLeft + sigBoxWidth * 3 + sigBoxWidth / 2, actualSigY + 6, { align: 'center' });
-  
-  doc.setLineWidth(0.2);
-  doc.line(marginLeft + sigBoxWidth * 3 + 5, actualSigY + 22, marginLeft + sigBoxWidth * 4 - 5, actualSigY + 22);
-  doc.setFont('helvetica', 'italic');
-  doc.setFontSize(7);
-  doc.setTextColor(100);
-  doc.text('Name & Signature', marginLeft + sigBoxWidth * 3 + sigBoxWidth / 2, actualSigY + 27, { align: 'center' });
-  doc.setTextColor(0);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8);
-  doc.text('Warehouse In Charge', marginLeft + sigBoxWidth * 3 + sigBoxWidth / 2, actualSigY + 32, { align: 'center' });
-
-  // Fill in form values
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(9);
-  if (form.requestedBy) {
-    doc.text(form.requestedBy, marginLeft + sigBoxWidth / 2, actualSigY + 16, { align: 'center' });
-  }
-  if (form.approvedBy) {
-    doc.text(form.approvedBy, marginLeft + sigBoxWidth + sigBoxWidth / 2, actualSigY + 16, { align: 'center' });
-  }
-  if (form.aswaqNumber) {
-    doc.text(form.aswaqNumber, marginLeft + sigBoxWidth * 2 + sigBoxWidth / 2, actualSigY + 16, { align: 'center' });
-  }
-  if (form.issuedBy) {
-    doc.text(form.issuedBy, marginLeft + sigBoxWidth * 3 + sigBoxWidth / 2, actualSigY + 16, { align: 'center' });
-  }
 
   doc.save(`General_Supplies_Request_${docNumber}.pdf`);
 };
@@ -539,6 +454,8 @@ export const exportMaterialReturnSlipPDF = async (form: RequestForm, items: Retu
   
   const marginLeft = 10;
   const contentWidth = pageWidth - marginLeft * 2;
+  const sigBoxHeight = 35;
+  const sigY = pageHeight - 10 - sigBoxHeight; // Signature at bottom of each page
   
   // Load logo once
   let logoBase64: string | null = null;
@@ -548,8 +465,9 @@ export const exportMaterialReturnSlipPDF = async (form: RequestForm, items: Retu
     logoBase64 = null;
   }
 
-  // Draw initial header
+  // Draw initial header and signature
   const tableStartY = drawPageHeader(doc, logoBase64, 'MATERIAL RETURN SLIP', docNumber, issueNumber, form, marginLeft, contentWidth, pageWidth);
+  drawSignatureSection(doc, form, marginLeft, contentWidth, sigY, 'return');
 
   const tableRows = items.length > 0 
     ? items.map(item => [
@@ -598,105 +516,16 @@ export const exportMaterialReturnSlipPDF = async (form: RequestForm, items: Retu
       5: { cellWidth: 35, halign: 'center' },
       6: { cellWidth: 34 }
     },
-    margin: { left: marginLeft, right: marginLeft, top: 76 },
+    margin: { left: marginLeft, right: marginLeft, top: 76, bottom: sigBoxHeight + 15 },
     tableWidth: contentWidth,
     didDrawPage: (data) => {
+      // Draw header and signature on each new page
       if (data.pageNumber > 1) {
         drawPageHeader(doc, logoBase64, 'MATERIAL RETURN SLIP', docNumber, issueNumber, form, marginLeft, contentWidth, pageWidth);
+        drawSignatureSection(doc, form, marginLeft, contentWidth, sigY, 'return');
       }
     }
   });
-
-  // Signature section
-  const finalY = (doc as any).lastAutoTable.finalY;
-  const sigY = Math.max(finalY + 5, pageHeight - 55);
-  const sigBoxWidth = contentWidth / 4;
-  const sigBoxHeight = 35;
-
-  // Check if signature fits on current page
-  if (sigY + sigBoxHeight > pageHeight - 10) {
-    doc.addPage();
-    drawPageHeader(doc, logoBase64, 'MATERIAL RETURN SLIP', docNumber, issueNumber, form, marginLeft, contentWidth, pageWidth);
-  }
-  
-  const actualSigY = sigY + sigBoxHeight > pageHeight - 10 ? 76 : sigY;
-
-  doc.setLineWidth(0.3);
-  
-  // Box 1 - Returned By
-  doc.rect(marginLeft, actualSigY, sigBoxWidth, sigBoxHeight);
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'bold');
-  doc.text('Returned By', marginLeft + sigBoxWidth / 2, actualSigY + 6, { align: 'center' });
-  
-  doc.setLineWidth(0.2);
-  doc.line(marginLeft + 5, actualSigY + 22, marginLeft + sigBoxWidth - 5, actualSigY + 22);
-  doc.setFont('helvetica', 'italic');
-  doc.setFontSize(7);
-  doc.setTextColor(100);
-  doc.text('Name & Signature', marginLeft + sigBoxWidth / 2, actualSigY + 27, { align: 'center' });
-  doc.setTextColor(0);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8);
-  doc.text('Line Leader', marginLeft + sigBoxWidth / 2, actualSigY + 32, { align: 'center' });
-
-  // Box 2 - Approved By
-  doc.setLineWidth(0.3);
-  doc.rect(marginLeft + sigBoxWidth, actualSigY, sigBoxWidth, sigBoxHeight);
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'bold');
-  doc.text('Approved By', marginLeft + sigBoxWidth + sigBoxWidth / 2, actualSigY + 6, { align: 'center' });
-  
-  doc.setLineWidth(0.2);
-  doc.line(marginLeft + sigBoxWidth + 5, actualSigY + 22, marginLeft + sigBoxWidth * 2 - 5, actualSigY + 22);
-  doc.setFont('helvetica', 'italic');
-  doc.setFontSize(7);
-  doc.setTextColor(100);
-  doc.text('Name & Signature', marginLeft + sigBoxWidth + sigBoxWidth / 2, actualSigY + 27, { align: 'center' });
-  doc.setTextColor(0);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8);
-  doc.text('Line Manager', marginLeft + sigBoxWidth + sigBoxWidth / 2, actualSigY + 32, { align: 'center' });
-
-  // Box 3 - ASWAQ
-  doc.setLineWidth(0.3);
-  doc.rect(marginLeft + sigBoxWidth * 2, actualSigY, sigBoxWidth, sigBoxHeight);
-  doc.setFontSize(9);
-  doc.setFont('helvetica', 'bold');
-  doc.text('ASWAQ Transaction Report Number', marginLeft + sigBoxWidth * 2 + sigBoxWidth / 2, actualSigY + 6, { align: 'center' });
-
-  // Box 4 - Received By
-  doc.rect(marginLeft + sigBoxWidth * 3, actualSigY, sigBoxWidth, sigBoxHeight);
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'bold');
-  doc.text('Received By', marginLeft + sigBoxWidth * 3 + sigBoxWidth / 2, actualSigY + 6, { align: 'center' });
-  
-  doc.setLineWidth(0.2);
-  doc.line(marginLeft + sigBoxWidth * 3 + 5, actualSigY + 22, marginLeft + sigBoxWidth * 4 - 5, actualSigY + 22);
-  doc.setFont('helvetica', 'italic');
-  doc.setFontSize(7);
-  doc.setTextColor(100);
-  doc.text('Name & Signature', marginLeft + sigBoxWidth * 3 + sigBoxWidth / 2, actualSigY + 27, { align: 'center' });
-  doc.setTextColor(0);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8);
-  doc.text('Warehouse In Charge', marginLeft + sigBoxWidth * 3 + sigBoxWidth / 2, actualSigY + 32, { align: 'center' });
-
-  // Fill in form values
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(9);
-  if (form.requestedBy) {
-    doc.text(form.requestedBy, marginLeft + sigBoxWidth / 2, actualSigY + 16, { align: 'center' });
-  }
-  if (form.approvedBy) {
-    doc.text(form.approvedBy, marginLeft + sigBoxWidth + sigBoxWidth / 2, actualSigY + 16, { align: 'center' });
-  }
-  if (form.aswaqNumber) {
-    doc.text(form.aswaqNumber, marginLeft + sigBoxWidth * 2 + sigBoxWidth / 2, actualSigY + 16, { align: 'center' });
-  }
-  if (form.issuedBy) {
-    doc.text(form.issuedBy, marginLeft + sigBoxWidth * 3 + sigBoxWidth / 2, actualSigY + 16, { align: 'center' });
-  }
 
   doc.save(`Material_Return_Slip_${docNumber}.pdf`);
 };
