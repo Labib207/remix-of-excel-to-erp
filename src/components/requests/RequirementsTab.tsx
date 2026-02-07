@@ -217,28 +217,31 @@ export function RequirementsTab() {
           <div className="flex gap-4 items-end">
             <div className="flex-1 space-y-2">
               <Label>Order</Label>
-            <Select value={selectedOrderId} onValueChange={setSelectedOrderId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select an order to manage requirements" />
-                </SelectTrigger>
-                <SelectContent className="bg-background">
-                  {orders.map(order => (
-                    <SelectItem key={order.id} value={order.id} className="pr-10">
-                      <div className="flex items-center justify-between w-full gap-4">
-                        <span>{order.orderNumber} - {order.customer} ({order.styleName})</span>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6 text-destructive hover:bg-destructive/10"
-                          onClick={(e) => handleDeleteOrder(order.id, e)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="flex gap-2">
+                <Select value={selectedOrderId} onValueChange={setSelectedOrderId}>
+                  <SelectTrigger className="flex-1">
+                    <SelectValue placeholder="Select an order to manage requirements" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-background">
+                    {orders.map(order => (
+                      <SelectItem key={order.id} value={order.id}>
+                        {order.orderNumber} - {order.customer} ({order.styleName})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {selectedOrderId && (
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="text-destructive hover:bg-destructive/10 shrink-0"
+                    onClick={(e) => handleDeleteOrder(selectedOrderId, e)}
+                    title="Delete this order"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
             </div>
             
             <Dialog open={isAddOrderOpen} onOpenChange={setIsAddOrderOpen}>
