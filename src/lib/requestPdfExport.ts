@@ -26,6 +26,7 @@ interface ReturnItem {
 interface RequestForm {
   date: string;
   department: string;
+  orderName?: string;
   requestedBy: string;
   approvedBy: string;
   issuedBy: string;
@@ -169,8 +170,15 @@ export const exportRawMaterialRequestPDF = async (form: RequestForm, items: Requ
   doc.text(form.department || '', marginLeft + 35, deptRowY + 5.5);
   doc.line(marginLeft, deptRowY + deptRowHeight, pageWidth - marginRight, deptRowY + deptRowHeight);
 
+  // Order row
+  const orderRowY = deptRowY + deptRowHeight;
+  const orderRowHeight = 8;
+  doc.text('Order:', marginLeft + 3, orderRowY + 5.5);
+  doc.text(form.orderName || '', marginLeft + 25, orderRowY + 5.5);
+  doc.line(marginLeft, orderRowY + orderRowHeight, pageWidth - marginRight, orderRowY + orderRowHeight);
+
   // Table starting position
-  const tableStartY = deptRowY + deptRowHeight;
+  const tableStartY = orderRowY + orderRowHeight;
 
   // Prepare table rows
   const tableRows = items.length > 0 
@@ -385,8 +393,14 @@ export const exportGeneralSuppliesRequestPDF = async (form: RequestForm, items: 
   doc.text(`Department:  ${form.department}`, 15, deptRowY + 6);
   doc.line(10, deptRowY + deptRowHeight, pageWidth - 10, deptRowY + deptRowHeight);
 
+  // Order row
+  const orderRowY = deptRowY + deptRowHeight;
+  const orderRowHeight = 8;
+  doc.text(`Order:  ${form.orderName || ''}`, 15, orderRowY + 6);
+  doc.line(10, orderRowY + orderRowHeight, pageWidth - 10, orderRowY + orderRowHeight);
+
   // Table
-  const tableStartY = deptRowY + deptRowHeight;
+  const tableStartY = orderRowY + orderRowHeight;
 
   const tableRows = items.length > 0 
     ? items.map(item => [
@@ -592,8 +606,14 @@ export const exportMaterialReturnSlipPDF = async (form: RequestForm, items: Retu
   doc.text(`Department:  ${form.department}`, 15, deptRowY + 6);
   doc.line(10, deptRowY + deptRowHeight, pageWidth - 10, deptRowY + deptRowHeight);
 
+  // Order row
+  const orderRowY = deptRowY + deptRowHeight;
+  const orderRowHeight = 8;
+  doc.text(`Order:  ${form.orderName || ''}`, 15, orderRowY + 6);
+  doc.line(10, orderRowY + orderRowHeight, pageWidth - 10, orderRowY + orderRowHeight);
+
   // Table
-  const tableStartY = deptRowY + deptRowHeight;
+  const tableStartY = orderRowY + orderRowHeight;
 
   const tableRows = items.length > 0 
     ? items.map(item => [
@@ -737,6 +757,7 @@ export const exportEmptyRawMaterialPDF = async (): Promise<void> => {
   const emptyForm: RequestForm = {
     date: '',
     department: '',
+    orderName: '',
     requestedBy: '',
     approvedBy: '',
     issuedBy: '',
@@ -749,6 +770,7 @@ export const exportEmptyGeneralSuppliesPDF = async (): Promise<void> => {
   const emptyForm: RequestForm = {
     date: '',
     department: '',
+    orderName: '',
     requestedBy: '',
     approvedBy: '',
     issuedBy: '',
@@ -761,6 +783,7 @@ export const exportEmptyMaterialReturnPDF = async (): Promise<void> => {
   const emptyForm: RequestForm = {
     date: '',
     department: '',
+    orderName: '',
     requestedBy: '',
     approvedBy: '',
     issuedBy: '',

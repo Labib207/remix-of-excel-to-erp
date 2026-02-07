@@ -251,21 +251,30 @@ export default function Requests() {
         toast.error('Please add at least one item before downloading');
         return;
       }
-      exportRawMaterialRequestPDF(rawMaterialForm, rawMaterialItems);
+      const orderName = rawMaterialForm.orderId 
+        ? orders.find(o => o.id === rawMaterialForm.orderId)?.orderNumber || ''
+        : '';
+      exportRawMaterialRequestPDF({ ...rawMaterialForm, orderName }, rawMaterialItems);
       toast.success('Raw Material Request PDF downloaded');
     } else if (type === 'general') {
       if (generalSuppliesItems.length === 0) {
         toast.error('Please add at least one item before downloading');
         return;
       }
-      exportGeneralSuppliesRequestPDF(generalSuppliesForm, generalSuppliesItems);
+      const orderName = generalSuppliesForm.orderId 
+        ? orders.find(o => o.id === generalSuppliesForm.orderId)?.orderNumber || ''
+        : '';
+      exportGeneralSuppliesRequestPDF({ ...generalSuppliesForm, orderName }, generalSuppliesItems);
       toast.success('General Supplies Request PDF downloaded');
     } else {
       if (materialReturnItems.length === 0) {
         toast.error('Please add at least one item before downloading');
         return;
       }
-      exportMaterialReturnSlipPDF(materialReturnForm, materialReturnItems);
+      const orderName = materialReturnForm.orderId 
+        ? orders.find(o => o.id === materialReturnForm.orderId)?.orderNumber || ''
+        : '';
+      exportMaterialReturnSlipPDF({ ...materialReturnForm, orderName }, materialReturnItems);
       toast.success('Material Return Slip PDF downloaded');
     }
   };
