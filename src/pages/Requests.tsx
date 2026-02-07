@@ -20,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Plus, Trash2, Download, Package, Undo2, FileBox, Send, FileSpreadsheet, Calendar, History, FileDown, ClipboardList } from 'lucide-react';
+import { Plus, Trash2, Download, Package, Undo2, FileBox, Send, FileSpreadsheet, Calendar, History, FileDown, ClipboardList, Database } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { useRequestStore } from '@/store/requestStore';
@@ -36,6 +36,7 @@ import {
 } from '@/lib/requestPdfExport';
 import { RequestHistoryTable } from '@/components/requests/RequestHistoryTable';
 import { DescriptionAutocomplete } from '@/components/requests/DescriptionAutocomplete';
+import { RecordsAnalytics } from '@/components/requests/RecordsAnalytics';
 import { Badge } from '@/components/ui/badge';
 
 interface RequestItem {
@@ -680,10 +681,10 @@ export default function Requests() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="raw-material" className="gap-2">
               <FileBox className="h-4 w-4" />
-              Raw Material Request
+              Raw Material
             </TabsTrigger>
             <TabsTrigger value="general-supplies" className="gap-2">
               <Package className="h-4 w-4" />
@@ -692,6 +693,10 @@ export default function Requests() {
             <TabsTrigger value="material-return" className="gap-2">
               <Undo2 className="h-4 w-4" />
               Material Return
+            </TabsTrigger>
+            <TabsTrigger value="records" className="gap-2">
+              <Database className="h-4 w-4" />
+              Records
             </TabsTrigger>
             <TabsTrigger value="history" className="gap-2">
               <History className="h-4 w-4" />
@@ -896,6 +901,10 @@ export default function Requests() {
                 </div>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="records" className="mt-6">
+            <RecordsAnalytics />
           </TabsContent>
 
           <TabsContent value="history" className="mt-6">
