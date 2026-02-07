@@ -28,6 +28,8 @@ interface ReturnItem {
 interface RequestForm {
   date: string;
   department: string;
+  orderId?: string;
+  orderName?: string;
   requestedBy: string;
   approvedBy: string;
   issuedBy: string;
