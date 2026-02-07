@@ -72,7 +72,7 @@ const emptyOrder = (): NewOrder => ({
 });
 
 export function RequirementsTab() {
-  const { orders, addOrder } = useCuttingStore();
+  const { orders, addOrder, deleteOrder } = useCuttingStore();
   const { 
     requirements, 
     addRequirement, 
@@ -88,6 +88,24 @@ export function RequirementsTab() {
   
   const selectedOrder = orders.find(o => o.id === selectedOrderId);
   const orderRequirements = requirements.filter(r => r.orderId === selectedOrderId);
+
+  const handleDeleteOrder = (orderId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    // Delete all requirements for this order
+    const orderReqs = requirements.filter(r => r.orderId === orderId);
+    orderReqs.forEach(req => deleteRequirement(req.id));
+    
+    // Delete the order
+    deleteOrder(orderId);
+    
+    // Clear selection if this was the selected order
+    if (selectedOrderId === orderId) {
+      setSelectedOrderId('');
+    }
+    
+    toast.success('Order and its requirements deleted');
+  };
 
   const handleAddOrder = () => {
     if (!newOrder.orderNumber || !newOrder.customer) {
@@ -199,14 +217,24 @@ export function RequirementsTab() {
           <div className="flex gap-4 items-end">
             <div className="flex-1 space-y-2">
               <Label>Order</Label>
-              <Select value={selectedOrderId} onValueChange={setSelectedOrderId}>
+            <Select value={selectedOrderId} onValueChange={setSelectedOrderId}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select an order to manage requirements" />
                 </SelectTrigger>
                 <SelectContent className="bg-background">
                   {orders.map(order => (
-                    <SelectItem key={order.id} value={order.id}>
-                      {order.orderNumber} - {order.customer} ({order.styleName})
+                    <SelectItem key={order.id} value={order.id} className="pr-10">
+                      <div className="flex items-center justify-between w-full gap-4">
+                        <span>{order.orderNumber} - {order.customer} ({order.styleName})</span>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 text-destructive hover:bg-destructive/10"
+                          onClick={(e) => handleDeleteOrder(order.id, e)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </SelectItem>
                   ))}
                 </SelectContent>
