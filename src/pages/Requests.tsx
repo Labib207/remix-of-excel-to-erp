@@ -20,10 +20,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Plus, Trash2, Download, Package, Undo2, FileBox, Send, FileSpreadsheet, Calendar, History, FileDown } from 'lucide-react';
+import { Plus, Trash2, Download, Package, Undo2, FileBox, Send, FileSpreadsheet, Calendar, History, FileDown, ClipboardList } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { useRequestStore } from '@/store/requestStore';
+import { useRequirementStore } from '@/store/requirementStore';
+import { useCuttingStore } from '@/store/cuttingStore';
 import {
   exportRawMaterialRequestPDF,
   exportGeneralSuppliesRequestPDF,
@@ -33,6 +35,9 @@ import {
   exportEmptyMaterialReturnPDF,
 } from '@/lib/requestPdfExport';
 import { RequestHistoryTable } from '@/components/requests/RequestHistoryTable';
+import { RequirementsTab } from '@/components/requests/RequirementsTab';
+import { DescriptionAutocomplete } from '@/components/requests/DescriptionAutocomplete';
+import { Badge } from '@/components/ui/badge';
 
 interface RequestItem {
   id: string;
@@ -44,6 +49,7 @@ interface RequestItem {
   issuedQty: number;
   remainingQty: number;
   remarks: string;
+  requirementId?: string; // Link to requirement for updating
 }
 
 interface ReturnItem {
@@ -60,6 +66,7 @@ interface ReturnItem {
 interface RequestForm {
   date: string;
   department: string;
+  orderId: string;
   requestedBy: string;
   approvedBy: string;
   issuedBy: string;
@@ -89,6 +96,7 @@ const getNextDocNumber = (prefix: string) => {
 const emptyRequestForm = (): RequestForm => ({
   date: format(new Date(), 'yyyy-MM-dd'),
   department: '',
+  orderId: '',
   requestedBy: '',
   approvedBy: '',
   issuedBy: '',
@@ -96,8 +104,10 @@ const emptyRequestForm = (): RequestForm => ({
 });
 
 export default function Requests() {
-  const [activeTab, setActiveTab] = useState('raw-material');
+  const [activeTab, setActiveTab] = useState('requirements');
   const { addRequest, exportMonthlyExcel, submittedRequests } = useRequestStore();
+  const { requirements, updateRequestedQty, materialCatalog } = useRequirementStore();
+  const { orders } = useCuttingStore();
   
   // Month/Year selector for export
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth().toString());
@@ -114,6 +124,41 @@ export default function Requests() {
   // Material Return Slip State
   const [materialReturnForm, setMaterialReturnForm] = useState<RequestForm>(emptyRequestForm());
   const [materialReturnItems, setMaterialReturnItems] = useState<ReturnItem[]>([]);
+
+  // Handle order selection for raw material request
+  const handleOrderSelect = (orderId: string, type: 'raw' | 'general') => {
+    const setForm = type === 'raw' ? setRawMaterialForm : setGeneralSuppliesForm;
+    const setItems = type === 'raw' ? setRawMaterialItems : setGeneralSuppliesItems;
+    const form = type === 'raw' ? rawMaterialForm : generalSuppliesForm;
+    
+    setForm({ ...form, orderId });
+    
+    if (orderId) {
+      // Auto-fill items from requirements with pending quantity
+      const orderRequirements = requirements.filter(r => 
+        r.orderId === orderId && r.pendingQty > 0
+      );
+      
+      if (orderRequirements.length > 0) {
+        const newItems: RequestItem[] = orderRequirements.map((req, idx) => ({
+          id: generateId(),
+          slNo: idx + 1,
+          itemCode: req.itemCode,
+          description: req.description,
+          uom: req.uom,
+          requestedQty: req.pendingQty, // Fill with pending quantity
+          issuedQty: 0,
+          remainingQty: req.pendingQty,
+          remarks: req.remarks,
+          requirementId: req.id,
+        }));
+        setItems(newItems);
+        toast.info(`Loaded ${orderRequirements.length} pending requirements`);
+      } else {
+        toast.info('No pending requirements for this order');
+      }
+    }
+  };
 
   const addRequestItem = (type: 'raw' | 'general') => {
     const items = type === 'raw' ? rawMaterialItems : generalSuppliesItems;
@@ -158,6 +203,23 @@ export default function Requests() {
           updated.remainingQty = updated.requestedQty - updated.issuedQty;
         }
         return updated;
+      }
+      return item;
+    }));
+  };
+
+  const handleMaterialSelect = (type: 'raw' | 'general', id: string, material: { itemCode: string; description: string; uom: string }) => {
+    const items = type === 'raw' ? rawMaterialItems : generalSuppliesItems;
+    const setItems = type === 'raw' ? setRawMaterialItems : setGeneralSuppliesItems;
+    
+    setItems(items.map(item => {
+      if (item.id === id) {
+        return { 
+          ...item, 
+          itemCode: material.itemCode,
+          description: material.description,
+          uom: material.uom 
+        };
       }
       return item;
     }));
@@ -219,6 +281,19 @@ export default function Requests() {
         toast.error('Please add at least one item before submitting');
         return;
       }
+      
+      // Update requirement records
+      const requirementUpdates = rawMaterialItems
+        .filter(item => item.requirementId)
+        .map(item => ({
+          id: item.requirementId!,
+          qty: item.requestedQty,
+        }));
+      
+      if (requirementUpdates.length > 0) {
+        updateRequestedQty(requirementUpdates);
+      }
+      
       addRequest({
         type: 'raw-material',
         docNumber,
@@ -276,188 +351,224 @@ export default function Requests() {
     title: string,
     icon: React.ReactNode,
     remarksLabel: string
-  ) => (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <div className="flex items-center gap-3">
-          {icon}
-          <div>
-            <CardTitle>{title}</CardTitle>
-            <p className="text-sm text-muted-foreground mt-1">
-              Document ID: {type === 'raw' ? 'RMR' : 'GSR'}-01-2024
-            </p>
+  ) => {
+    const selectedOrder = orders.find(o => o.id === form.orderId);
+    
+    return (
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div className="flex items-center gap-3">
+            {icon}
+            <div>
+              <CardTitle>{title}</CardTitle>
+              <p className="text-sm text-muted-foreground mt-1">
+                Document ID: {type === 'raw' ? 'RMR' : 'GSR'}-01-2024
+              </p>
+            </div>
           </div>
-        </div>
-        <div className="flex gap-2">
-          <Button onClick={() => downloadPDF(type)} variant="outline" className="gap-2">
-            <Download className="h-4 w-4" />
-            Download PDF
-          </Button>
-          <Button onClick={() => submitRequest(type)} className="gap-2">
-            <Send className="h-4 w-4" />
-            Submit
-          </Button>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        {/* Form Header */}
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label>Date</Label>
-            <Input
-              type="date"
-              value={form.date}
-              onChange={(e) => setForm({ ...form, date: e.target.value })}
-            />
+          <div className="flex gap-2">
+            <Button onClick={() => downloadPDF(type)} variant="outline" className="gap-2">
+              <Download className="h-4 w-4" />
+              Download PDF
+            </Button>
+            <Button onClick={() => submitRequest(type)} className="gap-2">
+              <Send className="h-4 w-4" />
+              Submit
+            </Button>
           </div>
-          <div className="space-y-2">
-            <Label>Department</Label>
-            <Input
-              value={form.department}
-              onChange={(e) => setForm({ ...form, department: e.target.value })}
-              placeholder="Enter department"
-            />
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Form Header */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Date</Label>
+              <Input
+                type="date"
+                value={form.date}
+                onChange={(e) => setForm({ ...form, date: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Department</Label>
+              <Input
+                value={form.department}
+                onChange={(e) => setForm({ ...form, department: e.target.value })}
+                placeholder="Enter department"
+              />
+            </div>
           </div>
-        </div>
 
-        {/* Items Table */}
-        <div className="border rounded-lg overflow-hidden">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-12">SL No</TableHead>
-                <TableHead className="w-28">Item Code</TableHead>
-                <TableHead>Description</TableHead>
-                <TableHead className="w-20">UOM</TableHead>
-                <TableHead className="w-28">Requested Qty</TableHead>
-                <TableHead className="w-28">Issued Qty</TableHead>
-                <TableHead className="w-28">Remaining Qty</TableHead>
-                <TableHead>{remarksLabel}</TableHead>
-                <TableHead className="w-12"></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {items.map((item) => (
-                <TableRow key={item.id}>
-                  <TableCell>{item.slNo}</TableCell>
-                  <TableCell>
-                    <Input
-                      value={item.itemCode}
-                      onChange={(e) => updateRequestItem(type, item.id, 'itemCode', e.target.value)}
-                      className="h-8"
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Input
-                      value={item.description}
-                      onChange={(e) => updateRequestItem(type, item.id, 'description', e.target.value)}
-                      className="h-8"
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Input
-                      value={item.uom}
-                      onChange={(e) => updateRequestItem(type, item.id, 'uom', e.target.value)}
-                      className="h-8"
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Input
-                      type="number"
-                      value={item.requestedQty || ''}
-                      onChange={(e) => updateRequestItem(type, item.id, 'requestedQty', parseInt(e.target.value) || 0)}
-                      className="h-8"
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Input
-                      type="number"
-                      value={item.issuedQty || ''}
-                      onChange={(e) => updateRequestItem(type, item.id, 'issuedQty', parseInt(e.target.value) || 0)}
-                      className="h-8"
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Input
-                      value={item.remainingQty}
-                      readOnly
-                      className="h-8 bg-muted"
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Input
-                      value={item.remarks}
-                      onChange={(e) => updateRequestItem(type, item.id, 'remarks', e.target.value)}
-                      className="h-8"
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => removeRequestItem(type, item.id)}
-                      className="h-8 w-8 text-destructive"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-              {items.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
-                    No items added. Click "Add Item" to add materials.
-                  </TableCell>
-                </TableRow>
+          {/* Order Selection */}
+          <div className="space-y-2">
+            <Label className="flex items-center gap-2">
+              <ClipboardList className="h-4 w-4" />
+              Order (Optional - Auto-fill from requirements)
+            </Label>
+            <div className="flex gap-4 items-center">
+              <Select 
+                value={form.orderId} 
+                onValueChange={(value) => handleOrderSelect(value, type)}
+              >
+                <SelectTrigger className="flex-1">
+                  <SelectValue placeholder="Select an order to auto-fill requirements" />
+                </SelectTrigger>
+                <SelectContent className="bg-background">
+                  <SelectItem value="">-- No Order --</SelectItem>
+                  {orders.map(order => (
+                    <SelectItem key={order.id} value={order.id}>
+                      {order.orderNumber} - {order.customer} ({order.styleName})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {selectedOrder && (
+                <Badge variant="outline" className="whitespace-nowrap">
+                  {selectedOrder.totalQty} pcs
+                </Badge>
               )}
-            </TableBody>
-          </Table>
-        </div>
+            </div>
+          </div>
 
-        <Button onClick={() => addRequestItem(type)} variant="outline" className="gap-2">
-          <Plus className="h-4 w-4" />
-          Add Item
-        </Button>
+          {/* Items Table */}
+          <div className="border rounded-lg overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-12">SL No</TableHead>
+                  <TableHead className="w-28">Item Code</TableHead>
+                  <TableHead>Description</TableHead>
+                  <TableHead className="w-20">UOM</TableHead>
+                  <TableHead className="w-28">Requested Qty</TableHead>
+                  <TableHead className="w-28">Issued Qty</TableHead>
+                  <TableHead className="w-28">Remaining Qty</TableHead>
+                  <TableHead>{remarksLabel}</TableHead>
+                  <TableHead className="w-12"></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {items.map((item) => (
+                  <TableRow key={item.id}>
+                    <TableCell>{item.slNo}</TableCell>
+                    <TableCell>
+                      <Input
+                        value={item.itemCode}
+                        onChange={(e) => updateRequestItem(type, item.id, 'itemCode', e.target.value)}
+                        className="h-8"
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <DescriptionAutocomplete
+                        value={item.description}
+                        onChange={(value) => updateRequestItem(type, item.id, 'description', value)}
+                        onSelect={(material) => handleMaterialSelect(type, item.id, material)}
+                        catalog={materialCatalog}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Input
+                        value={item.uom}
+                        onChange={(e) => updateRequestItem(type, item.id, 'uom', e.target.value)}
+                        className="h-8"
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Input
+                        type="number"
+                        value={item.requestedQty || ''}
+                        onChange={(e) => updateRequestItem(type, item.id, 'requestedQty', parseInt(e.target.value) || 0)}
+                        className="h-8"
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Input
+                        type="number"
+                        value={item.issuedQty || ''}
+                        onChange={(e) => updateRequestItem(type, item.id, 'issuedQty', parseInt(e.target.value) || 0)}
+                        className="h-8"
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Input
+                        value={item.remainingQty}
+                        readOnly
+                        className="h-8 bg-muted"
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Input
+                        value={item.remarks}
+                        onChange={(e) => updateRequestItem(type, item.id, 'remarks', e.target.value)}
+                        className="h-8"
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => removeRequestItem(type, item.id)}
+                        className="h-8 w-8 text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {items.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
+                      No items added. Select an order above to auto-fill or click "Add Item".
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
 
-        {/* Signatories */}
-        <div className="grid grid-cols-3 gap-4 pt-4 border-t">
+          <Button onClick={() => addRequestItem(type)} variant="outline" className="gap-2">
+            <Plus className="h-4 w-4" />
+            Add Item
+          </Button>
+
+          {/* Signatories */}
+          <div className="grid grid-cols-3 gap-4 pt-4 border-t">
+            <div className="space-y-2">
+              <Label>Requested By (Line Leader)</Label>
+              <Input
+                value={form.requestedBy}
+                onChange={(e) => setForm({ ...form, requestedBy: e.target.value })}
+                placeholder="Name & Signature"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Approved By ({type === 'raw' ? 'Production Manager' : 'Line Manager'})</Label>
+              <Input
+                value={form.approvedBy}
+                onChange={(e) => setForm({ ...form, approvedBy: e.target.value })}
+                placeholder="Name & Signature"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Issued By (Warehouse In Charge)</Label>
+              <Input
+                value={form.issuedBy}
+                onChange={(e) => setForm({ ...form, issuedBy: e.target.value })}
+                placeholder="Name & Signature"
+              />
+            </div>
+          </div>
+
           <div className="space-y-2">
-            <Label>Requested By (Line Leader)</Label>
+            <Label>ASWAQ Transaction Report Number</Label>
             <Input
-              value={form.requestedBy}
-              onChange={(e) => setForm({ ...form, requestedBy: e.target.value })}
-              placeholder="Name & Signature"
+              value={form.aswaqNumber}
+              onChange={(e) => setForm({ ...form, aswaqNumber: e.target.value })}
+              placeholder="Enter transaction number"
             />
           </div>
-          <div className="space-y-2">
-            <Label>Approved By ({type === 'raw' ? 'Production Manager' : 'Line Manager'})</Label>
-            <Input
-              value={form.approvedBy}
-              onChange={(e) => setForm({ ...form, approvedBy: e.target.value })}
-              placeholder="Name & Signature"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>Issued By (Warehouse In Charge)</Label>
-            <Input
-              value={form.issuedBy}
-              onChange={(e) => setForm({ ...form, issuedBy: e.target.value })}
-              placeholder="Name & Signature"
-            />
-          </div>
-        </div>
-
-        <div className="space-y-2">
-          <Label>ASWAQ Transaction Report Number</Label>
-          <Input
-            value={form.aswaqNumber}
-            onChange={(e) => setForm({ ...form, aswaqNumber: e.target.value })}
-            placeholder="Enter transaction number"
-          />
-        </div>
-      </CardContent>
-    </Card>
-  );
+        </CardContent>
+      </Card>
+    );
+  };
 
   return (
     <MainLayout>
@@ -466,7 +577,7 @@ export default function Requests() {
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Material Requests</h1>
             <p className="text-muted-foreground mt-1">
-              Manage raw material requests, general supplies, and material returns
+              Manage requirements, raw material requests, general supplies, and material returns
             </p>
           </div>
           
@@ -517,7 +628,7 @@ export default function Requests() {
                     <SelectTrigger className="w-32">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="bg-background">
                       {monthNames.map((month, idx) => (
                         <SelectItem key={idx} value={idx.toString()}>
                           {month}
@@ -529,7 +640,7 @@ export default function Requests() {
                     <SelectTrigger className="w-24">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="bg-background">
                       {[2024, 2025, 2026].map(year => (
                         <SelectItem key={year} value={year.toString()}>
                           {year}
@@ -551,7 +662,11 @@ export default function Requests() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
+            <TabsTrigger value="requirements" className="gap-2">
+              <ClipboardList className="h-4 w-4" />
+              Requirements
+            </TabsTrigger>
             <TabsTrigger value="raw-material" className="gap-2">
               <FileBox className="h-4 w-4" />
               Raw Material Request
@@ -569,6 +684,10 @@ export default function Requests() {
               History
             </TabsTrigger>
           </TabsList>
+
+          <TabsContent value="requirements" className="mt-6">
+            <RequirementsTab />
+          </TabsContent>
 
           <TabsContent value="raw-material" className="mt-6">
             {renderRequestForm(
