@@ -17,6 +17,7 @@ import Reconciliation from "./pages/Reconciliation";
 import RatioPlanning from "./pages/RatioPlanning";
 import FabricCalculation from "./pages/FabricCalculation";
 import Requests from "./pages/Requests";
+import Requirements from "./pages/Requirements";
 import Auth from "./pages/Auth";
 import Admin from "./pages/Admin";
 import Profile from "./pages/Profile";
@@ -41,6 +42,7 @@ const App = () => (
             <Route path="/laysheets" element={<ProtectedRoute><LaySheets /></ProtectedRoute>} />
             <Route path="/bundles" element={<ProtectedRoute><Bundles /></ProtectedRoute>} />
             <Route path="/fabric" element={<ProtectedRoute><FabricCalculation /></ProtectedRoute>} />
+            <Route path="/requirements" element={<ProtectedRoute><Requirements /></ProtectedRoute>} />
             <Route path="/requests" element={<ProtectedRoute><Requests /></ProtectedRoute>} />
             <Route path="/delivery-notes" element={<ProtectedRoute><DeliveryNotes /></ProtectedRoute>} />
             <Route path="/reconciliation" element={<ProtectedRoute><Reconciliation /></ProtectedRoute>} />

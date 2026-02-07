@@ -35,7 +35,6 @@ import {
   exportEmptyMaterialReturnPDF,
 } from '@/lib/requestPdfExport';
 import { RequestHistoryTable } from '@/components/requests/RequestHistoryTable';
-import { RequirementsTab } from '@/components/requests/RequirementsTab';
 import { DescriptionAutocomplete } from '@/components/requests/DescriptionAutocomplete';
 import { Badge } from '@/components/ui/badge';
 
@@ -104,7 +103,7 @@ const emptyRequestForm = (): RequestForm => ({
 });
 
 export default function Requests() {
-  const [activeTab, setActiveTab] = useState('requirements');
+  const [activeTab, setActiveTab] = useState('raw-material');
   const { addRequest, exportMonthlyExcel, submittedRequests } = useRequestStore();
   const { requirements, updateRequestedQty, materialCatalog } = useRequirementStore();
   const { orders } = useCuttingStore();
@@ -662,11 +661,7 @@ export default function Requests() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="requirements" className="gap-2">
-              <ClipboardList className="h-4 w-4" />
-              Requirements
-            </TabsTrigger>
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="raw-material" className="gap-2">
               <FileBox className="h-4 w-4" />
               Raw Material Request
@@ -684,10 +679,6 @@ export default function Requests() {
               History
             </TabsTrigger>
           </TabsList>
-
-          <TabsContent value="requirements" className="mt-6">
-            <RequirementsTab />
-          </TabsContent>
 
           <TabsContent value="raw-material" className="mt-6">
             {renderRequestForm(
