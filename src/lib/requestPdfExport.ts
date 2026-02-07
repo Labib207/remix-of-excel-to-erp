@@ -170,11 +170,11 @@ export const exportRawMaterialRequestPDF = async (form: RequestForm, items: Requ
   doc.text(form.department || '', marginLeft + 35, deptRowY + 5.5);
   doc.line(marginLeft, deptRowY + deptRowHeight, pageWidth - marginRight, deptRowY + deptRowHeight);
 
-  // Order row
+  // Order / PO row
   const orderRowY = deptRowY + deptRowHeight;
   const orderRowHeight = 8;
-  doc.text('Order:', marginLeft + 3, orderRowY + 5.5);
-  doc.text(form.orderName || '', marginLeft + 25, orderRowY + 5.5);
+  doc.text('Order / PO:', marginLeft + 3, orderRowY + 5.5);
+  doc.text(form.orderName || '', marginLeft + 32, orderRowY + 5.5);
   doc.line(marginLeft, orderRowY + orderRowHeight, pageWidth - marginRight, orderRowY + orderRowHeight);
 
   // Table starting position
@@ -393,10 +393,10 @@ export const exportGeneralSuppliesRequestPDF = async (form: RequestForm, items: 
   doc.text(`Department:  ${form.department}`, 15, deptRowY + 6);
   doc.line(10, deptRowY + deptRowHeight, pageWidth - 10, deptRowY + deptRowHeight);
 
-  // Order row
+  // Order / PO row
   const orderRowY = deptRowY + deptRowHeight;
   const orderRowHeight = 8;
-  doc.text(`Order:  ${form.orderName || ''}`, 15, orderRowY + 6);
+  doc.text(`Order / PO:  ${form.orderName || ''}`, 15, orderRowY + 6);
   doc.line(10, orderRowY + orderRowHeight, pageWidth - 10, orderRowY + orderRowHeight);
 
   // Table
@@ -606,10 +606,10 @@ export const exportMaterialReturnSlipPDF = async (form: RequestForm, items: Retu
   doc.text(`Department:  ${form.department}`, 15, deptRowY + 6);
   doc.line(10, deptRowY + deptRowHeight, pageWidth - 10, deptRowY + deptRowHeight);
 
-  // Order row
+  // Order / PO row
   const orderRowY = deptRowY + deptRowHeight;
   const orderRowHeight = 8;
-  doc.text(`Order:  ${form.orderName || ''}`, 15, orderRowY + 6);
+  doc.text(`Order / PO:  ${form.orderName || ''}`, 15, orderRowY + 6);
   doc.line(10, orderRowY + orderRowHeight, pageWidth - 10, orderRowY + orderRowHeight);
 
   // Table
