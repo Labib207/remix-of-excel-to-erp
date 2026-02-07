@@ -81,6 +81,98 @@ const formatDate = (dateStr: string): string => {
   return date.toLocaleDateString('en-GB');
 };
 
+// Helper to draw page header for multi-page support
+const drawPageHeader = (
+  doc: jsPDF,
+  logoBase64: string | null,
+  title: string,
+  docNumber: string,
+  issueNumber: string,
+  form: RequestForm,
+  marginLeft: number,
+  contentWidth: number,
+  pageWidth: number
+): number => {
+  const headerTop = 10;
+  const headerHeight = 30;
+  
+  // Outer border for this page
+  const pageHeight = doc.internal.pageSize.getHeight();
+  doc.setDrawColor(0);
+  doc.setLineWidth(0.5);
+  doc.rect(marginLeft, 10, contentWidth, pageHeight - 20);
+  
+  // Add logo on left
+  if (logoBase64) {
+    doc.addImage(logoBase64, 'PNG', marginLeft + 5, headerTop + 5, 45, 22);
+  } else {
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.text('GHOUSH', marginLeft + 10, headerTop + 18);
+    doc.setFontSize(6);
+    doc.setFont('helvetica', 'normal');
+    doc.text('MILITARY & SAFETY UNIFORMS', marginLeft + 10, headerTop + 24);
+  }
+
+  // Title
+  doc.setFontSize(20);
+  doc.setFont('helvetica', 'bold');
+  doc.text(title, marginLeft + 60, headerTop + 20);
+
+  // Header bottom line
+  const headerBottom = headerTop + headerHeight;
+  doc.setLineWidth(0.3);
+  doc.line(marginLeft, headerBottom, pageWidth - marginLeft, headerBottom);
+
+  // Document ID and Issue Number row
+  const docIdRowY = headerBottom;
+  const docIdRowHeight = 10;
+  const halfWidth = contentWidth / 2;
+  
+  doc.setLineWidth(0.3);
+  doc.line(marginLeft + halfWidth, docIdRowY, marginLeft + halfWidth, docIdRowY + docIdRowHeight);
+  doc.line(marginLeft + 35, docIdRowY, marginLeft + 35, docIdRowY + docIdRowHeight);
+  doc.line(marginLeft + halfWidth + 35, docIdRowY, marginLeft + halfWidth + 35, docIdRowY + docIdRowHeight);
+  
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  doc.text('Document ID', marginLeft + 3, docIdRowY + 7);
+  doc.setFont('helvetica', 'bold');
+  doc.text(docNumber, marginLeft + 38, docIdRowY + 7);
+  
+  doc.setFont('helvetica', 'normal');
+  doc.text('Issue Number', marginLeft + halfWidth + 3, docIdRowY + 7);
+  doc.setFont('helvetica', 'bold');
+  doc.text(issueNumber, marginLeft + halfWidth + 38, docIdRowY + 7);
+  
+  doc.line(marginLeft, docIdRowY + docIdRowHeight, pageWidth - marginLeft, docIdRowY + docIdRowHeight);
+
+  // Date row
+  const dateRowY = docIdRowY + docIdRowHeight;
+  const dateRowHeight = 8;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(10);
+  doc.text('Date:', marginLeft + 3, dateRowY + 5.5);
+  doc.text(formatDate(form.date), marginLeft + 20, dateRowY + 5.5);
+  doc.line(marginLeft, dateRowY + dateRowHeight, pageWidth - marginLeft, dateRowY + dateRowHeight);
+
+  // Department row
+  const deptRowY = dateRowY + dateRowHeight;
+  const deptRowHeight = 8;
+  doc.text('Department:', marginLeft + 3, deptRowY + 5.5);
+  doc.text(form.department || '', marginLeft + 35, deptRowY + 5.5);
+  doc.line(marginLeft, deptRowY + deptRowHeight, pageWidth - marginLeft, deptRowY + deptRowHeight);
+
+  // Order / PO row
+  const orderRowY = deptRowY + deptRowHeight;
+  const orderRowHeight = 8;
+  doc.text('Order / PO:', marginLeft + 3, orderRowY + 5.5);
+  doc.text(form.orderName || '', marginLeft + 32, orderRowY + 5.5);
+  doc.line(marginLeft, orderRowY + orderRowHeight, pageWidth - marginLeft, orderRowY + orderRowHeight);
+
+  return orderRowY + orderRowHeight; // Return table start Y
+};
+
 export const exportRawMaterialRequestPDF = async (form: RequestForm, items: RequestItem[], existingDocNumber?: string): Promise<void> => {
   const doc = new jsPDF('landscape', 'mm', 'a4');
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -92,93 +184,16 @@ export const exportRawMaterialRequestPDF = async (form: RequestForm, items: Requ
   const marginRight = 10;
   const contentWidth = pageWidth - marginLeft - marginRight;
   
-  // Outer border
-  doc.setDrawColor(0);
-  doc.setLineWidth(0.5);
-  doc.rect(marginLeft, 10, contentWidth, pageHeight - 20);
-
-  // Header section with logo and title
-  const headerTop = 10;
-  const headerHeight = 30;
-  
-  // Add logo on left (larger area)
+  // Load logo once
+  let logoBase64: string | null = null;
   try {
-    const logoBase64 = await loadLogoAsBase64();
-    doc.addImage(logoBase64, 'PNG', marginLeft + 5, headerTop + 5, 45, 22);
+    logoBase64 = await loadLogoAsBase64();
   } catch (error) {
-    doc.setFontSize(16);
-    doc.setFont('helvetica', 'bold');
-    doc.text('GHOUSH', marginLeft + 10, headerTop + 18);
-    doc.setFontSize(6);
-    doc.setFont('helvetica', 'normal');
-    doc.text('MILITARY & SAFETY UNIFORMS', marginLeft + 10, headerTop + 24);
+    logoBase64 = null;
   }
 
-  // Title - RAW MATERIAL REQUEST (next to logo, larger and bold)
-  doc.setFontSize(20);
-  doc.setFont('helvetica', 'bold');
-  doc.text('RAW MATERIAL REQUEST', marginLeft + 60, headerTop + 20);
-
-  // Header bottom line
-  const headerBottom = headerTop + headerHeight;
-  doc.setLineWidth(0.3);
-  doc.line(marginLeft, headerBottom, pageWidth - marginRight, headerBottom);
-
-  // Document ID and Issue Number row (table format with cell borders)
-  const docIdRowY = headerBottom;
-  const docIdRowHeight = 10;
-  const halfWidth = contentWidth / 2;
-  
-  // Draw cell borders for Document ID row
-  doc.setLineWidth(0.3);
-  // Vertical divider between Document ID and Issue Number
-  doc.line(marginLeft + halfWidth, docIdRowY, marginLeft + halfWidth, docIdRowY + docIdRowHeight);
-  // Vertical divider after Document ID label
-  doc.line(marginLeft + 35, docIdRowY, marginLeft + 35, docIdRowY + docIdRowHeight);
-  // Vertical divider after Issue Number label
-  doc.line(marginLeft + halfWidth + 35, docIdRowY, marginLeft + halfWidth + 35, docIdRowY + docIdRowHeight);
-  
-  // Document ID label and value
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'normal');
-  doc.text('Document ID', marginLeft + 3, docIdRowY + 7);
-  doc.setFont('helvetica', 'bold');
-  doc.text(docNumber, marginLeft + 38, docIdRowY + 7);
-  
-  // Issue Number label and value
-  doc.setFont('helvetica', 'normal');
-  doc.text('Issue Number', marginLeft + halfWidth + 3, docIdRowY + 7);
-  doc.setFont('helvetica', 'bold');
-  doc.text(issueNumber, marginLeft + halfWidth + 38, docIdRowY + 7);
-  
-  // Bottom line of Document ID row
-  doc.line(marginLeft, docIdRowY + docIdRowHeight, pageWidth - marginRight, docIdRowY + docIdRowHeight);
-
-  // Date row
-  const dateRowY = docIdRowY + docIdRowHeight;
-  const dateRowHeight = 8;
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(10);
-  doc.text('Date:', marginLeft + 3, dateRowY + 5.5);
-  doc.text(formatDate(form.date), marginLeft + 20, dateRowY + 5.5);
-  doc.line(marginLeft, dateRowY + dateRowHeight, pageWidth - marginRight, dateRowY + dateRowHeight);
-
-  // Department row
-  const deptRowY = dateRowY + dateRowHeight;
-  const deptRowHeight = 8;
-  doc.text('Department:', marginLeft + 3, deptRowY + 5.5);
-  doc.text(form.department || '', marginLeft + 35, deptRowY + 5.5);
-  doc.line(marginLeft, deptRowY + deptRowHeight, pageWidth - marginRight, deptRowY + deptRowHeight);
-
-  // Order / PO row
-  const orderRowY = deptRowY + deptRowHeight;
-  const orderRowHeight = 8;
-  doc.text('Order / PO:', marginLeft + 3, orderRowY + 5.5);
-  doc.text(form.orderName || '', marginLeft + 32, orderRowY + 5.5);
-  doc.line(marginLeft, orderRowY + orderRowHeight, pageWidth - marginRight, orderRowY + orderRowHeight);
-
-  // Table starting position
-  const tableStartY = orderRowY + orderRowHeight;
+  // Draw initial header
+  const tableStartY = drawPageHeader(doc, logoBase64, 'RAW MATERIAL REQUEST', docNumber, issueNumber, form, marginLeft, contentWidth, pageWidth);
 
   // Prepare table rows
   const tableRows = items.length > 0 
@@ -231,33 +246,47 @@ export const exportRawMaterialRequestPDF = async (form: RequestForm, items: Requ
       6: { cellWidth: 30, halign: 'center' },
       7: { cellWidth: 49 }
     },
-    margin: { left: marginLeft, right: marginRight },
-    tableWidth: contentWidth
+    margin: { left: marginLeft, right: marginRight, top: 76 },
+    tableWidth: contentWidth,
+    didDrawPage: (data) => {
+      // Draw header on each new page (except first which is already drawn)
+      if (data.pageNumber > 1) {
+        drawPageHeader(doc, logoBase64, 'RAW MATERIAL REQUEST', docNumber, issueNumber, form, marginLeft, contentWidth, pageWidth);
+      }
+    }
   });
 
   // Get the final Y position after table
   const finalY = (doc as any).lastAutoTable.finalY;
 
   // Signature section - 4 columns with boxes
-  const sigY = Math.max(finalY, pageHeight - 55);
+  const sigY = Math.max(finalY + 5, pageHeight - 55);
   const sigBoxWidth = contentWidth / 4;
   const sigBoxHeight = 35;
+
+  // Check if signature fits on current page, if not add new page
+  if (sigY + sigBoxHeight > pageHeight - 10) {
+    doc.addPage();
+    drawPageHeader(doc, logoBase64, 'RAW MATERIAL REQUEST', docNumber, issueNumber, form, marginLeft, contentWidth, pageWidth);
+  }
+  
+  const actualSigY = sigY + sigBoxHeight > pageHeight - 10 ? 76 : sigY;
 
   // Draw signature boxes
   doc.setLineWidth(0.3);
   
   for (let i = 0; i < 4; i++) {
-    doc.rect(marginLeft + (sigBoxWidth * i), sigY, sigBoxWidth, sigBoxHeight);
+    doc.rect(marginLeft + (sigBoxWidth * i), actualSigY, sigBoxWidth, sigBoxHeight);
   }
 
   // Box 1 - Requested By
   doc.setFontSize(10);
   doc.setFont('helvetica', 'bold');
-  doc.text('Requested By', marginLeft + sigBoxWidth / 2, sigY + 6, { align: 'center' });
+  doc.text('Requested By', marginLeft + sigBoxWidth / 2, actualSigY + 6, { align: 'center' });
   
   // Signature line
   doc.setLineWidth(0.2);
-  const sigLineY = sigY + 20;
+  const sigLineY = actualSigY + 20;
   doc.line(marginLeft + 5, sigLineY, marginLeft + sigBoxWidth - 5, sigLineY);
   
   // Labels
@@ -268,12 +297,12 @@ export const exportRawMaterialRequestPDF = async (form: RequestForm, items: Requ
   doc.setTextColor(0);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8);
-  doc.text('Line Leader', marginLeft + sigBoxWidth / 2, sigY + 32, { align: 'center' });
+  doc.text('Line Leader', marginLeft + sigBoxWidth / 2, actualSigY + 32, { align: 'center' });
 
   // Box 2 - Approved By
   doc.setFontSize(10);
   doc.setFont('helvetica', 'bold');
-  doc.text('Approved By', marginLeft + sigBoxWidth + sigBoxWidth / 2, sigY + 6, { align: 'center' });
+  doc.text('Approved By', marginLeft + sigBoxWidth + sigBoxWidth / 2, actualSigY + 6, { align: 'center' });
   
   doc.setLineWidth(0.2);
   doc.line(marginLeft + sigBoxWidth + 5, sigLineY, marginLeft + sigBoxWidth * 2 - 5, sigLineY);
@@ -285,17 +314,17 @@ export const exportRawMaterialRequestPDF = async (form: RequestForm, items: Requ
   doc.setTextColor(0);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8);
-  doc.text('Production Manager', marginLeft + sigBoxWidth + sigBoxWidth / 2, sigY + 32, { align: 'center' });
+  doc.text('Production Manager', marginLeft + sigBoxWidth + sigBoxWidth / 2, actualSigY + 32, { align: 'center' });
 
   // Box 3 - ASWAQ Transaction Report Number
   doc.setFontSize(8);
   doc.setFont('helvetica', 'bold');
-  doc.text('ASWAQ Transaction Report Number', marginLeft + sigBoxWidth * 2 + sigBoxWidth / 2, sigY + 6, { align: 'center' });
+  doc.text('ASWAQ Transaction Report Number', marginLeft + sigBoxWidth * 2 + sigBoxWidth / 2, actualSigY + 6, { align: 'center' });
 
   // Box 4 - Issued By
   doc.setFontSize(10);
   doc.setFont('helvetica', 'bold');
-  doc.text('Issued By', marginLeft + sigBoxWidth * 3 + sigBoxWidth / 2, sigY + 6, { align: 'center' });
+  doc.text('Issued By', marginLeft + sigBoxWidth * 3 + sigBoxWidth / 2, actualSigY + 6, { align: 'center' });
   
   doc.setLineWidth(0.2);
   doc.line(marginLeft + sigBoxWidth * 3 + 5, sigLineY, marginLeft + sigBoxWidth * 4 - 5, sigLineY);
@@ -307,22 +336,22 @@ export const exportRawMaterialRequestPDF = async (form: RequestForm, items: Requ
   doc.setTextColor(0);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8);
-  doc.text('Warehouse In Charge', marginLeft + sigBoxWidth * 3 + sigBoxWidth / 2, sigY + 32, { align: 'center' });
+  doc.text('Warehouse In Charge', marginLeft + sigBoxWidth * 3 + sigBoxWidth / 2, actualSigY + 32, { align: 'center' });
 
   // Fill in form values if provided
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
   if (form.requestedBy) {
-    doc.text(form.requestedBy, marginLeft + sigBoxWidth / 2, sigY + 15, { align: 'center' });
+    doc.text(form.requestedBy, marginLeft + sigBoxWidth / 2, actualSigY + 15, { align: 'center' });
   }
   if (form.approvedBy) {
-    doc.text(form.approvedBy, marginLeft + sigBoxWidth + sigBoxWidth / 2, sigY + 15, { align: 'center' });
+    doc.text(form.approvedBy, marginLeft + sigBoxWidth + sigBoxWidth / 2, actualSigY + 15, { align: 'center' });
   }
   if (form.aswaqNumber) {
-    doc.text(form.aswaqNumber, marginLeft + sigBoxWidth * 2 + sigBoxWidth / 2, sigY + 15, { align: 'center' });
+    doc.text(form.aswaqNumber, marginLeft + sigBoxWidth * 2 + sigBoxWidth / 2, actualSigY + 15, { align: 'center' });
   }
   if (form.issuedBy) {
-    doc.text(form.issuedBy, marginLeft + sigBoxWidth * 3 + sigBoxWidth / 2, sigY + 15, { align: 'center' });
+    doc.text(form.issuedBy, marginLeft + sigBoxWidth * 3 + sigBoxWidth / 2, actualSigY + 15, { align: 'center' });
   }
 
   doc.save(`Raw_Material_Request_${docNumber}.pdf`);
@@ -335,72 +364,19 @@ export const exportGeneralSuppliesRequestPDF = async (form: RequestForm, items: 
   const docNumber = existingDocNumber || getNextDocNumber('DOC');
   const issueNumber = `ISS-${docNumber.split('-')[1]}`;
   
-  // Outer border
-  doc.setDrawColor(0);
-  doc.setLineWidth(0.5);
-  doc.rect(10, 10, pageWidth - 20, pageHeight - 20);
-
-  // Header section with logo and title
+  const marginLeft = 10;
+  const contentWidth = pageWidth - marginLeft * 2;
+  
+  // Load logo once
+  let logoBase64: string | null = null;
   try {
-    const logoBase64 = await loadLogoAsBase64();
-    doc.addImage(logoBase64, 'PNG', 15, 15, 35, 20);
+    logoBase64 = await loadLogoAsBase64();
   } catch (error) {
-    doc.setFontSize(14);
-    doc.setFont('helvetica', 'bold');
-    doc.text('GHOUSH', 20, 25);
+    logoBase64 = null;
   }
 
-  // Title
-  doc.setFontSize(18);
-  doc.setFont('helvetica', 'bold');
-  doc.text('GENERAL SUPPLIES REQUEST', 55, 28);
-
-  // Header bottom line
-  const headerBottom = 40;
-  doc.setLineWidth(0.3);
-  doc.line(10, headerBottom, pageWidth - 10, headerBottom);
-
-  // Document ID and Issue Number row
-  const docIdRowY = headerBottom;
-  const docIdRowHeight = 10;
-  
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'normal');
-  doc.text('Document ID', 15, docIdRowY + 7);
-  doc.setFont('helvetica', 'bold');
-  doc.text(docNumber, 50, docIdRowY + 7);
-  
-  doc.line(pageWidth / 2, docIdRowY, pageWidth / 2, docIdRowY + docIdRowHeight);
-  
-  doc.setFont('helvetica', 'normal');
-  doc.text('Issue Number', pageWidth / 2 + 5, docIdRowY + 7);
-  doc.setFont('helvetica', 'bold');
-  doc.text(issueNumber, pageWidth / 2 + 40, docIdRowY + 7);
-  
-  doc.line(10, docIdRowY + docIdRowHeight, pageWidth - 10, docIdRowY + docIdRowHeight);
-
-  // Date row
-  const dateRowY = docIdRowY + docIdRowHeight;
-  const dateRowHeight = 8;
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(10);
-  doc.text(`Date:  ${formatDate(form.date)}`, 15, dateRowY + 6);
-  doc.line(10, dateRowY + dateRowHeight, pageWidth - 10, dateRowY + dateRowHeight);
-
-  // Department row
-  const deptRowY = dateRowY + dateRowHeight;
-  const deptRowHeight = 8;
-  doc.text(`Department:  ${form.department}`, 15, deptRowY + 6);
-  doc.line(10, deptRowY + deptRowHeight, pageWidth - 10, deptRowY + deptRowHeight);
-
-  // Order / PO row
-  const orderRowY = deptRowY + deptRowHeight;
-  const orderRowHeight = 8;
-  doc.text(`Order / PO:  ${form.orderName || ''}`, 15, orderRowY + 6);
-  doc.line(10, orderRowY + orderRowHeight, pageWidth - 10, orderRowY + orderRowHeight);
-
-  // Table
-  const tableStartY = orderRowY + orderRowHeight;
+  // Draw initial header
+  const tableStartY = drawPageHeader(doc, logoBase64, 'GENERAL SUPPLIES REQUEST', docNumber, issueNumber, form, marginLeft, contentWidth, pageWidth);
 
   const tableRows = items.length > 0 
     ? items.map(item => [
@@ -451,91 +427,104 @@ export const exportGeneralSuppliesRequestPDF = async (form: RequestForm, items: 
       6: { cellWidth: 30, halign: 'center' },
       7: { cellWidth: 49 }
     },
-    margin: { left: 10, right: 10 },
-    tableWidth: pageWidth - 20
+    margin: { left: marginLeft, right: marginLeft, top: 76 },
+    tableWidth: contentWidth,
+    didDrawPage: (data) => {
+      if (data.pageNumber > 1) {
+        drawPageHeader(doc, logoBase64, 'GENERAL SUPPLIES REQUEST', docNumber, issueNumber, form, marginLeft, contentWidth, pageWidth);
+      }
+    }
   });
 
   // Signature section
   const finalY = (doc as any).lastAutoTable.finalY;
   const sigY = Math.max(finalY + 5, pageHeight - 55);
-  const sigBoxWidth = (pageWidth - 20) / 4;
+  const sigBoxWidth = contentWidth / 4;
   const sigBoxHeight = 35;
+
+  // Check if signature fits on current page
+  if (sigY + sigBoxHeight > pageHeight - 10) {
+    doc.addPage();
+    drawPageHeader(doc, logoBase64, 'GENERAL SUPPLIES REQUEST', docNumber, issueNumber, form, marginLeft, contentWidth, pageWidth);
+  }
+  
+  const actualSigY = sigY + sigBoxHeight > pageHeight - 10 ? 76 : sigY;
 
   doc.setLineWidth(0.3);
   
   // Box 1 - Requested By
-  doc.rect(10, sigY, sigBoxWidth, sigBoxHeight);
+  doc.rect(marginLeft, actualSigY, sigBoxWidth, sigBoxHeight);
   doc.setFontSize(10);
   doc.setFont('helvetica', 'bold');
-  doc.text('Requested By', 10 + sigBoxWidth / 2, sigY + 6, { align: 'center' });
+  doc.text('Requested By', marginLeft + sigBoxWidth / 2, actualSigY + 6, { align: 'center' });
   
   doc.setLineWidth(0.2);
-  doc.line(10 + 5, sigY + 22, 10 + sigBoxWidth - 5, sigY + 22);
+  doc.line(marginLeft + 5, actualSigY + 22, marginLeft + sigBoxWidth - 5, actualSigY + 22);
   doc.setFont('helvetica', 'italic');
   doc.setFontSize(7);
   doc.setTextColor(100);
-  doc.text('Name & Signature', 10 + sigBoxWidth / 2, sigY + 27, { align: 'center' });
+  doc.text('Name & Signature', marginLeft + sigBoxWidth / 2, actualSigY + 27, { align: 'center' });
   doc.setTextColor(0);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8);
-  doc.text('Line Leader', 10 + sigBoxWidth / 2, sigY + 32, { align: 'center' });
+  doc.text('Line Leader', marginLeft + sigBoxWidth / 2, actualSigY + 32, { align: 'center' });
 
   // Box 2 - Approved By
   doc.setLineWidth(0.3);
-  doc.rect(10 + sigBoxWidth, sigY, sigBoxWidth, sigBoxHeight);
+  doc.rect(marginLeft + sigBoxWidth, actualSigY, sigBoxWidth, sigBoxHeight);
   doc.setFontSize(10);
   doc.setFont('helvetica', 'bold');
-  doc.text('Approved By', 10 + sigBoxWidth + sigBoxWidth / 2, sigY + 6, { align: 'center' });
+  doc.text('Approved By', marginLeft + sigBoxWidth + sigBoxWidth / 2, actualSigY + 6, { align: 'center' });
   
   doc.setLineWidth(0.2);
-  doc.line(10 + sigBoxWidth + 5, sigY + 22, 10 + sigBoxWidth * 2 - 5, sigY + 22);
+  doc.line(marginLeft + sigBoxWidth + 5, actualSigY + 22, marginLeft + sigBoxWidth * 2 - 5, actualSigY + 22);
   doc.setFont('helvetica', 'italic');
   doc.setFontSize(7);
   doc.setTextColor(100);
-  doc.text('Name & Signature', 10 + sigBoxWidth + sigBoxWidth / 2, sigY + 27, { align: 'center' });
+  doc.text('Name & Signature', marginLeft + sigBoxWidth + sigBoxWidth / 2, actualSigY + 27, { align: 'center' });
   doc.setTextColor(0);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8);
-  doc.text('Line Manager', 10 + sigBoxWidth + sigBoxWidth / 2, sigY + 32, { align: 'center' });
+  doc.text('Line Manager', marginLeft + sigBoxWidth + sigBoxWidth / 2, actualSigY + 32, { align: 'center' });
 
   // Box 3 - ASWAQ
   doc.setLineWidth(0.3);
-  doc.rect(10 + sigBoxWidth * 2, sigY, sigBoxWidth, sigBoxHeight);
+  doc.rect(marginLeft + sigBoxWidth * 2, actualSigY, sigBoxWidth, sigBoxHeight);
   doc.setFontSize(9);
   doc.setFont('helvetica', 'bold');
-  doc.text('ASWAQ Transaction Report Number', 10 + sigBoxWidth * 2 + sigBoxWidth / 2, sigY + 6, { align: 'center' });
+  doc.text('ASWAQ Transaction Report Number', marginLeft + sigBoxWidth * 2 + sigBoxWidth / 2, actualSigY + 6, { align: 'center' });
 
   // Box 4 - Issued By
-  doc.rect(10 + sigBoxWidth * 3, sigY, sigBoxWidth, sigBoxHeight);
+  doc.rect(marginLeft + sigBoxWidth * 3, actualSigY, sigBoxWidth, sigBoxHeight);
   doc.setFontSize(10);
   doc.setFont('helvetica', 'bold');
-  doc.text('Issued By', 10 + sigBoxWidth * 3 + sigBoxWidth / 2, sigY + 6, { align: 'center' });
+  doc.text('Issued By', marginLeft + sigBoxWidth * 3 + sigBoxWidth / 2, actualSigY + 6, { align: 'center' });
   
   doc.setLineWidth(0.2);
-  doc.line(10 + sigBoxWidth * 3 + 5, sigY + 22, 10 + sigBoxWidth * 4 - 5, sigY + 22);
+  doc.line(marginLeft + sigBoxWidth * 3 + 5, actualSigY + 22, marginLeft + sigBoxWidth * 4 - 5, actualSigY + 22);
   doc.setFont('helvetica', 'italic');
   doc.setFontSize(7);
   doc.setTextColor(100);
-  doc.text('Name & Signature', 10 + sigBoxWidth * 3 + sigBoxWidth / 2, sigY + 27, { align: 'center' });
+  doc.text('Name & Signature', marginLeft + sigBoxWidth * 3 + sigBoxWidth / 2, actualSigY + 27, { align: 'center' });
   doc.setTextColor(0);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8);
-  doc.text('Warehouse In Charge', 10 + sigBoxWidth * 3 + sigBoxWidth / 2, sigY + 32, { align: 'center' });
+  doc.text('Warehouse In Charge', marginLeft + sigBoxWidth * 3 + sigBoxWidth / 2, actualSigY + 32, { align: 'center' });
 
   // Fill in form values
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
   if (form.requestedBy) {
-    doc.text(form.requestedBy, 10 + sigBoxWidth / 2, sigY + 16, { align: 'center' });
+    doc.text(form.requestedBy, marginLeft + sigBoxWidth / 2, actualSigY + 16, { align: 'center' });
   }
   if (form.approvedBy) {
-    doc.text(form.approvedBy, 10 + sigBoxWidth + sigBoxWidth / 2, sigY + 16, { align: 'center' });
+    doc.text(form.approvedBy, marginLeft + sigBoxWidth + sigBoxWidth / 2, actualSigY + 16, { align: 'center' });
   }
   if (form.aswaqNumber) {
-    doc.text(form.aswaqNumber, 10 + sigBoxWidth * 2 + sigBoxWidth / 2, sigY + 16, { align: 'center' });
+    doc.text(form.aswaqNumber, marginLeft + sigBoxWidth * 2 + sigBoxWidth / 2, actualSigY + 16, { align: 'center' });
   }
   if (form.issuedBy) {
-    doc.text(form.issuedBy, 10 + sigBoxWidth * 3 + sigBoxWidth / 2, sigY + 16, { align: 'center' });
+    doc.text(form.issuedBy, marginLeft + sigBoxWidth * 3 + sigBoxWidth / 2, actualSigY + 16, { align: 'center' });
   }
 
   doc.save(`General_Supplies_Request_${docNumber}.pdf`);
@@ -548,72 +537,19 @@ export const exportMaterialReturnSlipPDF = async (form: RequestForm, items: Retu
   const docNumber = existingDocNumber || getNextDocNumber('DOC');
   const issueNumber = `ISS-${docNumber.split('-')[1]}`;
   
-  // Outer border
-  doc.setDrawColor(0);
-  doc.setLineWidth(0.5);
-  doc.rect(10, 10, pageWidth - 20, pageHeight - 20);
-
-  // Header section with logo and title
+  const marginLeft = 10;
+  const contentWidth = pageWidth - marginLeft * 2;
+  
+  // Load logo once
+  let logoBase64: string | null = null;
   try {
-    const logoBase64 = await loadLogoAsBase64();
-    doc.addImage(logoBase64, 'PNG', 15, 15, 35, 20);
+    logoBase64 = await loadLogoAsBase64();
   } catch (error) {
-    doc.setFontSize(14);
-    doc.setFont('helvetica', 'bold');
-    doc.text('GHOUSH', 20, 25);
+    logoBase64 = null;
   }
 
-  // Title
-  doc.setFontSize(18);
-  doc.setFont('helvetica', 'bold');
-  doc.text('MATERIAL RETURN SLIP', 55, 28);
-
-  // Header bottom line
-  const headerBottom = 40;
-  doc.setLineWidth(0.3);
-  doc.line(10, headerBottom, pageWidth - 10, headerBottom);
-
-  // Document ID and Issue Number row
-  const docIdRowY = headerBottom;
-  const docIdRowHeight = 10;
-  
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'normal');
-  doc.text('Document ID', 15, docIdRowY + 7);
-  doc.setFont('helvetica', 'bold');
-  doc.text(docNumber, 50, docIdRowY + 7);
-  
-  doc.line(pageWidth / 2, docIdRowY, pageWidth / 2, docIdRowY + docIdRowHeight);
-  
-  doc.setFont('helvetica', 'normal');
-  doc.text('Issue Number', pageWidth / 2 + 5, docIdRowY + 7);
-  doc.setFont('helvetica', 'bold');
-  doc.text(issueNumber, pageWidth / 2 + 40, docIdRowY + 7);
-  
-  doc.line(10, docIdRowY + docIdRowHeight, pageWidth - 10, docIdRowY + docIdRowHeight);
-
-  // Date row
-  const dateRowY = docIdRowY + docIdRowHeight;
-  const dateRowHeight = 8;
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(10);
-  doc.text(`Date:  ${formatDate(form.date)}`, 15, dateRowY + 6);
-  doc.line(10, dateRowY + dateRowHeight, pageWidth - 10, dateRowY + dateRowHeight);
-
-  // Department row
-  const deptRowY = dateRowY + dateRowHeight;
-  const deptRowHeight = 8;
-  doc.text(`Department:  ${form.department}`, 15, deptRowY + 6);
-  doc.line(10, deptRowY + deptRowHeight, pageWidth - 10, deptRowY + deptRowHeight);
-
-  // Order / PO row
-  const orderRowY = deptRowY + deptRowHeight;
-  const orderRowHeight = 8;
-  doc.text(`Order / PO:  ${form.orderName || ''}`, 15, orderRowY + 6);
-  doc.line(10, orderRowY + orderRowHeight, pageWidth - 10, orderRowY + orderRowHeight);
-
-  // Table
-  const tableStartY = orderRowY + orderRowHeight;
+  // Draw initial header
+  const tableStartY = drawPageHeader(doc, logoBase64, 'MATERIAL RETURN SLIP', docNumber, issueNumber, form, marginLeft, contentWidth, pageWidth);
 
   const tableRows = items.length > 0 
     ? items.map(item => [
@@ -662,91 +598,104 @@ export const exportMaterialReturnSlipPDF = async (form: RequestForm, items: Retu
       5: { cellWidth: 35, halign: 'center' },
       6: { cellWidth: 34 }
     },
-    margin: { left: 10, right: 10 },
-    tableWidth: pageWidth - 20
+    margin: { left: marginLeft, right: marginLeft, top: 76 },
+    tableWidth: contentWidth,
+    didDrawPage: (data) => {
+      if (data.pageNumber > 1) {
+        drawPageHeader(doc, logoBase64, 'MATERIAL RETURN SLIP', docNumber, issueNumber, form, marginLeft, contentWidth, pageWidth);
+      }
+    }
   });
 
   // Signature section
   const finalY = (doc as any).lastAutoTable.finalY;
   const sigY = Math.max(finalY + 5, pageHeight - 55);
-  const sigBoxWidth = (pageWidth - 20) / 4;
+  const sigBoxWidth = contentWidth / 4;
   const sigBoxHeight = 35;
+
+  // Check if signature fits on current page
+  if (sigY + sigBoxHeight > pageHeight - 10) {
+    doc.addPage();
+    drawPageHeader(doc, logoBase64, 'MATERIAL RETURN SLIP', docNumber, issueNumber, form, marginLeft, contentWidth, pageWidth);
+  }
+  
+  const actualSigY = sigY + sigBoxHeight > pageHeight - 10 ? 76 : sigY;
 
   doc.setLineWidth(0.3);
   
   // Box 1 - Returned By
-  doc.rect(10, sigY, sigBoxWidth, sigBoxHeight);
+  doc.rect(marginLeft, actualSigY, sigBoxWidth, sigBoxHeight);
   doc.setFontSize(10);
   doc.setFont('helvetica', 'bold');
-  doc.text('Returned By', 10 + sigBoxWidth / 2, sigY + 6, { align: 'center' });
+  doc.text('Returned By', marginLeft + sigBoxWidth / 2, actualSigY + 6, { align: 'center' });
   
   doc.setLineWidth(0.2);
-  doc.line(10 + 5, sigY + 22, 10 + sigBoxWidth - 5, sigY + 22);
+  doc.line(marginLeft + 5, actualSigY + 22, marginLeft + sigBoxWidth - 5, actualSigY + 22);
   doc.setFont('helvetica', 'italic');
   doc.setFontSize(7);
   doc.setTextColor(100);
-  doc.text('Name & Signature', 10 + sigBoxWidth / 2, sigY + 27, { align: 'center' });
+  doc.text('Name & Signature', marginLeft + sigBoxWidth / 2, actualSigY + 27, { align: 'center' });
   doc.setTextColor(0);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8);
-  doc.text('Line Leader', 10 + sigBoxWidth / 2, sigY + 32, { align: 'center' });
+  doc.text('Line Leader', marginLeft + sigBoxWidth / 2, actualSigY + 32, { align: 'center' });
 
   // Box 2 - Approved By
   doc.setLineWidth(0.3);
-  doc.rect(10 + sigBoxWidth, sigY, sigBoxWidth, sigBoxHeight);
+  doc.rect(marginLeft + sigBoxWidth, actualSigY, sigBoxWidth, sigBoxHeight);
   doc.setFontSize(10);
   doc.setFont('helvetica', 'bold');
-  doc.text('Approved By', 10 + sigBoxWidth + sigBoxWidth / 2, sigY + 6, { align: 'center' });
+  doc.text('Approved By', marginLeft + sigBoxWidth + sigBoxWidth / 2, actualSigY + 6, { align: 'center' });
   
   doc.setLineWidth(0.2);
-  doc.line(10 + sigBoxWidth + 5, sigY + 22, 10 + sigBoxWidth * 2 - 5, sigY + 22);
+  doc.line(marginLeft + sigBoxWidth + 5, actualSigY + 22, marginLeft + sigBoxWidth * 2 - 5, actualSigY + 22);
   doc.setFont('helvetica', 'italic');
   doc.setFontSize(7);
   doc.setTextColor(100);
-  doc.text('Name & Signature', 10 + sigBoxWidth + sigBoxWidth / 2, sigY + 27, { align: 'center' });
+  doc.text('Name & Signature', marginLeft + sigBoxWidth + sigBoxWidth / 2, actualSigY + 27, { align: 'center' });
   doc.setTextColor(0);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8);
-  doc.text('Line Manager', 10 + sigBoxWidth + sigBoxWidth / 2, sigY + 32, { align: 'center' });
+  doc.text('Line Manager', marginLeft + sigBoxWidth + sigBoxWidth / 2, actualSigY + 32, { align: 'center' });
 
   // Box 3 - ASWAQ
   doc.setLineWidth(0.3);
-  doc.rect(10 + sigBoxWidth * 2, sigY, sigBoxWidth, sigBoxHeight);
+  doc.rect(marginLeft + sigBoxWidth * 2, actualSigY, sigBoxWidth, sigBoxHeight);
   doc.setFontSize(9);
   doc.setFont('helvetica', 'bold');
-  doc.text('ASWAQ Transaction Report Number', 10 + sigBoxWidth * 2 + sigBoxWidth / 2, sigY + 6, { align: 'center' });
+  doc.text('ASWAQ Transaction Report Number', marginLeft + sigBoxWidth * 2 + sigBoxWidth / 2, actualSigY + 6, { align: 'center' });
 
   // Box 4 - Received By
-  doc.rect(10 + sigBoxWidth * 3, sigY, sigBoxWidth, sigBoxHeight);
+  doc.rect(marginLeft + sigBoxWidth * 3, actualSigY, sigBoxWidth, sigBoxHeight);
   doc.setFontSize(10);
   doc.setFont('helvetica', 'bold');
-  doc.text('Received By', 10 + sigBoxWidth * 3 + sigBoxWidth / 2, sigY + 6, { align: 'center' });
+  doc.text('Received By', marginLeft + sigBoxWidth * 3 + sigBoxWidth / 2, actualSigY + 6, { align: 'center' });
   
   doc.setLineWidth(0.2);
-  doc.line(10 + sigBoxWidth * 3 + 5, sigY + 22, 10 + sigBoxWidth * 4 - 5, sigY + 22);
+  doc.line(marginLeft + sigBoxWidth * 3 + 5, actualSigY + 22, marginLeft + sigBoxWidth * 4 - 5, actualSigY + 22);
   doc.setFont('helvetica', 'italic');
   doc.setFontSize(7);
   doc.setTextColor(100);
-  doc.text('Name & Signature', 10 + sigBoxWidth * 3 + sigBoxWidth / 2, sigY + 27, { align: 'center' });
+  doc.text('Name & Signature', marginLeft + sigBoxWidth * 3 + sigBoxWidth / 2, actualSigY + 27, { align: 'center' });
   doc.setTextColor(0);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8);
-  doc.text('Warehouse In Charge', 10 + sigBoxWidth * 3 + sigBoxWidth / 2, sigY + 32, { align: 'center' });
+  doc.text('Warehouse In Charge', marginLeft + sigBoxWidth * 3 + sigBoxWidth / 2, actualSigY + 32, { align: 'center' });
 
   // Fill in form values
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
   if (form.requestedBy) {
-    doc.text(form.requestedBy, 10 + sigBoxWidth / 2, sigY + 16, { align: 'center' });
+    doc.text(form.requestedBy, marginLeft + sigBoxWidth / 2, actualSigY + 16, { align: 'center' });
   }
   if (form.approvedBy) {
-    doc.text(form.approvedBy, 10 + sigBoxWidth + sigBoxWidth / 2, sigY + 16, { align: 'center' });
+    doc.text(form.approvedBy, marginLeft + sigBoxWidth + sigBoxWidth / 2, actualSigY + 16, { align: 'center' });
   }
   if (form.aswaqNumber) {
-    doc.text(form.aswaqNumber, 10 + sigBoxWidth * 2 + sigBoxWidth / 2, sigY + 16, { align: 'center' });
+    doc.text(form.aswaqNumber, marginLeft + sigBoxWidth * 2 + sigBoxWidth / 2, actualSigY + 16, { align: 'center' });
   }
   if (form.issuedBy) {
-    doc.text(form.issuedBy, 10 + sigBoxWidth * 3 + sigBoxWidth / 2, sigY + 16, { align: 'center' });
+    doc.text(form.issuedBy, marginLeft + sigBoxWidth * 3 + sigBoxWidth / 2, actualSigY + 16, { align: 'center' });
   }
 
   doc.save(`Material_Return_Slip_${docNumber}.pdf`);
