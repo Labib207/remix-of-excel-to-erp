@@ -407,7 +407,7 @@ export default function Requests() {
             </div>
           </div>
 
-          {/* Order Selection */}
+          {/* Order Selection - Only show orders that have pending requirements */}
           <div className="space-y-2">
             <Label className="flex items-center gap-2">
               <ClipboardList className="h-4 w-4" />
@@ -423,11 +423,17 @@ export default function Requests() {
                 </SelectTrigger>
                 <SelectContent className="bg-background">
                   <SelectItem value="none">-- No Order --</SelectItem>
-                  {orders.filter(order => order.id).map(order => (
-                    <SelectItem key={order.id} value={order.id}>
-                      {order.orderNumber} - {order.customer} ({order.styleName})
-                    </SelectItem>
-                  ))}
+                  {orders
+                    .filter(order => order.id && requirements.some(r => r.orderId === order.id))
+                    .map(order => {
+                      const pendingCount = requirements.filter(r => r.orderId === order.id && r.pendingQty > 0).length;
+                      return (
+                        <SelectItem key={order.id} value={order.id}>
+                          {order.orderNumber} - {order.customer} ({order.styleName})
+                          {pendingCount > 0 && ` • ${pendingCount} pending`}
+                        </SelectItem>
+                      );
+                    })}
                 </SelectContent>
               </Select>
               {selectedOrder && (
@@ -436,6 +442,9 @@ export default function Requests() {
                 </Badge>
               )}
             </div>
+            {requirements.filter(r => r.orderId && r.pendingQty > 0).length === 0 && (
+              <p className="text-sm text-muted-foreground">No pending requirements for this order</p>
+            )}
           </div>
 
           {/* Items Table */}
