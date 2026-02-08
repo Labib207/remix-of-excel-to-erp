@@ -25,7 +25,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { Plus, Trash2, ClipboardList, Package, PlusCircle } from 'lucide-react';
+import { Plus, Trash2, ClipboardList, Package, PlusCircle, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
 import { useRequirementStore, MaterialRequirement } from '@/store/requirementStore';
 import { useCuttingStore } from '@/store/cuttingStore';
@@ -72,7 +72,7 @@ const emptyOrder = (): NewOrder => ({
 });
 
 export function RequirementsTab() {
-  const { orders, addOrder, deleteOrder } = useCuttingStore();
+  const { orders, addOrder, deleteOrder, updateOrder } = useCuttingStore();
   const { 
     requirements, 
     addRequirement, 
@@ -84,7 +84,9 @@ export function RequirementsTab() {
   const [selectedOrderId, setSelectedOrderId] = useState<string>('');
   const [newItems, setNewItems] = useState<NewRequirement[]>([emptyRequirement()]);
   const [isAddOrderOpen, setIsAddOrderOpen] = useState(false);
+  const [isEditOrderOpen, setIsEditOrderOpen] = useState(false);
   const [newOrder, setNewOrder] = useState<NewOrder>(emptyOrder());
+  const [editOrder, setEditOrder] = useState<NewOrder>(emptyOrder());
   
   const selectedOrder = orders.find(o => o.id === selectedOrderId);
   const orderRequirements = requirements.filter(r => r.orderId === selectedOrderId);
@@ -133,6 +135,45 @@ export function RequirementsTab() {
     setNewOrder(emptyOrder());
     setIsAddOrderOpen(false);
     toast.success(`Order ${newOrder.orderNumber} created successfully`);
+  };
+
+  const openEditOrder = () => {
+    if (!selectedOrderId) return;
+    const order = orders.find(o => o.id === selectedOrderId);
+    if (order) {
+      setEditOrder({
+        orderNumber: order.orderNumber,
+        customer: order.customer,
+        styleNo: order.styleNo,
+        styleName: order.styleName,
+        shade: order.shade,
+        totalQty: order.totalQty,
+        fabricWidth: order.fabricWidth,
+        deliveryDate: order.deliveryDate,
+      });
+      setIsEditOrderOpen(true);
+    }
+  };
+
+  const handleEditOrder = () => {
+    if (!editOrder.orderNumber || !editOrder.customer) {
+      toast.error('Please fill in Order Number and Customer');
+      return;
+    }
+
+    updateOrder(selectedOrderId, {
+      orderNumber: editOrder.orderNumber,
+      customer: editOrder.customer,
+      styleNo: editOrder.styleNo,
+      styleName: editOrder.styleName,
+      shade: editOrder.shade || 'X',
+      totalQty: editOrder.totalQty,
+      fabricWidth: editOrder.fabricWidth,
+      deliveryDate: editOrder.deliveryDate,
+    });
+
+    setIsEditOrderOpen(false);
+    toast.success(`Order ${editOrder.orderNumber} updated successfully`);
   };
 
   const addNewItemRow = () => {
@@ -231,15 +272,26 @@ export function RequirementsTab() {
                   </SelectContent>
                 </Select>
                 {selectedOrderId && (
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="text-destructive hover:bg-destructive/10 shrink-0"
-                    onClick={(e) => handleDeleteOrder(selectedOrderId, e)}
-                    title="Delete this order"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                  <>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="shrink-0"
+                      onClick={openEditOrder}
+                      title="Edit this order"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="text-destructive hover:bg-destructive/10 shrink-0"
+                      onClick={(e) => handleDeleteOrder(selectedOrderId, e)}
+                      title="Delete this order"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </>
                 )}
               </div>
             </div>
@@ -335,6 +387,97 @@ export function RequirementsTab() {
                   </Button>
                   <Button onClick={handleAddOrder}>
                     Create Order
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+
+            {/* Edit Order Dialog */}
+            <Dialog open={isEditOrderOpen} onOpenChange={setIsEditOrderOpen}>
+              <DialogContent className="sm:max-w-lg">
+                <DialogHeader>
+                  <DialogTitle>Edit Order</DialogTitle>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Order Number *</Label>
+                      <Input
+                        value={editOrder.orderNumber}
+                        onChange={(e) => setEditOrder({ ...editOrder, orderNumber: e.target.value })}
+                        placeholder="e.g., ORD-2024-001"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Customer *</Label>
+                      <Input
+                        value={editOrder.customer}
+                        onChange={(e) => setEditOrder({ ...editOrder, customer: e.target.value })}
+                        placeholder="Customer name"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Style No</Label>
+                      <Input
+                        value={editOrder.styleNo}
+                        onChange={(e) => setEditOrder({ ...editOrder, styleNo: e.target.value })}
+                        placeholder="e.g., BDU-001"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Style Name</Label>
+                      <Input
+                        value={editOrder.styleName}
+                        onChange={(e) => setEditOrder({ ...editOrder, styleName: e.target.value })}
+                        placeholder="e.g., Combat Uniform"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label>Shade</Label>
+                      <Input
+                        value={editOrder.shade}
+                        onChange={(e) => setEditOrder({ ...editOrder, shade: e.target.value })}
+                        placeholder="e.g., X, A, B"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Total Qty</Label>
+                      <Input
+                        type="number"
+                        value={editOrder.totalQty || ''}
+                        onChange={(e) => setEditOrder({ ...editOrder, totalQty: parseInt(e.target.value) || 0 })}
+                        placeholder="0"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Fabric Width (cm)</Label>
+                      <Input
+                        type="number"
+                        value={editOrder.fabricWidth || ''}
+                        onChange={(e) => setEditOrder({ ...editOrder, fabricWidth: parseInt(e.target.value) || 145 })}
+                        placeholder="145"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Delivery Date</Label>
+                    <Input
+                      type="date"
+                      value={editOrder.deliveryDate}
+                      onChange={(e) => setEditOrder({ ...editOrder, deliveryDate: e.target.value })}
+                    />
+                  </div>
+                </div>
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" onClick={() => setIsEditOrderOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button onClick={handleEditOrder}>
+                    Save Changes
                   </Button>
                 </div>
               </DialogContent>
