@@ -20,7 +20,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Plus, Trash2, Download, Package, Undo2, FileBox, Send, FileSpreadsheet, Calendar, History, FileDown, ClipboardList, Database } from 'lucide-react';
+import { Plus, Trash2, Download, Package, Undo2, FileBox, Send, FileSpreadsheet, Calendar, History, FileDown, ClipboardList, Database, Pencil } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { useRequestStore } from '@/store/requestStore';
@@ -107,7 +113,7 @@ export default function Requests() {
   const [activeTab, setActiveTab] = useState('raw-material');
   const { addRequest, exportMonthlyExcel, submittedRequests } = useRequestStore();
   const { requirements, updateRequestedQty, materialCatalog } = useRequirementStore();
-  const { orders } = useCuttingStore();
+  const { orders, updateOrder } = useCuttingStore();
   
   // Month/Year selector for export
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth().toString());
@@ -125,6 +131,56 @@ export default function Requests() {
   const [materialReturnForm, setMaterialReturnForm] = useState<RequestForm>(emptyRequestForm());
   const [materialReturnItems, setMaterialReturnItems] = useState<ReturnItem[]>([]);
 
+  // Edit Order State
+  const [isEditOrderOpen, setIsEditOrderOpen] = useState(false);
+  const [editingOrderId, setEditingOrderId] = useState<string>('');
+  const [editOrderData, setEditOrderData] = useState({
+    orderNumber: '',
+    customer: '',
+    styleNo: '',
+    styleName: '',
+    shade: '',
+    totalQty: 0,
+    fabricWidth: 145,
+    deliveryDate: '',
+  });
+
+  const openEditOrderDialog = (orderId: string) => {
+    const order = orders.find(o => o.id === orderId);
+    if (order) {
+      setEditingOrderId(orderId);
+      setEditOrderData({
+        orderNumber: order.orderNumber,
+        customer: order.customer,
+        styleNo: order.styleNo,
+        styleName: order.styleName,
+        shade: order.shade,
+        totalQty: order.totalQty,
+        fabricWidth: order.fabricWidth,
+        deliveryDate: order.deliveryDate,
+      });
+      setIsEditOrderOpen(true);
+    }
+  };
+
+  const handleSaveOrderEdit = () => {
+    if (!editOrderData.orderNumber || !editOrderData.customer) {
+      toast.error('Order Number and Customer are required');
+      return;
+    }
+    updateOrder(editingOrderId, {
+      orderNumber: editOrderData.orderNumber,
+      customer: editOrderData.customer,
+      styleNo: editOrderData.styleNo,
+      styleName: editOrderData.styleName,
+      shade: editOrderData.shade || 'X',
+      totalQty: editOrderData.totalQty,
+      fabricWidth: editOrderData.fabricWidth,
+      deliveryDate: editOrderData.deliveryDate,
+    });
+    setIsEditOrderOpen(false);
+    toast.success(`Order ${editOrderData.orderNumber} updated successfully`);
+  };
   // Handle order selection for raw material request
   const handleOrderSelect = (orderId: string, type: 'raw' | 'general') => {
     const actualOrderId = orderId === 'none' ? '' : orderId;
@@ -449,9 +505,19 @@ export default function Requests() {
                 </SelectContent>
               </Select>
               {selectedOrder && (
-                <Badge variant="outline" className="whitespace-nowrap">
-                  {selectedOrder.totalQty} pcs
-                </Badge>
+                <>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => openEditOrderDialog(form.orderId)}
+                    title="Edit order details"
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                  <Badge variant="outline" className="whitespace-nowrap">
+                    {selectedOrder.totalQty} pcs
+                  </Badge>
+                </>
               )}
             </div>
             {requirements.filter(r => r.orderId && r.pendingQty > 0).length === 0 && (
@@ -922,6 +988,97 @@ export default function Requests() {
             <RequestHistoryTable />
           </TabsContent>
         </Tabs>
+
+        {/* Edit Order Dialog */}
+        <Dialog open={isEditOrderOpen} onOpenChange={setIsEditOrderOpen}>
+          <DialogContent className="sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Edit Order</DialogTitle>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Order Number *</Label>
+                  <Input
+                    value={editOrderData.orderNumber}
+                    onChange={(e) => setEditOrderData({ ...editOrderData, orderNumber: e.target.value })}
+                    placeholder="e.g., ORD-2024-001"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Customer *</Label>
+                  <Input
+                    value={editOrderData.customer}
+                    onChange={(e) => setEditOrderData({ ...editOrderData, customer: e.target.value })}
+                    placeholder="Customer name"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Style No</Label>
+                  <Input
+                    value={editOrderData.styleNo}
+                    onChange={(e) => setEditOrderData({ ...editOrderData, styleNo: e.target.value })}
+                    placeholder="e.g., BDU-001"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Style Name</Label>
+                  <Input
+                    value={editOrderData.styleName}
+                    onChange={(e) => setEditOrderData({ ...editOrderData, styleName: e.target.value })}
+                    placeholder="e.g., Combat Uniform"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label>Shade</Label>
+                  <Input
+                    value={editOrderData.shade}
+                    onChange={(e) => setEditOrderData({ ...editOrderData, shade: e.target.value })}
+                    placeholder="e.g., X, A, B"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Total Qty</Label>
+                  <Input
+                    type="number"
+                    value={editOrderData.totalQty || ''}
+                    onChange={(e) => setEditOrderData({ ...editOrderData, totalQty: parseInt(e.target.value) || 0 })}
+                    placeholder="0"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Fabric Width (cm)</Label>
+                  <Input
+                    type="number"
+                    value={editOrderData.fabricWidth || ''}
+                    onChange={(e) => setEditOrderData({ ...editOrderData, fabricWidth: parseInt(e.target.value) || 145 })}
+                    placeholder="145"
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Delivery Date</Label>
+                <Input
+                  type="date"
+                  value={editOrderData.deliveryDate}
+                  onChange={(e) => setEditOrderData({ ...editOrderData, deliveryDate: e.target.value })}
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setIsEditOrderOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleSaveOrderEdit}>
+                Save Changes
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </MainLayout>
   );
