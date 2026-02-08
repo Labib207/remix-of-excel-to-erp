@@ -1,335 +1,203 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Separator } from '@/components/ui/separator';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog';
-import { FileText, Plus, Download, Trash2, Package } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { Truck, Search, Download, Eye, Package, FileText, CalendarIcon } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useRequestStore } from '@/store/requestStore';
+import { exportDeliveryNotePDF } from '@/lib/requestPdfExport';
+import { format, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
 
-interface DeliveryItem {
+interface RequestItem {
   id: string;
-  itemName: string;
-  top: number;
-  bottom: number;
+  slNo: number;
+  itemCode: string;
+  description: string;
+  uom: string;
+  requirementQty?: number;
+  requestedQty: number;
+  issuedQty: number;
+  remainingQty: number;
+  remarks: string;
 }
 
-interface DeliveryNote {
+interface ReturnItem {
   id: string;
-  noteNo: number;
-  toRecipient: string;
+  slNo: number;
+  itemCode: string;
+  description: string;
+  uom: string;
+  qtyReturned: number;
+  qtyReceived: number;
+  remarks: string;
+}
+
+interface RequestForm {
   date: string;
-  items: DeliveryItem[];
+  department: string;
+  orderId?: string;
+  orderName?: string;
+  requestedBy: string;
+  approvedBy: string;
   issuedBy: string;
-  receivedBy: string;
-  createdAt: string;
+  aswaqNumber: string;
+}
+
+interface SubmittedRequest {
+  id: string;
+  type: 'raw-material' | 'general-supplies' | 'material-return';
+  docNumber: string;
+  form: RequestForm;
+  items: (RequestItem | ReturnItem)[];
+  submittedAt: string;
 }
 
 const DeliveryNotes = () => {
   const { toast } = useToast();
-  const [deliveryNotes, setDeliveryNotes] = useState<DeliveryNote[]>([]);
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [selectedNote, setSelectedNote] = useState<DeliveryNote | null>(null);
-
-  // Form state
-  const [formData, setFormData] = useState({
-    toRecipient: '',
-    date: new Date().toISOString().split('T')[0],
-    issuedBy: '',
-    receivedBy: '',
+  const { submittedRequests } = useRequestStore();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
+  const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
+  const [selectedRequest, setSelectedRequest] = useState<SubmittedRequest | null>(null);
+  const [deliveryForm, setDeliveryForm] = useState({
+    trNo: '',
+    line: '',
   });
-  const [items, setItems] = useState<DeliveryItem[]>([
-    { id: '1', itemName: '', top: 0, bottom: 0 }
-  ]);
 
-  const addItem = () => {
-    setItems(prev => [...prev, { 
-      id: Date.now().toString(), 
-      itemName: '', 
-      top: 0, 
-      bottom: 0 
-    }]);
+  // Filter only raw-material and general-supplies (not material-return)
+  const deliveryRequests = useMemo(() => {
+    return submittedRequests
+      .filter((request) => {
+        // Only raw-material and general-supplies can have delivery notes
+        if (request.type === 'material-return') return false;
+
+        // Date range filter
+        if (dateFrom || dateTo) {
+          const requestDate = new Date(request.form.date);
+          if (dateFrom && dateTo) {
+            if (!isWithinInterval(requestDate, { start: startOfDay(dateFrom), end: endOfDay(dateTo) })) {
+              return false;
+            }
+          } else if (dateFrom) {
+            if (requestDate < startOfDay(dateFrom)) return false;
+          } else if (dateTo) {
+            if (requestDate > endOfDay(dateTo)) return false;
+          }
+        }
+
+        // Search filter
+        if (searchQuery) {
+          const query = searchQuery.toLowerCase();
+          const matchesDocNumber = request.docNumber.toLowerCase().includes(query);
+          const matchesDepartment = request.form.department.toLowerCase().includes(query);
+          const matchesOrder = (request.form as any).orderName?.toLowerCase().includes(query);
+          const matchesItems = request.items.some(
+            (item: any) =>
+              item.itemCode?.toLowerCase().includes(query) ||
+              item.description?.toLowerCase().includes(query)
+          );
+          return matchesDocNumber || matchesDepartment || matchesOrder || matchesItems;
+        }
+
+        return true;
+      })
+      .sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime());
+  }, [submittedRequests, searchQuery, dateFrom, dateTo]);
+
+  const handleDownloadDeliveryNote = (request: SubmittedRequest, trNo?: string, line?: string) => {
+    const items = request.items as RequestItem[];
+    const deliveryItems = items.map(item => ({
+      slNo: item.slNo,
+      description: item.description,
+      requirementQty: item.requirementQty || item.requestedQty,
+      issuedQty: item.issuedQty,
+      balance: (item.requirementQty || item.requestedQty) - item.issuedQty,
+      remarks: item.remarks,
+    }));
+
+    exportDeliveryNotePDF(
+      {
+        orderName: (request.form as any).orderName || request.docNumber,
+        date: request.form.date,
+        trNo: trNo || '',
+        line: line || request.form.department,
+      },
+      deliveryItems,
+      request.docNumber
+    );
+
+    toast({ title: 'Delivery Note PDF downloaded' });
   };
 
-  const removeItem = (id: string) => {
-    if (items.length > 1) {
-      setItems(prev => prev.filter(item => item.id !== id));
+  const handleQuickDownload = (request: SubmittedRequest) => {
+    handleDownloadDeliveryNote(request, '', request.form.department);
+  };
+
+  const handleCustomDownload = () => {
+    if (selectedRequest) {
+      handleDownloadDeliveryNote(selectedRequest, deliveryForm.trNo, deliveryForm.line);
+      setSelectedRequest(null);
+      setDeliveryForm({ trNo: '', line: '' });
     }
   };
 
-  const updateItem = (id: string, field: keyof DeliveryItem, value: string | number) => {
-    setItems(prev => prev.map(item => 
-      item.id === id ? { ...item, [field]: value } : item
-    ));
-  };
-
-  const calculateTotal = () => {
-    return items.reduce((sum, item) => sum + item.top + item.bottom, 0);
-  };
-
-  const handleCreate = () => {
-    const newNote: DeliveryNote = {
-      id: `dn-${Date.now()}`,
-      noteNo: deliveryNotes.length + 1,
-      toRecipient: formData.toRecipient,
-      date: formData.date,
-      items: items.filter(item => item.itemName.trim() !== ''),
-      issuedBy: formData.issuedBy,
-      receivedBy: formData.receivedBy,
-      createdAt: new Date().toISOString(),
-    };
-
-    setDeliveryNotes(prev => [...prev, newNote]);
-    setIsCreateOpen(false);
-    resetForm();
-    toast({ title: 'Delivery note created' });
-  };
-
-  const resetForm = () => {
-    setFormData({
-      toRecipient: '',
-      date: new Date().toISOString().split('T')[0],
-      issuedBy: '',
-      receivedBy: '',
+  const openCustomDialog = (request: SubmittedRequest) => {
+    setSelectedRequest(request);
+    setDeliveryForm({
+      trNo: '',
+      line: request.form.department,
     });
-    setItems([{ id: '1', itemName: '', top: 0, bottom: 0 }]);
   };
 
-  const exportDeliveryNotePDF = async (note: DeliveryNote) => {
-    const { jsPDF } = await import('jspdf');
-    const { default: autoTable } = await import('jspdf-autotable');
-    const doc = new jsPDF();
-
-    // Header
-    doc.setFontSize(20);
-    doc.setFont('helvetica', 'bold');
-    doc.text('DELIVERY NOTE', doc.internal.pageSize.width / 2, 20, { align: 'center' });
-
-    // Company logo area
-    doc.setFontSize(16);
-    doc.setFont('helvetica', 'bold');
-    doc.text('GHOUSH', 14, 35);
-    
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.text('MILITARY SAFETY UNIFORMS', 14, 42);
-
-    // To and Date
-    doc.setFontSize(11);
-    doc.setFont('helvetica', 'bold');
-    doc.text(`TO: ${note.toRecipient}`, 14, 55);
-    doc.text(`DATE: ${new Date(note.date).toLocaleDateString()}`, doc.internal.pageSize.width - 14, 55, { align: 'right' });
-
-    // Items table
-    const tableBody = note.items.map(item => [
-      item.itemName,
-      item.top.toString(),
-      item.bottom.toString(),
-    ]);
-
-    // Add total row
-    const totalTop = note.items.reduce((sum, item) => sum + item.top, 0);
-    const totalBottom = note.items.reduce((sum, item) => sum + item.bottom, 0);
-    tableBody.push(['TOTAL', totalTop.toString(), totalBottom.toString()]);
-
-    autoTable(doc, {
-      startY: 65,
-      head: [['ITEM', 'TOP', 'BOTTOM']],
-      body: tableBody,
-      theme: 'grid',
-      headStyles: { 
-        fillColor: [240, 240, 240], 
-        textColor: [0, 0, 0], 
-        fontStyle: 'bold',
-        halign: 'center'
-      },
-      styles: { fontSize: 10, halign: 'center' },
-      columnStyles: {
-        0: { halign: 'left', cellWidth: 100 },
-        1: { cellWidth: 30 },
-        2: { cellWidth: 30 },
-      },
-      footStyles: { fontStyle: 'bold' },
-    });
-
-    // Signature section
-    const signatureY = (doc as any).lastAutoTable.finalY + 30;
-    
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    
-    // Issued by
-    doc.text('ISSUED BY', 14, signatureY);
-    doc.text('NAME.............................', 14, signatureY + 10);
-    
-    // Received by
-    doc.text('RECEIVED BY', doc.internal.pageSize.width / 2 + 20, signatureY);
-    doc.text('NAME.............................', doc.internal.pageSize.width / 2 + 20, signatureY + 10);
-
-    doc.save(`DeliveryNote_${note.noteNo}_${note.toRecipient}.pdf`);
-    toast({ title: 'PDF exported successfully' });
-  };
+  // Stats
+  const totalRequests = deliveryRequests.length;
+  const totalItems = deliveryRequests.reduce((sum, req) => sum + req.items.length, 0);
+  const totalIssuedQty = deliveryRequests.reduce((sum, req) => 
+    sum + req.items.reduce((s, item: any) => s + (item.issuedQty || 0), 0), 0
+  );
 
   return (
     <MainLayout>
       <div className="space-y-6 animate-fade-in">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight text-foreground">Delivery Notes</h1>
-            <p className="text-muted-foreground">Create delivery notes for sending samples outside</p>
-          </div>
-          <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-            <DialogTrigger asChild>
-              <Button className="gradient-primary text-primary-foreground">
-                <Plus className="mr-2 h-4 w-4" />
-                New Delivery Note
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>Create Delivery Note</DialogTitle>
-              </DialogHeader>
-              
-              <div className="space-y-6 py-4">
-                {/* Basic Info */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>To (Recipient)</Label>
-                    <Input
-                      value={formData.toRecipient}
-                      onChange={(e) => setFormData({ ...formData, toRecipient: e.target.value })}
-                      placeholder="MR. ABDULLAH"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Date</Label>
-                    <Input
-                      type="date"
-                      value={formData.date}
-                      onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                    />
-                  </div>
-                </div>
-
-                <Separator />
-
-                {/* Items */}
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-base font-semibold">Items</Label>
-                    <Button variant="outline" size="sm" onClick={addItem}>
-                      <Plus className="h-4 w-4 mr-1" />
-                      Add Item
-                    </Button>
-                  </div>
-                  
-                  <div className="space-y-3">
-                    <div className="grid grid-cols-12 gap-2 text-xs font-medium text-muted-foreground">
-                      <div className="col-span-6">ITEM NAME</div>
-                      <div className="col-span-2 text-center">TOP</div>
-                      <div className="col-span-2 text-center">BOTTOM</div>
-                      <div className="col-span-2"></div>
-                    </div>
-                    
-                    {items.map((item) => (
-                      <div key={item.id} className="grid grid-cols-12 gap-2 items-center">
-                        <div className="col-span-6">
-                          <Input
-                            value={item.itemName}
-                            onChange={(e) => updateItem(item.id, 'itemName', e.target.value)}
-                            placeholder="Item name / Style"
-                          />
-                        </div>
-                        <div className="col-span-2">
-                          <Input
-                            type="number"
-                            min="0"
-                            className="text-center"
-                            value={item.top}
-                            onChange={(e) => updateItem(item.id, 'top', parseInt(e.target.value) || 0)}
-                          />
-                        </div>
-                        <div className="col-span-2">
-                          <Input
-                            type="number"
-                            min="0"
-                            className="text-center"
-                            value={item.bottom}
-                            onChange={(e) => updateItem(item.id, 'bottom', parseInt(e.target.value) || 0)}
-                          />
-                        </div>
-                        <div className="col-span-2 text-center">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => removeItem(item.id)}
-                            disabled={items.length === 1}
-                          >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                    
-                    <div className="flex justify-end pt-2">
-                      <Badge variant="secondary" className="text-base">
-                        Total Items: {calculateTotal()}
-                      </Badge>
-                    </div>
-                  </div>
-                </div>
-
-                <Separator />
-
-                {/* Signature Info */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Issued By</Label>
-                    <Input
-                      value={formData.issuedBy}
-                      onChange={(e) => setFormData({ ...formData, issuedBy: e.target.value })}
-                      placeholder="Name"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Received By</Label>
-                    <Input
-                      value={formData.receivedBy}
-                      onChange={(e) => setFormData({ ...formData, receivedBy: e.target.value })}
-                      placeholder="Name"
-                    />
-                  </div>
-                </div>
-
-                <div className="flex justify-end gap-2 pt-4">
-                  <Button variant="outline" onClick={() => { setIsCreateOpen(false); resetForm(); }}>
-                    Cancel
-                  </Button>
-                  <Button 
-                    onClick={handleCreate} 
-                    className="gradient-primary text-primary-foreground"
-                    disabled={!formData.toRecipient || items.filter(i => i.itemName.trim()).length === 0}
-                  >
-                    Create Delivery Note
-                  </Button>
-                </div>
-              </div>
-            </DialogContent>
-          </Dialog>
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center gap-3">
+            <Truck className="h-8 w-8 text-primary" />
+            Delivery Notes
+          </h1>
+          <p className="text-muted-foreground mt-1">
+            Generate delivery notes for issued materials - for line supervisor acknowledgment
+          </p>
         </div>
 
         {/* Stats */}
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-4 sm:grid-cols-3">
           <Card className="shadow-card">
             <CardContent className="pt-6">
               <div className="flex items-center gap-4">
@@ -337,8 +205,21 @@ const DeliveryNotes = () => {
                   <FileText className="h-6 w-6 text-primary" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold">{deliveryNotes.length}</p>
-                  <p className="text-sm text-muted-foreground">Total Delivery Notes</p>
+                  <p className="text-2xl font-bold">{totalRequests}</p>
+                  <p className="text-sm text-muted-foreground">Total Requests</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="shadow-card">
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-4">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-accent/10">
+                  <Package className="h-6 w-6 text-accent" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold">{totalItems}</p>
+                  <p className="text-sm text-muted-foreground">Total Items</p>
                 </div>
               </div>
             </CardContent>
@@ -347,80 +228,249 @@ const DeliveryNotes = () => {
             <CardContent className="pt-6">
               <div className="flex items-center gap-4">
                 <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-success/10">
-                  <Package className="h-6 w-6 text-success" />
+                  <Truck className="h-6 w-6 text-success" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold">
-                    {deliveryNotes.reduce((sum, note) => 
-                      sum + note.items.reduce((s, i) => s + i.top + i.bottom, 0), 0
-                    )}
-                  </p>
-                  <p className="text-sm text-muted-foreground">Total Items Delivered</p>
+                  <p className="text-2xl font-bold">{totalIssuedQty}</p>
+                  <p className="text-sm text-muted-foreground">Total Issued Qty</p>
                 </div>
               </div>
             </CardContent>
           </Card>
         </div>
 
-        {/* Delivery Notes Table */}
+        {/* Filters */}
         <Card className="shadow-card">
           <CardHeader>
-            <CardTitle>Delivery Notes</CardTitle>
+            <CardTitle className="text-lg">Filter Requests</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-border bg-muted/50">
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase text-muted-foreground">Note No</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase text-muted-foreground">To</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium uppercase text-muted-foreground">Date</th>
-                    <th className="px-4 py-3 text-center text-xs font-medium uppercase text-muted-foreground">Items</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium uppercase text-muted-foreground">Total Qty</th>
-                    <th className="px-4 py-3 text-right text-xs font-medium uppercase text-muted-foreground">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {deliveryNotes.map((note) => {
-                    const totalQty = note.items.reduce((sum, i) => sum + i.top + i.bottom, 0);
-                    return (
-                      <tr key={note.id} className="hover:bg-muted/30">
-                        <td className="px-4 py-3">
-                          <Badge variant="outline" className="font-mono">DN#{note.noteNo}</Badge>
-                        </td>
-                        <td className="px-4 py-3 font-medium">{note.toRecipient}</td>
-                        <td className="px-4 py-3 text-sm text-muted-foreground">
-                          {new Date(note.date).toLocaleDateString()}
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          <Badge variant="secondary">{note.items.length}</Badge>
-                        </td>
-                        <td className="px-4 py-3 text-right font-mono">{totalQty}</td>
-                        <td className="px-4 py-3 text-right">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => exportDeliveryNotePDF(note)}
-                          >
-                            <Download className="h-4 w-4 mr-1" />
-                            PDF
-                          </Button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                  {deliveryNotes.length === 0 && (
-                    <tr>
-                      <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
-                        No delivery notes yet. Click "New Delivery Note" to create one.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+          <CardContent className="space-y-4">
+            <div className="flex flex-wrap gap-4">
+              <div className="relative flex-1 min-w-[200px]">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search by doc number, order, department, item..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-4 items-center">
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">From:</span>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className="w-[140px] justify-start text-left font-normal">
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {dateFrom ? format(dateFrom, 'dd/MM/yyyy') : 'Pick date'}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar mode="single" selected={dateFrom} onSelect={setDateFrom} initialFocus />
+                  </PopoverContent>
+                </Popover>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">To:</span>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className="w-[140px] justify-start text-left font-normal">
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {dateTo ? format(dateTo, 'dd/MM/yyyy') : 'Pick date'}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar mode="single" selected={dateTo} onSelect={setDateTo} initialFocus />
+                  </PopoverContent>
+                </Popover>
+              </div>
+              {(dateFrom || dateTo) && (
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => { setDateFrom(undefined); setDateTo(undefined); }}
+                >
+                  Clear Dates
+                </Button>
+              )}
             </div>
           </CardContent>
         </Card>
+
+        {/* Requests Table */}
+        <Card className="shadow-card">
+          <CardHeader>
+            <CardTitle>Submitted Requests</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="border rounded-lg overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Doc Number</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Order</TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Department</TableHead>
+                    <TableHead>Items</TableHead>
+                    <TableHead>Issued Qty</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {deliveryRequests.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
+                        {submittedRequests.length === 0
+                          ? 'No requests submitted yet. Submit a Raw Material or General Supplies request first.'
+                          : 'No requests match your filters'}
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    deliveryRequests.map((request) => {
+                      const totalIssued = request.items.reduce((sum, item: any) => sum + (item.issuedQty || 0), 0);
+                      return (
+                        <TableRow key={request.id}>
+                          <TableCell className="font-mono text-sm">{request.docNumber}</TableCell>
+                          <TableCell>
+                            <Badge variant={request.type === 'raw-material' ? 'default' : 'secondary'}>
+                              {request.type === 'raw-material' ? 'Raw Material' : 'General Supplies'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="font-medium">
+                            {(request.form as any).orderName || '-'}
+                          </TableCell>
+                          <TableCell>{format(new Date(request.form.date), 'dd/MM/yyyy')}</TableCell>
+                          <TableCell>{request.form.department || '-'}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline">{request.items.length} items</Badge>
+                          </TableCell>
+                          <TableCell className="font-mono">{totalIssued}</TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex justify-end gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => openCustomDialog(request)}
+                                title="Customize & Download"
+                              >
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleQuickDownload(request)}
+                                title="Quick Download Delivery Note"
+                                className="text-primary hover:text-primary"
+                              >
+                                <Download className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Custom Download Dialog */}
+        <Dialog open={!!selectedRequest} onOpenChange={(open) => !open && setSelectedRequest(null)}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Truck className="h-5 w-5" />
+                Generate Delivery Note
+              </DialogTitle>
+            </DialogHeader>
+            
+            {selectedRequest && (
+              <div className="space-y-6 py-4">
+                {/* Request Info */}
+                <div className="grid grid-cols-2 gap-4 p-4 bg-muted/30 rounded-lg">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Document</p>
+                    <p className="font-mono font-medium">{selectedRequest.docNumber}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Order</p>
+                    <p className="font-medium">{(selectedRequest.form as any).orderName || '-'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Date</p>
+                    <p>{format(new Date(selectedRequest.form.date), 'dd/MM/yyyy')}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Items</p>
+                    <p>{selectedRequest.items.length} items</p>
+                  </div>
+                </div>
+
+                {/* Custom Fields */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>TR No</Label>
+                    <Input
+                      value={deliveryForm.trNo}
+                      onChange={(e) => setDeliveryForm({ ...deliveryForm, trNo: e.target.value })}
+                      placeholder="Enter TR number"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Line</Label>
+                    <Input
+                      value={deliveryForm.line}
+                      onChange={(e) => setDeliveryForm({ ...deliveryForm, line: e.target.value })}
+                      placeholder="Enter line"
+                    />
+                  </div>
+                </div>
+
+                {/* Items Preview */}
+                <div className="space-y-2">
+                  <Label>Items Preview</Label>
+                  <div className="max-h-48 overflow-y-auto border rounded-lg">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="text-xs">No</TableHead>
+                          <TableHead className="text-xs">Description</TableHead>
+                          <TableHead className="text-xs text-right">Req Qty</TableHead>
+                          <TableHead className="text-xs text-right">Issued</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {selectedRequest.items.map((item: any) => (
+                          <TableRow key={item.id}>
+                            <TableCell className="text-xs">{item.slNo}</TableCell>
+                            <TableCell className="text-xs">{item.description}</TableCell>
+                            <TableCell className="text-xs text-right">{item.requirementQty || item.requestedQty}</TableCell>
+                            <TableCell className="text-xs text-right">{item.issuedQty}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-2 pt-4">
+                  <Button variant="outline" onClick={() => setSelectedRequest(null)}>
+                    Cancel
+                  </Button>
+                  <Button onClick={handleCustomDownload} className="gap-2">
+                    <Download className="h-4 w-4" />
+                    Download Delivery Note
+                  </Button>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </MainLayout>
   );
