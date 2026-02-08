@@ -304,6 +304,14 @@ export default function Requests() {
     setMaterialReturnItems(filtered.map((item, idx) => ({ ...item, slNo: idx + 1 })));
   };
 
+  // Helper function to auto-fill empty requestedQty with requirementQty
+  const autoFillRequestedQty = (items: RequestItem[]): RequestItem[] => {
+    return items.map(item => ({
+      ...item,
+      requestedQty: item.requestedQty > 0 ? item.requestedQty : item.requirementQty,
+    }));
+  };
+
   // Download PDF function
   const downloadPDF = (type: 'raw' | 'general' | 'return') => {
     if (type === 'raw') {
@@ -314,7 +322,9 @@ export default function Requests() {
       const orderName = rawMaterialForm.orderId 
         ? orders.find(o => o.id === rawMaterialForm.orderId)?.orderNumber || ''
         : '';
-      exportRawMaterialRequestPDF({ ...rawMaterialForm, orderName }, rawMaterialItems);
+      // Auto-fill empty requestedQty with requirementQty before PDF export
+      const itemsForPdf = autoFillRequestedQty(rawMaterialItems);
+      exportRawMaterialRequestPDF({ ...rawMaterialForm, orderName }, itemsForPdf);
       toast.success('Raw Material Request PDF downloaded');
     } else if (type === 'general') {
       if (generalSuppliesItems.length === 0) {
@@ -324,7 +334,9 @@ export default function Requests() {
       const orderName = generalSuppliesForm.orderId 
         ? orders.find(o => o.id === generalSuppliesForm.orderId)?.orderNumber || ''
         : '';
-      exportGeneralSuppliesRequestPDF({ ...generalSuppliesForm, orderName }, generalSuppliesItems);
+      // Auto-fill empty requestedQty with requirementQty before PDF export
+      const itemsForPdf = autoFillRequestedQty(generalSuppliesItems);
+      exportGeneralSuppliesRequestPDF({ ...generalSuppliesForm, orderName }, itemsForPdf);
       toast.success('General Supplies Request PDF downloaded');
     } else {
       if (materialReturnItems.length === 0) {
@@ -358,8 +370,11 @@ export default function Requests() {
         return;
       }
       
+      // Auto-fill empty requestedQty with requirementQty before submission
+      const itemsToSubmit = autoFillRequestedQty(rawMaterialItems);
+      
       // Update requirement records
-      const requirementUpdates = rawMaterialItems
+      const requirementUpdates = itemsToSubmit
         .filter(item => item.requirementId)
         .map(item => ({
           id: item.requirementId!,
@@ -374,7 +389,7 @@ export default function Requests() {
         type: 'raw-material',
         docNumber,
         form: rawMaterialForm,
-        items: rawMaterialItems,
+        items: itemsToSubmit,
       });
       setRawMaterialForm(emptyRequestForm());
       setRawMaterialItems([]);
@@ -384,11 +399,13 @@ export default function Requests() {
         toast.error('Please add at least one item before submitting');
         return;
       }
+      // Auto-fill empty requestedQty with requirementQty before submission
+      const itemsToSubmit = autoFillRequestedQty(generalSuppliesItems);
       addRequest({
         type: 'general-supplies',
         docNumber,
         form: generalSuppliesForm,
-        items: generalSuppliesItems,
+        items: itemsToSubmit,
       });
       setGeneralSuppliesForm(emptyRequestForm());
       setGeneralSuppliesItems([]);
