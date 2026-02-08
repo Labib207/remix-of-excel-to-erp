@@ -32,7 +32,8 @@ import {
   TrendingUp,
   FileSpreadsheet,
   Upload,
-  ExternalLink
+  ExternalLink,
+  Trash2
 } from 'lucide-react';
 import { format, isWithinInterval, startOfDay, endOfDay, startOfMonth, endOfMonth } from 'date-fns';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -132,7 +133,7 @@ const getMaterialCategory = (itemCode: string): string => {
 };
 
 export function RecordsAnalytics() {
-  const { submittedRequests, addExternalRequest } = useRequestStore();
+  const { submittedRequests, addExternalRequest, deleteRequest } = useRequestStore();
   const { orders } = useCuttingStore();
   
   // Cast requests to extended type (orderId is added at runtime in Requests.tsx)
@@ -143,6 +144,7 @@ export function RecordsAnalytics() {
   const [orderFilter, setOrderFilter] = useState<string>('all');
   const [materialTypeFilter, setMaterialTypeFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [sourceFilter, setSourceFilter] = useState<string>('all');
   const [dateFrom, setDateFrom] = useState<Date | undefined>(startOfMonth(new Date()));
   const [dateTo, setDateTo] = useState<Date | undefined>(endOfMonth(new Date()));
   const [selectedRequest, setSelectedRequest] = useState<SubmittedRequestExtended | null>(null);
@@ -265,6 +267,12 @@ export function RecordsAnalytics() {
           return false;
         }
 
+        // Source filter (internal vs external)
+        if (sourceFilter !== 'all') {
+          if (sourceFilter === 'external' && !request.isExternal) return false;
+          if (sourceFilter === 'internal' && request.isExternal) return false;
+        }
+
         // Material type filter
         if (materialTypeFilter !== 'all') {
           const hasMatchingMaterial = (request.items as RequestItem[]).some(item => 
@@ -323,7 +331,7 @@ export function RecordsAnalytics() {
         return true;
       })
       .sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime());
-  }, [rawMaterialRequests, searchQuery, orderFilter, materialTypeFilter, statusFilter, dateFrom, dateTo, orders]);
+  }, [rawMaterialRequests, searchQuery, orderFilter, materialTypeFilter, statusFilter, sourceFilter, dateFrom, dateTo, orders]);
 
   // Calculate analytics
   const analytics = useMemo(() => {
@@ -438,8 +446,15 @@ export function RecordsAnalytics() {
     setOrderFilter('all');
     setMaterialTypeFilter('all');
     setStatusFilter('all');
+    setSourceFilter('all');
     setDateFrom(startOfMonth(new Date()));
     setDateTo(endOfMonth(new Date()));
+  };
+
+  const handleDeleteRequest = (request: SubmittedRequestExtended) => {
+    if (confirm(`Are you sure you want to delete record "${request.docNumber}"?`)) {
+      deleteRequest(request.id);
+    }
   };
 
   const renderItemsTable = (request: SubmittedRequestExtended) => {
@@ -619,6 +634,17 @@ export function RecordsAnalytics() {
                 </SelectContent>
               </Select>
 
+              <Select value={sourceFilter} onValueChange={setSourceFilter}>
+                <SelectTrigger className="w-36">
+                  <SelectValue placeholder="Source" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Sources</SelectItem>
+                  <SelectItem value="internal">Internal</SelectItem>
+                  <SelectItem value="external">External</SelectItem>
+                </SelectContent>
+              </Select>
+
               {/* Date Range */}
               <div className="flex items-center gap-2">
                 <Popover>
@@ -765,6 +791,17 @@ export function RecordsAnalytics() {
                               >
                                 <Download className="h-4 w-4" />
                               </Button>
+                              {request.isExternal && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => handleDeleteRequest(request)}
+                                  title="Delete External Record"
+                                  className="text-destructive hover:text-destructive"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              )}
                             </div>
                           </TableCell>
                         </TableRow>
