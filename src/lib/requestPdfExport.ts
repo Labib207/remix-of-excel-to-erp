@@ -532,6 +532,221 @@ export const exportMaterialReturnSlipPDF = async (form: RequestForm, items: Retu
   doc.save(`Material_Return_Slip_${docNumber}.pdf`);
 };
 
+// Delivery Note PDF - for line supervisor acknowledgment
+interface DeliveryNoteForm {
+  orderName: string;
+  date: string;
+  trNo?: string;
+  line?: string;
+}
+
+interface DeliveryNoteItem {
+  slNo: number;
+  description: string;
+  requirementQty: number;
+  issuedQty: number;
+  balance: number;
+  remarks: string;
+}
+
+// Helper to draw Delivery Note header (simpler format)
+const drawDeliveryNoteHeader = (
+  doc: jsPDF,
+  logoBase64: string | null,
+  form: DeliveryNoteForm,
+  marginLeft: number,
+  contentWidth: number,
+  pageWidth: number
+): number => {
+  const headerTop = 10;
+  const pageHeight = doc.internal.pageSize.getHeight();
+  
+  // Outer border
+  doc.setDrawColor(0);
+  doc.setLineWidth(0.5);
+  doc.rect(marginLeft, 10, contentWidth, pageHeight - 20);
+  
+  // Logo on left
+  if (logoBase64) {
+    doc.addImage(logoBase64, 'PNG', marginLeft + 5, headerTop + 5, 45, 22);
+  } else {
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.text('GHOUSH', marginLeft + 10, headerTop + 18);
+    doc.setFontSize(6);
+    doc.setFont('helvetica', 'normal');
+    doc.text('MILITARY & SAFETY UNIFORMS', marginLeft + 10, headerTop + 24);
+  }
+
+  // Title
+  doc.setFontSize(18);
+  doc.setFont('helvetica', 'bold');
+  doc.text('DELIVERY NOTE', marginLeft + 60, headerTop + 20);
+
+  // Header bottom line
+  const headerBottom = headerTop + 32;
+  doc.setLineWidth(0.3);
+  doc.line(marginLeft, headerBottom, pageWidth - marginLeft, headerBottom);
+
+  // Order Name row
+  const orderRowY = headerBottom;
+  const rowHeight = 10;
+  doc.setFontSize(11);
+  doc.setFont('helvetica', 'bold');
+  doc.text('ORDER NAME', marginLeft + 5, orderRowY + 7);
+  doc.setFont('helvetica', 'normal');
+  doc.text(form.orderName || '', marginLeft + 50, orderRowY + 7);
+  doc.line(marginLeft, orderRowY + rowHeight, pageWidth - marginLeft, orderRowY + rowHeight);
+
+  // Date, TR No, Line row
+  const infoRowY = orderRowY + rowHeight;
+  const thirdWidth = contentWidth / 3;
+  
+  doc.setFont('helvetica', 'bold');
+  doc.text('DATE', marginLeft + 5, infoRowY + 7);
+  doc.setFont('helvetica', 'normal');
+  doc.text(form.date ? formatDate(form.date) : '', marginLeft + 25, infoRowY + 7);
+  
+  doc.line(marginLeft + thirdWidth, infoRowY, marginLeft + thirdWidth, infoRowY + rowHeight);
+  doc.setFont('helvetica', 'bold');
+  doc.text('TR NO', marginLeft + thirdWidth + 5, infoRowY + 7);
+  doc.setFont('helvetica', 'normal');
+  doc.text(form.trNo || '', marginLeft + thirdWidth + 25, infoRowY + 7);
+  
+  doc.line(marginLeft + thirdWidth * 2, infoRowY, marginLeft + thirdWidth * 2, infoRowY + rowHeight);
+  doc.setFont('helvetica', 'bold');
+  doc.text('LINE', marginLeft + thirdWidth * 2 + 5, infoRowY + 7);
+  doc.setFont('helvetica', 'normal');
+  doc.text(form.line || '', marginLeft + thirdWidth * 2 + 25, infoRowY + 7);
+  
+  doc.line(marginLeft, infoRowY + rowHeight, pageWidth - marginLeft, infoRowY + rowHeight);
+
+  return infoRowY + rowHeight;
+};
+
+// Helper to draw Delivery Note signature section
+const drawDeliveryNoteSignature = (
+  doc: jsPDF,
+  marginLeft: number,
+  contentWidth: number,
+  sigY: number
+): void => {
+  const sigBoxWidth = contentWidth / 2;
+  const sigBoxHeight = 30;
+
+  doc.setLineWidth(0.3);
+  
+  // Two signature boxes side by side
+  doc.rect(marginLeft, sigY, sigBoxWidth, sigBoxHeight);
+  doc.rect(marginLeft + sigBoxWidth, sigY, sigBoxWidth, sigBoxHeight);
+
+  // Box 1 - Line Supervisor
+  doc.setFontSize(11);
+  doc.setFont('helvetica', 'bold');
+  doc.text('LINE SUPERVISER', marginLeft + sigBoxWidth / 2, sigY + 22, { align: 'center' });
+  
+  // Signature line
+  doc.setLineWidth(0.2);
+  doc.line(marginLeft + 15, sigY + 16, marginLeft + sigBoxWidth - 15, sigY + 16);
+
+  // Box 2 - Line Recorder
+  doc.text('LINE RECORDER', marginLeft + sigBoxWidth + sigBoxWidth / 2, sigY + 22, { align: 'center' });
+  
+  // Signature line
+  doc.line(marginLeft + sigBoxWidth + 15, sigY + 16, marginLeft + sigBoxWidth * 2 - 15, sigY + 16);
+};
+
+export const exportDeliveryNotePDF = async (
+  form: DeliveryNoteForm,
+  items: DeliveryNoteItem[],
+  docNumber?: string
+): Promise<void> => {
+  const doc = new jsPDF('portrait', 'mm', 'a4');
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  
+  const marginLeft = 10;
+  const contentWidth = pageWidth - marginLeft * 2;
+  const sigBoxHeight = 30;
+  const sigY = pageHeight - 10 - sigBoxHeight;
+  
+  // Load logo
+  let logoBase64: string | null = null;
+  try {
+    logoBase64 = await loadLogoAsBase64();
+  } catch (error) {
+    logoBase64 = null;
+  }
+
+  // Draw header
+  const tableStartY = drawDeliveryNoteHeader(doc, logoBase64, form, marginLeft, contentWidth, pageWidth);
+  
+  // Draw signature section
+  drawDeliveryNoteSignature(doc, marginLeft, contentWidth, sigY);
+
+  // Prepare table rows
+  const tableRows = items.length > 0 
+    ? items.map(item => [
+        item.slNo.toString(),
+        item.description,
+        item.requirementQty > 0 ? item.requirementQty.toString() : '',
+        item.issuedQty > 0 ? item.issuedQty.toString() : '',
+        item.balance !== 0 ? item.balance.toString() : '',
+        item.remarks || ''
+      ])
+    : [];
+  
+  // Pad to minimum 21 rows for A4 portrait
+  const minRows = Math.max(21, items.length + 3);
+  while (tableRows.length < minRows) {
+    tableRows.push(['', '', '', '', '', '']);
+  }
+
+  autoTable(doc, {
+    startY: tableStartY,
+    head: [['NO', 'ITEM', 'REQUARMENT\nQTY', 'ISSUED\nQTY', 'BALANCE', 'REMARK']],
+    body: tableRows,
+    theme: 'grid',
+    styles: { 
+      fontSize: 9, 
+      cellPadding: 2,
+      lineColor: [0, 0, 0],
+      lineWidth: 0.3,
+      minCellHeight: 7,
+      valign: 'middle'
+    },
+    headStyles: { 
+      fillColor: [255, 255, 255], 
+      textColor: [0, 0, 0],
+      fontStyle: 'bold',
+      halign: 'center',
+      valign: 'middle',
+      minCellHeight: 10
+    },
+    columnStyles: {
+      0: { cellWidth: 12, halign: 'center' },
+      1: { cellWidth: 75 },
+      2: { cellWidth: 28, halign: 'center' },
+      3: { cellWidth: 25, halign: 'center' },
+      4: { cellWidth: 22, halign: 'center' },
+      5: { cellWidth: 28 }
+    },
+    margin: { left: marginLeft, right: marginLeft, top: 52, bottom: sigBoxHeight + 15 },
+    tableWidth: contentWidth,
+    didDrawPage: (data) => {
+      if (data.pageNumber > 1) {
+        drawDeliveryNoteHeader(doc, logoBase64, form, marginLeft, contentWidth, pageWidth);
+        drawDeliveryNoteSignature(doc, marginLeft, contentWidth, sigY);
+      }
+    }
+  });
+
+  const fileName = docNumber 
+    ? `Delivery_Note_${docNumber}.pdf`
+    : `Delivery_Note_${form.orderName?.replace(/\s+/g, '_') || 'Unknown'}.pdf`;
+  doc.save(fileName);
+};
+
 // Empty form exports for manual use
 export const exportEmptyRawMaterialPDF = async (): Promise<void> => {
   const emptyForm: RequestForm = {

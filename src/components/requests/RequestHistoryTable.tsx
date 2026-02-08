@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Search, Download, FileText, Package, Undo2, Eye, FileSpreadsheet, CalendarIcon } from 'lucide-react';
+import { Search, Download, FileText, Package, Undo2, Eye, FileSpreadsheet, CalendarIcon, Truck } from 'lucide-react';
 import { format, isWithinInterval, startOfDay, endOfDay, parseISO } from 'date-fns';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
@@ -33,6 +33,7 @@ import {
   exportRawMaterialRequestPDF,
   exportGeneralSuppliesRequestPDF,
   exportMaterialReturnSlipPDF,
+  exportDeliveryNotePDF,
 } from '@/lib/requestPdfExport';
 import * as XLSX from 'xlsx';
 
@@ -42,6 +43,7 @@ interface RequestItem {
   itemCode: string;
   description: string;
   uom: string;
+  requirementQty?: number;
   requestedQty: number;
   issuedQty: number;
   remainingQty: number;
@@ -156,6 +158,32 @@ export function RequestHistoryTable() {
     } else {
       exportMaterialReturnSlipPDF(request.form, request.items as ReturnItem[], request.docNumber);
     }
+  };
+
+  // Download Delivery Note PDF - for line supervisor acknowledgment
+  const handleDownloadDeliveryNote = (request: SubmittedRequest) => {
+    if (request.type === 'material-return') return; // Not applicable for returns
+    
+    const items = request.items as RequestItem[];
+    const deliveryItems = items.map(item => ({
+      slNo: item.slNo,
+      description: item.description,
+      requirementQty: item.requirementQty || item.requestedQty, // Fallback to requestedQty if no requirementQty
+      issuedQty: item.issuedQty,
+      balance: (item.requirementQty || item.requestedQty) - item.issuedQty,
+      remarks: item.remarks,
+    }));
+
+    exportDeliveryNotePDF(
+      {
+        orderName: (request.form as any).orderName || request.docNumber,
+        date: request.form.date,
+        trNo: '',
+        line: request.form.department,
+      },
+      deliveryItems,
+      request.docNumber
+    );
   };
 
   const getFilteredRequestsForExport = () => {
@@ -529,10 +557,21 @@ export function RequestHistoryTable() {
                             variant="ghost"
                             size="icon"
                             onClick={() => handleDownloadPDF(request)}
-                            title="Download PDF"
+                            title="Download Request PDF"
                           >
                             <Download className="h-4 w-4" />
                           </Button>
+                          {request.type !== 'material-return' && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleDownloadDeliveryNote(request)}
+                              title="Download Delivery Note"
+                              className="text-primary hover:text-primary"
+                            >
+                              <Truck className="h-4 w-4" />
+                            </Button>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>
