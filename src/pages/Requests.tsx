@@ -282,6 +282,13 @@ export default function Requests() {
 
   // Submit function - saves to store for monthly Excel export
   const submitRequest = (type: 'raw' | 'general' | 'return') => {
+    // Validate department is required
+    const form = type === 'raw' ? rawMaterialForm : type === 'general' ? generalSuppliesForm : materialReturnForm;
+    if (!form.department.trim()) {
+      toast.error('Department is required. Please enter a department before submitting.');
+      return;
+    }
+
     const docNumber = getNextDocNumber(
       type === 'raw' ? 'RMR' : type === 'general' ? 'GSR' : 'MRS'
     );
@@ -399,11 +406,15 @@ export default function Requests() {
               />
             </div>
             <div className="space-y-2">
-              <Label>Department</Label>
+              <Label className="flex items-center gap-1">
+                Department <span className="text-destructive">*</span>
+              </Label>
               <Input
                 value={form.department}
                 onChange={(e) => setForm({ ...form, department: e.target.value })}
-                placeholder="Enter department"
+                placeholder="Enter department (required)"
+                required
+                className={!form.department.trim() ? 'border-destructive/50' : ''}
               />
             </div>
           </div>
