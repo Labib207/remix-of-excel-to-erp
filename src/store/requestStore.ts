@@ -43,11 +43,13 @@ interface SubmittedRequest {
   form: RequestForm;
   items: (RequestItem | ReturnItem)[];
   submittedAt: string;
+  isExternal?: boolean; // True if imported from Excel
 }
 
 interface RequestStore {
   submittedRequests: SubmittedRequest[];
   addRequest: (request: Omit<SubmittedRequest, 'id' | 'submittedAt'>) => void;
+  addExternalRequest: (request: Omit<SubmittedRequest, 'id' | 'submittedAt' | 'isExternal'>) => void;
   getRequestsByMonth: (year: number, month: number) => SubmittedRequest[];
   exportMonthlyExcel: (year: number, month: number) => void;
   clearRequests: () => void;
@@ -81,6 +83,18 @@ export const useRequestStore = create<RequestStore>()(
           ...request,
           id: Math.random().toString(36).substr(2, 9),
           submittedAt: new Date().toISOString(),
+        };
+        set((state) => ({
+          submittedRequests: [...state.submittedRequests, newRequest],
+        }));
+      },
+
+      addExternalRequest: (request) => {
+        const newRequest: SubmittedRequest = {
+          ...request,
+          id: Math.random().toString(36).substr(2, 9),
+          submittedAt: new Date().toISOString(),
+          isExternal: true,
         };
         set((state) => ({
           submittedRequests: [...state.submittedRequests, newRequest],
