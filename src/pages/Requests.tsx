@@ -148,8 +148,8 @@ export default function Requests() {
           description: req.description,
           uom: req.uom,
           requestedQty: req.pendingQty, // Fill with pending quantity
-          issuedQty: 0,
-          remainingQty: req.pendingQty,
+          issuedQty: 0, // Empty - to be filled manually by store keeper
+          remainingQty: 0, // Will be calculated when issuedQty is entered
           remarks: req.remarks,
           requirementId: req.id,
         }));
@@ -508,7 +508,7 @@ export default function Requests() {
                     </TableCell>
                     <TableCell>
                       <Input
-                        value={item.remainingQty}
+                        value={item.remainingQty || ''}
                         readOnly
                         className="h-8 bg-muted"
                       />
