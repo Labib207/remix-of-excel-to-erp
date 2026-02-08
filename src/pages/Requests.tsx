@@ -51,6 +51,7 @@ interface RequestItem {
   itemCode: string;
   description: string;
   uom: string;
+  requirementQty: number; // Auto-filled from order requirements (read-only)
   requestedQty: number;
   issuedQty: number;
   remainingQty: number;
@@ -203,7 +204,8 @@ export default function Requests() {
           itemCode: req.itemCode,
           description: req.description,
           uom: req.uom,
-          requestedQty: req.pendingQty, // Fill with pending quantity
+          requirementQty: req.pendingQty, // Auto-filled from requirement (read-only)
+          requestedQty: 0, // Empty - user enters what they actually request
           issuedQty: 0, // Empty - to be filled manually by store keeper
           remainingQty: 0, // Will be calculated when issuedQty is entered
           remarks: req.remarks,
@@ -227,6 +229,7 @@ export default function Requests() {
       itemCode: '',
       description: '',
       uom: '',
+      requirementQty: 0,
       requestedQty: 0,
       issuedQty: 0,
       remainingQty: 0,
@@ -534,9 +537,10 @@ export default function Requests() {
                   <TableHead className="w-28">Item Code</TableHead>
                   <TableHead>Description</TableHead>
                   <TableHead className="w-20">UOM</TableHead>
-                  <TableHead className="w-28">Requested Qty</TableHead>
-                  <TableHead className="w-28">Issued Qty</TableHead>
-                  <TableHead className="w-28">Remaining Qty</TableHead>
+                  <TableHead className="w-24">Req. Qty</TableHead>
+                  <TableHead className="w-24">Requested Qty</TableHead>
+                  <TableHead className="w-24">Issued Qty</TableHead>
+                  <TableHead className="w-24">Remaining Qty</TableHead>
                   <TableHead>{remarksLabel}</TableHead>
                   <TableHead className="w-12"></TableHead>
                 </TableRow>
@@ -570,9 +574,19 @@ export default function Requests() {
                     <TableCell>
                       <Input
                         type="number"
+                        value={item.requirementQty || ''}
+                        readOnly
+                        className="h-8 bg-muted/50 text-muted-foreground"
+                        title="Auto-filled from order requirements"
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Input
+                        type="number"
                         value={item.requestedQty || ''}
                         onChange={(e) => updateRequestItem(type, item.id, 'requestedQty', parseInt(e.target.value) || 0)}
                         className="h-8"
+                        placeholder="Enter qty"
                       />
                     </TableCell>
                     <TableCell>
@@ -611,7 +625,7 @@ export default function Requests() {
                 ))}
                 {items.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
+                    <TableCell colSpan={10} className="text-center text-muted-foreground py-8">
                       No items added. Select an order above to auto-fill or click "Add Item".
                     </TableCell>
                   </TableRow>
