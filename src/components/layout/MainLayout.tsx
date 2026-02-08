@@ -8,8 +8,11 @@ interface MainLayoutProps {
 export function MainLayout({ children }: MainLayoutProps) {
   return (
     <div className="flex min-h-screen bg-background">
+      {/* Fixed Sidebar */}
       <Sidebar />
-      <main className="flex-1 overflow-auto">
+      
+      {/* Main content with left margin to account for fixed sidebar */}
+      <main className="flex-1 ml-64 min-h-screen overflow-auto">
         <div className="p-6 lg:p-8">
           {children}
         </div>
