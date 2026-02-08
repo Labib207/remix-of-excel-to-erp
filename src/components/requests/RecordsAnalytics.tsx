@@ -30,7 +30,9 @@ import {
   CheckCircle2,
   Clock,
   TrendingUp,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Upload,
+  ExternalLink
 } from 'lucide-react';
 import { format, isWithinInterval, startOfDay, endOfDay, startOfMonth, endOfMonth } from 'date-fns';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -92,6 +94,7 @@ interface SubmittedRequestExtended {
   form: RequestFormExtended;
   items: (RequestItem | ReturnItem)[];
   submittedAt: string;
+  isExternal?: boolean;
 }
 
 const typeLabels: Record<string, string> = {
@@ -129,7 +132,7 @@ const getMaterialCategory = (itemCode: string): string => {
 };
 
 export function RecordsAnalytics() {
-  const { submittedRequests } = useRequestStore();
+  const { submittedRequests, addExternalRequest } = useRequestStore();
   const { orders } = useCuttingStore();
   
   // Cast requests to extended type (orderId is added at runtime in Requests.tsx)
@@ -143,6 +146,93 @@ export function RecordsAnalytics() {
   const [dateFrom, setDateFrom] = useState<Date | undefined>(startOfMonth(new Date()));
   const [dateTo, setDateTo] = useState<Date | undefined>(endOfMonth(new Date()));
   const [selectedRequest, setSelectedRequest] = useState<SubmittedRequestExtended | null>(null);
+
+  // Handle Excel import
+  const handleExcelImport = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = new Uint8Array(e.target?.result as ArrayBuffer);
+        const workbook = XLSX.read(data, { type: 'array' });
+        
+        // Try to read from first sheet
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        const jsonData = XLSX.utils.sheet_to_json(worksheet);
+
+        if (jsonData.length === 0) {
+          alert('No data found in Excel file');
+          return;
+        }
+
+        // Group rows by Doc Number to create requests
+        const groupedByDoc: Record<string, any[]> = {};
+        jsonData.forEach((row: any) => {
+          const docNumber = row['Doc Number'] || row['Order'] || `EXT-${Date.now()}`;
+          if (!groupedByDoc[docNumber]) {
+            groupedByDoc[docNumber] = [];
+          }
+          groupedByDoc[docNumber].push(row);
+        });
+
+        let importedCount = 0;
+        Object.entries(groupedByDoc).forEach(([docNumber, rows]) => {
+          const firstRow = rows[0];
+          
+          // Parse date from various formats
+          let dateStr = firstRow['Date'] || new Date().toISOString();
+          if (typeof dateStr === 'string' && dateStr.includes('/')) {
+            const parts = dateStr.split('/');
+            if (parts.length === 3) {
+              // Assume DD/MM/YYYY format
+              dateStr = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+            }
+          }
+
+          const items: RequestItem[] = rows.map((row, index) => ({
+            id: Math.random().toString(36).substr(2, 9),
+            slNo: row['SL No'] || row['SL'] || index + 1,
+            itemCode: row['Item Code'] || '',
+            description: row['Description'] || '',
+            uom: row['UOM'] || 'PCS',
+            requestedQty: parseFloat(row['Requested Qty'] || row['Req Qty'] || 0) || 0,
+            issuedQty: parseFloat(row['Issued Qty'] || row['Issued'] || 0) || 0,
+            remainingQty: parseFloat(row['Remaining Qty'] || row['Remaining'] || 0) || 0,
+            remarks: row['Remarks'] || '',
+          }));
+
+          addExternalRequest({
+            type: 'raw-material',
+            docNumber: `${docNumber}`,
+            form: {
+              date: dateStr,
+              department: firstRow['Department'] || '',
+              orderId: firstRow['Order ID'] || undefined,
+              orderName: firstRow['Order'] || firstRow['Customer'] || undefined,
+              requestedBy: firstRow['Requested By'] || '',
+              approvedBy: firstRow['Approved By'] || '',
+              issuedBy: firstRow['Issued By'] || '',
+              aswaqNumber: firstRow['ASWAQ Number'] || '',
+            },
+            items,
+          });
+          importedCount++;
+        });
+
+        alert(`Successfully imported ${importedCount} record(s) from Excel`);
+        
+        // Reset file input
+        event.target.value = '';
+      } catch (error) {
+        console.error('Error importing Excel:', error);
+        alert('Failed to import Excel file. Please check the format.');
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  };
 
   // Get unique order IDs from submitted requests
   const orderOptions = useMemo(() => {
@@ -572,10 +662,28 @@ export function RecordsAnalytics() {
 
         {/* Results Table */}
         <Card>
-          <CardHeader className="pb-3">
+          <CardHeader className="pb-3 flex flex-row items-center justify-between">
             <CardTitle className="text-lg">
               Records ({filteredRequests.length})
             </CardTitle>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" asChild>
+                <label className="cursor-pointer">
+                  <Upload className="h-4 w-4 mr-2" />
+                  Import Excel
+                  <input
+                    type="file"
+                    accept=".xlsx,.xls"
+                    className="hidden"
+                    onChange={handleExcelImport}
+                  />
+                </label>
+              </Button>
+              <Button variant="outline" size="sm" onClick={exportToExcel}>
+                <FileSpreadsheet className="h-4 w-4 mr-2" />
+                Export
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="border rounded-lg overflow-hidden">
@@ -610,8 +718,18 @@ export function RecordsAnalytics() {
                       const order = orders.find(o => o.id === request.form.orderId);
 
                       return (
-                        <TableRow key={request.id}>
-                          <TableCell className="font-mono text-sm">{request.docNumber}</TableCell>
+                        <TableRow key={request.id} className={request.isExternal ? 'bg-accent/50' : ''}>
+                          <TableCell className="font-mono text-sm">
+                            <div className="flex items-center gap-2">
+                              {request.docNumber}
+                              {request.isExternal && (
+                                <Badge variant="secondary" className="text-xs">
+                                  <ExternalLink className="h-3 w-3 mr-1" />
+                                  External
+                                </Badge>
+                              )}
+                            </div>
+                          </TableCell>
                           <TableCell>{format(new Date(request.form.date), 'dd/MM/yy')}</TableCell>
                           <TableCell>
                             {order ? (
