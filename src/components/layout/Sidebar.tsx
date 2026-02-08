@@ -7,7 +7,8 @@ import {
   Shield,
   User,
   FileBox,
-  ChevronRight
+  ChevronRight,
+  Truck
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import logo from '@/assets/logo.png';
@@ -20,6 +21,7 @@ const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
   { name: 'Requirements', href: '/requirements', icon: ClipboardList },
   { name: 'Requests', href: '/requests', icon: FileBox },
+  { name: 'Delivery Notes', href: '/delivery-notes', icon: Truck },
 ];
 
 export function Sidebar() {
