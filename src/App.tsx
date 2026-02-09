@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { DataSyncProvider } from "@/components/DataSyncProvider";
 import Dashboard from "./pages/Dashboard";
 import Orders from "./pages/Orders";
 import MarkerPlans from "./pages/MarkerPlans";
@@ -32,25 +33,27 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
-          <Routes>
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-            <Route path="/orders" element={<ProtectedRoute><Orders /></ProtectedRoute>} />
-            <Route path="/ratios" element={<ProtectedRoute><RatioPlanning /></ProtectedRoute>} />
-            <Route path="/markers" element={<ProtectedRoute><MarkerPlans /></ProtectedRoute>} />
-            <Route path="/cutting" element={<ProtectedRoute><CuttingPlans /></ProtectedRoute>} />
-            <Route path="/laysheets" element={<ProtectedRoute><LaySheets /></ProtectedRoute>} />
-            <Route path="/bundles" element={<ProtectedRoute><Bundles /></ProtectedRoute>} />
-            <Route path="/fabric" element={<ProtectedRoute><FabricCalculation /></ProtectedRoute>} />
-            <Route path="/requirements" element={<ProtectedRoute><Requirements /></ProtectedRoute>} />
-            <Route path="/requests" element={<ProtectedRoute><Requests /></ProtectedRoute>} />
-            <Route path="/delivery-notes" element={<ProtectedRoute><DeliveryNotes /></ProtectedRoute>} />
-            <Route path="/reconciliation" element={<ProtectedRoute><Reconciliation /></ProtectedRoute>} />
-            <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
-            <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-            <Route path="/admin" element={<ProtectedRoute requireAdmin><Admin /></ProtectedRoute>} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+          <DataSyncProvider>
+            <Routes>
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+              <Route path="/orders" element={<ProtectedRoute><Orders /></ProtectedRoute>} />
+              <Route path="/ratios" element={<ProtectedRoute><RatioPlanning /></ProtectedRoute>} />
+              <Route path="/markers" element={<ProtectedRoute><MarkerPlans /></ProtectedRoute>} />
+              <Route path="/cutting" element={<ProtectedRoute><CuttingPlans /></ProtectedRoute>} />
+              <Route path="/laysheets" element={<ProtectedRoute><LaySheets /></ProtectedRoute>} />
+              <Route path="/bundles" element={<ProtectedRoute><Bundles /></ProtectedRoute>} />
+              <Route path="/fabric" element={<ProtectedRoute><FabricCalculation /></ProtectedRoute>} />
+              <Route path="/requirements" element={<ProtectedRoute><Requirements /></ProtectedRoute>} />
+              <Route path="/requests" element={<ProtectedRoute><Requests /></ProtectedRoute>} />
+              <Route path="/delivery-notes" element={<ProtectedRoute><DeliveryNotes /></ProtectedRoute>} />
+              <Route path="/reconciliation" element={<ProtectedRoute><Reconciliation /></ProtectedRoute>} />
+              <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
+              <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+              <Route path="/admin" element={<ProtectedRoute requireAdmin><Admin /></ProtectedRoute>} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </DataSyncProvider>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
