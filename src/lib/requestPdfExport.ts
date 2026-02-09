@@ -549,10 +549,29 @@ interface DeliveryNoteItem {
   remarks: string;
 }
 
-// Helper to draw Delivery Note header (simpler format)
+const getDeliveryDocNumber = (): string => {
+  const key = 'docNumber_DN';
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const yearKey = `${key}_${currentYear}`;
+  
+  const stored = localStorage.getItem(yearKey);
+  let counter = 1;
+  
+  if (stored) {
+    counter = parseInt(stored) + 1;
+  }
+  
+  localStorage.setItem(yearKey, counter.toString());
+  
+  return `DN-${String(counter).padStart(3, '0')}-${currentYear}`;
+};
+
+// Professional Delivery Note header
 const drawDeliveryNoteHeader = (
   doc: jsPDF,
   logoBase64: string | null,
+  docNumber: string,
   form: DeliveryNoteForm,
   marginLeft: number,
   contentWidth: number,
@@ -561,113 +580,201 @@ const drawDeliveryNoteHeader = (
   const headerTop = 10;
   const pageHeight = doc.internal.pageSize.getHeight();
   
-  // Outer border
+  // Outer border for the entire page
   doc.setDrawColor(0);
   doc.setLineWidth(0.5);
   doc.rect(marginLeft, 10, contentWidth, pageHeight - 20);
   
-  // Logo on left
+  // Logo section with border
+  const logoBoxWidth = 50;
+  const logoBoxHeight = 28;
+  doc.setLineWidth(0.3);
+  doc.rect(marginLeft, headerTop, logoBoxWidth, logoBoxHeight);
+  
   if (logoBase64) {
-    doc.addImage(logoBase64, 'PNG', marginLeft + 5, headerTop + 5, 45, 22);
+    doc.addImage(logoBase64, 'PNG', marginLeft + 3, headerTop + 3, 44, 22);
   } else {
-    doc.setFontSize(16);
+    doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
-    doc.text('GHOUSH', marginLeft + 10, headerTop + 18);
+    doc.text('GHOUSH', marginLeft + 6, headerTop + 14);
     doc.setFontSize(6);
     doc.setFont('helvetica', 'normal');
-    doc.text('MILITARY & SAFETY UNIFORMS', marginLeft + 10, headerTop + 24);
+    doc.text('MILITARY & SAFETY UNIFORMS', marginLeft + 4, headerTop + 20);
   }
 
-  // Title
-  doc.setFontSize(18);
+  // Title section
+  const titleBoxX = marginLeft + logoBoxWidth;
+  const titleBoxWidth = contentWidth - logoBoxWidth - 55;
+  doc.rect(titleBoxX, headerTop, titleBoxWidth, logoBoxHeight);
+  
+  doc.setFontSize(22);
   doc.setFont('helvetica', 'bold');
-  doc.text('DELIVERY NOTE', marginLeft + 60, headerTop + 20);
+  doc.text('DELIVERY ACKNOWLEDGMENT', titleBoxX + titleBoxWidth / 2, headerTop + 12, { align: 'center' });
+  
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  doc.text('REPORT', titleBoxX + titleBoxWidth / 2, headerTop + 20, { align: 'center' });
 
-  // Header bottom line
-  const headerBottom = headerTop + 32;
-  doc.setLineWidth(0.3);
-  doc.line(marginLeft, headerBottom, pageWidth - marginLeft, headerBottom);
-
-  // Order Name row
-  const orderRowY = headerBottom;
-  const rowHeight = 10;
+  // Document ID section (right side)
+  const docIdBoxX = marginLeft + contentWidth - 55;
+  const docIdBoxWidth = 55;
+  doc.rect(docIdBoxX, headerTop, docIdBoxWidth, logoBoxHeight);
+  
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'bold');
+  doc.text('DOCUMENT ID', docIdBoxX + docIdBoxWidth / 2, headerTop + 8, { align: 'center' });
+  
   doc.setFontSize(11);
   doc.setFont('helvetica', 'bold');
-  doc.text('ORDER NAME', marginLeft + 5, orderRowY + 7);
-  doc.setFont('helvetica', 'normal');
-  doc.text(form.orderName || '', marginLeft + 50, orderRowY + 7);
-  doc.line(marginLeft, orderRowY + rowHeight, pageWidth - marginLeft, orderRowY + rowHeight);
+  doc.text(docNumber, docIdBoxX + docIdBoxWidth / 2, headerTop + 18, { align: 'center' });
 
-  // Date, TR No, Line row
-  const infoRowY = orderRowY + rowHeight;
-  const thirdWidth = contentWidth / 3;
+  // Info row below header
+  const infoRowY = headerTop + logoBoxHeight;
+  const infoRowHeight = 10;
   
+  // Order Name (spans more width)
+  const orderColWidth = contentWidth * 0.55;
+  doc.rect(marginLeft, infoRowY, orderColWidth, infoRowHeight);
+  doc.setFontSize(10);
   doc.setFont('helvetica', 'bold');
-  doc.text('DATE', marginLeft + 5, infoRowY + 7);
+  doc.text('ORDER:', marginLeft + 3, infoRowY + 7);
   doc.setFont('helvetica', 'normal');
-  doc.text(form.date ? formatDate(form.date) : '', marginLeft + 25, infoRowY + 7);
-  
-  doc.line(marginLeft + thirdWidth, infoRowY, marginLeft + thirdWidth, infoRowY + rowHeight);
-  doc.setFont('helvetica', 'bold');
-  doc.text('TR NO', marginLeft + thirdWidth + 5, infoRowY + 7);
-  doc.setFont('helvetica', 'normal');
-  doc.text(form.trNo || '', marginLeft + thirdWidth + 25, infoRowY + 7);
-  
-  doc.line(marginLeft + thirdWidth * 2, infoRowY, marginLeft + thirdWidth * 2, infoRowY + rowHeight);
-  doc.setFont('helvetica', 'bold');
-  doc.text('LINE', marginLeft + thirdWidth * 2 + 5, infoRowY + 7);
-  doc.setFont('helvetica', 'normal');
-  doc.text(form.line || '', marginLeft + thirdWidth * 2 + 25, infoRowY + 7);
-  
-  doc.line(marginLeft, infoRowY + rowHeight, pageWidth - marginLeft, infoRowY + rowHeight);
+  doc.setFontSize(9);
+  const orderText = form.orderName || '';
+  doc.text(orderText.substring(0, 55), marginLeft + 22, infoRowY + 7);
 
-  return infoRowY + rowHeight;
+  // Date column
+  const dateColX = marginLeft + orderColWidth;
+  const dateColWidth = contentWidth * 0.20;
+  doc.rect(dateColX, infoRowY, dateColWidth, infoRowHeight);
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'bold');
+  doc.text('DATE:', dateColX + 3, infoRowY + 7);
+  doc.setFont('helvetica', 'normal');
+  doc.text(form.date ? formatDate(form.date) : '', dateColX + 20, infoRowY + 7);
+
+  // TR No column
+  const trColX = dateColX + dateColWidth;
+  const trColWidth = contentWidth * 0.25;
+  doc.rect(trColX, infoRowY, trColWidth, infoRowHeight);
+  doc.setFont('helvetica', 'bold');
+  doc.text('TR NO:', trColX + 3, infoRowY + 7);
+  doc.setFont('helvetica', 'normal');
+  doc.text(form.trNo || '', trColX + 22, infoRowY + 7);
+
+  // Line row
+  const lineRowY = infoRowY + infoRowHeight;
+  const lineRowHeight = 10;
+  doc.rect(marginLeft, lineRowY, contentWidth, lineRowHeight);
+  doc.setFont('helvetica', 'bold');
+  doc.text('LINE:', marginLeft + 3, lineRowY + 7);
+  doc.setFont('helvetica', 'normal');
+  doc.text(form.line || '', marginLeft + 22, lineRowY + 7);
+
+  return lineRowY + lineRowHeight;
 };
 
-// Helper to draw Delivery Note signature section
+// Professional Delivery Note signature section with 4 columns
 const drawDeliveryNoteSignature = (
   doc: jsPDF,
   marginLeft: number,
   contentWidth: number,
   sigY: number
 ): void => {
-  const sigBoxWidth = contentWidth / 2;
-  const sigBoxHeight = 30;
+  const sigBoxWidth = contentWidth / 4;
+  const sigBoxHeight = 38;
 
   doc.setLineWidth(0.3);
   
-  // Two signature boxes side by side
-  doc.rect(marginLeft, sigY, sigBoxWidth, sigBoxHeight);
-  doc.rect(marginLeft + sigBoxWidth, sigY, sigBoxWidth, sigBoxHeight);
+  // Draw 4 signature boxes
+  for (let i = 0; i < 4; i++) {
+    doc.rect(marginLeft + (sigBoxWidth * i), sigY, sigBoxWidth, sigBoxHeight);
+  }
 
-  // Box 1 - Line Supervisor
-  doc.setFontSize(11);
+  const sigLineY = sigY + 22;
+
+  // Box 1 - Issued By (Store)
+  doc.setFontSize(10);
   doc.setFont('helvetica', 'bold');
-  doc.text('LINE SUPERVISER', marginLeft + sigBoxWidth / 2, sigY + 22, { align: 'center' });
+  doc.text('ISSUED BY', marginLeft + sigBoxWidth / 2, sigY + 7, { align: 'center' });
   
-  // Signature line
   doc.setLineWidth(0.2);
-  doc.line(marginLeft + 15, sigY + 16, marginLeft + sigBoxWidth - 15, sigY + 16);
-
-  // Box 2 - Line Recorder
-  doc.text('LINE RECORDER', marginLeft + sigBoxWidth + sigBoxWidth / 2, sigY + 22, { align: 'center' });
+  doc.line(marginLeft + 8, sigLineY, marginLeft + sigBoxWidth - 8, sigLineY);
   
-  // Signature line
-  doc.line(marginLeft + sigBoxWidth + 15, sigY + 16, marginLeft + sigBoxWidth * 2 - 15, sigY + 16);
+  doc.setFont('helvetica', 'italic');
+  doc.setFontSize(7);
+  doc.setTextColor(100);
+  doc.text('Name & Signature', marginLeft + sigBoxWidth / 2, sigLineY + 5, { align: 'center' });
+  doc.setTextColor(0);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.text('STORE IN-CHARGE', marginLeft + sigBoxWidth / 2, sigY + 34, { align: 'center' });
+
+  // Box 2 - Received By (Line)
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'bold');
+  doc.text('RECEIVED BY', marginLeft + sigBoxWidth + sigBoxWidth / 2, sigY + 7, { align: 'center' });
+  
+  doc.setLineWidth(0.2);
+  doc.line(marginLeft + sigBoxWidth + 8, sigLineY, marginLeft + sigBoxWidth * 2 - 8, sigLineY);
+  
+  doc.setFont('helvetica', 'italic');
+  doc.setFontSize(7);
+  doc.setTextColor(100);
+  doc.text('Name & Signature', marginLeft + sigBoxWidth + sigBoxWidth / 2, sigLineY + 5, { align: 'center' });
+  doc.setTextColor(0);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.text('LINE RECORDER', marginLeft + sigBoxWidth + sigBoxWidth / 2, sigY + 34, { align: 'center' });
+
+  // Box 3 - Verified By (Line Supervisor)
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'bold');
+  doc.text('VERIFIED BY', marginLeft + sigBoxWidth * 2 + sigBoxWidth / 2, sigY + 7, { align: 'center' });
+  
+  doc.setLineWidth(0.2);
+  doc.line(marginLeft + sigBoxWidth * 2 + 8, sigLineY, marginLeft + sigBoxWidth * 3 - 8, sigLineY);
+  
+  doc.setFont('helvetica', 'italic');
+  doc.setFontSize(7);
+  doc.setTextColor(100);
+  doc.text('Name & Signature', marginLeft + sigBoxWidth * 2 + sigBoxWidth / 2, sigLineY + 5, { align: 'center' });
+  doc.setTextColor(0);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.text('LINE SUPERVISOR', marginLeft + sigBoxWidth * 2 + sigBoxWidth / 2, sigY + 34, { align: 'center' });
+
+  // Box 4 - Acknowledged By (Production)
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'bold');
+  doc.text('ACKNOWLEDGED BY', marginLeft + sigBoxWidth * 3 + sigBoxWidth / 2, sigY + 7, { align: 'center' });
+  
+  doc.setLineWidth(0.2);
+  doc.line(marginLeft + sigBoxWidth * 3 + 8, sigLineY, marginLeft + sigBoxWidth * 4 - 8, sigLineY);
+  
+  doc.setFont('helvetica', 'italic');
+  doc.setFontSize(7);
+  doc.setTextColor(100);
+  doc.text('Name & Signature', marginLeft + sigBoxWidth * 3 + sigBoxWidth / 2, sigLineY + 5, { align: 'center' });
+  doc.setTextColor(0);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.text('PRODUCTION MANAGER', marginLeft + sigBoxWidth * 3 + sigBoxWidth / 2, sigY + 34, { align: 'center' });
 };
 
 export const exportDeliveryNotePDF = async (
   form: DeliveryNoteForm,
   items: DeliveryNoteItem[],
-  docNumber?: string
+  existingDocNumber?: string
 ): Promise<void> => {
   const doc = new jsPDF('portrait', 'mm', 'a4');
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
+  const docNumber = existingDocNumber || getDeliveryDocNumber();
   
   const marginLeft = 10;
   const contentWidth = pageWidth - marginLeft * 2;
-  const sigBoxHeight = 30;
+  const sigBoxHeight = 38;
   const sigY = pageHeight - 10 - sigBoxHeight;
   
   // Load logo
@@ -679,32 +786,51 @@ export const exportDeliveryNotePDF = async (
   }
 
   // Draw header
-  const tableStartY = drawDeliveryNoteHeader(doc, logoBase64, form, marginLeft, contentWidth, pageWidth);
+  const tableStartY = drawDeliveryNoteHeader(doc, logoBase64, docNumber, form, marginLeft, contentWidth, pageWidth);
   
   // Draw signature section
   drawDeliveryNoteSignature(doc, marginLeft, contentWidth, sigY);
 
-  // Prepare table rows
+  // Prepare table rows with totals calculation
+  let totalRequirement = 0;
+  let totalIssued = 0;
+  let totalBalance = 0;
+
   const tableRows = items.length > 0 
-    ? items.map(item => [
-        item.slNo.toString(),
-        item.description,
-        item.requirementQty > 0 ? item.requirementQty.toString() : '',
-        item.issuedQty > 0 ? item.issuedQty.toString() : '',
-        item.balance !== 0 ? item.balance.toString() : '',
-        item.remarks || ''
-      ])
+    ? items.map(item => {
+        totalRequirement += item.requirementQty || 0;
+        totalIssued += item.issuedQty || 0;
+        totalBalance += item.balance || 0;
+        return [
+          item.slNo.toString(),
+          item.description,
+          item.requirementQty > 0 ? item.requirementQty.toString() : '',
+          item.issuedQty > 0 ? item.issuedQty.toString() : '',
+          item.balance !== 0 ? item.balance.toString() : '',
+          item.remarks || ''
+        ];
+      })
     : [];
   
-  // Pad to minimum 21 rows for A4 portrait
-  const minRows = Math.max(21, items.length + 3);
+  // Pad to fill page properly (accounting for header and signature)
+  const minRows = Math.max(18, items.length + 2);
   while (tableRows.length < minRows) {
     tableRows.push(['', '', '', '', '', '']);
   }
 
+  // Add totals row
+  tableRows.push([
+    '',
+    'TOTAL',
+    totalRequirement > 0 ? totalRequirement.toString() : '',
+    totalIssued > 0 ? totalIssued.toString() : '',
+    totalBalance !== 0 ? totalBalance.toString() : '',
+    ''
+  ]);
+
   autoTable(doc, {
     startY: tableStartY,
-    head: [['NO', 'ITEM', 'REQUARMENT\nQTY', 'ISSUED\nQTY', 'BALANCE', 'REMARK']],
+    head: [['NO', 'ITEM DESCRIPTION', 'REQUIREMENT\nQTY', 'ISSUED\nQTY', 'BALANCE', 'REMARKS']],
     body: tableRows,
     theme: 'grid',
     styles: { 
@@ -716,34 +842,39 @@ export const exportDeliveryNotePDF = async (
       valign: 'middle'
     },
     headStyles: { 
-      fillColor: [255, 255, 255], 
+      fillColor: [240, 240, 240], 
       textColor: [0, 0, 0],
       fontStyle: 'bold',
       halign: 'center',
       valign: 'middle',
-      minCellHeight: 10
+      minCellHeight: 12
     },
     columnStyles: {
       0: { cellWidth: 12, halign: 'center' },
-      1: { cellWidth: 75 },
+      1: { cellWidth: 72 },
       2: { cellWidth: 28, halign: 'center' },
       3: { cellWidth: 25, halign: 'center' },
       4: { cellWidth: 22, halign: 'center' },
-      5: { cellWidth: 28 }
+      5: { cellWidth: 31 }
     },
-    margin: { left: marginLeft, right: marginLeft, top: 52, bottom: sigBoxHeight + 15 },
+    margin: { left: marginLeft, right: marginLeft, top: 58, bottom: sigBoxHeight + 15 },
     tableWidth: contentWidth,
+    didParseCell: (data) => {
+      // Style the totals row
+      if (data.row.index === tableRows.length - 1 && data.section === 'body') {
+        data.cell.styles.fontStyle = 'bold';
+        data.cell.styles.fillColor = [245, 245, 245];
+      }
+    },
     didDrawPage: (data) => {
       if (data.pageNumber > 1) {
-        drawDeliveryNoteHeader(doc, logoBase64, form, marginLeft, contentWidth, pageWidth);
+        drawDeliveryNoteHeader(doc, logoBase64, docNumber, form, marginLeft, contentWidth, pageWidth);
         drawDeliveryNoteSignature(doc, marginLeft, contentWidth, sigY);
       }
     }
   });
 
-  const fileName = docNumber 
-    ? `Delivery_Note_${docNumber}.pdf`
-    : `Delivery_Note_${form.orderName?.replace(/\s+/g, '_') || 'Unknown'}.pdf`;
+  const fileName = `Delivery_Acknowledgment_${docNumber}.pdf`;
   doc.save(fileName);
 };
 
