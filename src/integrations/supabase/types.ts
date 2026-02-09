@@ -14,18 +14,72 @@ export type Database = {
   }
   public: {
     Tables: {
+      bundle_guides: {
+        Row: {
+          bundle_size: number | null
+          bundles: number | null
+          created_at: string
+          created_by: string | null
+          cut_plan_id: string | null
+          id: string
+          remainder_qty: number | null
+          size: string | null
+          total_qty: number | null
+        }
+        Insert: {
+          bundle_size?: number | null
+          bundles?: number | null
+          created_at?: string
+          created_by?: string | null
+          cut_plan_id?: string | null
+          id?: string
+          remainder_qty?: number | null
+          size?: string | null
+          total_qty?: number | null
+        }
+        Update: {
+          bundle_size?: number | null
+          bundles?: number | null
+          created_at?: string
+          created_by?: string | null
+          cut_plan_id?: string | null
+          id?: string
+          remainder_qty?: number | null
+          size?: string | null
+          total_qty?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bundle_guides_cut_plan_id_fkey"
+            columns: ["cut_plan_id"]
+            isOneToOne: false
+            referencedRelation: "cut_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bundles: {
         Row: {
           bundle_no: string
           color: string | null
           created_at: string
           created_by: string | null
+          cut_no: number | null
+          cut_plan_id: string | null
+          end_no: number | null
           id: string
           lay_sheet_id: string | null
           notes: string | null
+          order_id: string | null
+          part: string | null
+          ply_end: number | null
+          ply_start: number | null
           quantity: number | null
           scanned_at: string | null
+          serial_range: string | null
+          shade: string | null
           size: string | null
+          start_no: number | null
           status: string
           updated_at: string
         }
@@ -34,12 +88,22 @@ export type Database = {
           color?: string | null
           created_at?: string
           created_by?: string | null
+          cut_no?: number | null
+          cut_plan_id?: string | null
+          end_no?: number | null
           id?: string
           lay_sheet_id?: string | null
           notes?: string | null
+          order_id?: string | null
+          part?: string | null
+          ply_end?: number | null
+          ply_start?: number | null
           quantity?: number | null
           scanned_at?: string | null
+          serial_range?: string | null
+          shade?: string | null
           size?: string | null
+          start_no?: number | null
           status?: string
           updated_at?: string
         }
@@ -48,21 +112,45 @@ export type Database = {
           color?: string | null
           created_at?: string
           created_by?: string | null
+          cut_no?: number | null
+          cut_plan_id?: string | null
+          end_no?: number | null
           id?: string
           lay_sheet_id?: string | null
           notes?: string | null
+          order_id?: string | null
+          part?: string | null
+          ply_end?: number | null
+          ply_start?: number | null
           quantity?: number | null
           scanned_at?: string | null
+          serial_range?: string | null
+          shade?: string | null
           size?: string | null
+          start_no?: number | null
           status?: string
           updated_at?: string
         }
         Relationships: [
           {
+            foreignKeyName: "bundles_cut_plan_id_fkey"
+            columns: ["cut_plan_id"]
+            isOneToOne: false
+            referencedRelation: "cut_plans"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "bundles_lay_sheet_id_fkey"
             columns: ["lay_sheet_id"]
             isOneToOne: false
             referencedRelation: "lay_sheets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bundles_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
             referencedColumns: ["id"]
           },
         ]
@@ -71,46 +159,73 @@ export type Database = {
         Row: {
           created_at: string
           created_by: string | null
+          cut_no: number | null
+          date: string | null
           fabric_type: string | null
+          fabric_used: number | null
           fabric_width: number | null
           id: string
+          lay_length: number | null
+          marker_id: string | null
+          marker_length: number | null
           notes: string | null
           order_id: string | null
           plan_no: string
           planned_date: string | null
           plies: number | null
+          shade: string | null
+          sizes: Json | null
           status: string
           total_pieces: number | null
+          total_qty: number | null
           updated_at: string
         }
         Insert: {
           created_at?: string
           created_by?: string | null
+          cut_no?: number | null
+          date?: string | null
           fabric_type?: string | null
+          fabric_used?: number | null
           fabric_width?: number | null
           id?: string
+          lay_length?: number | null
+          marker_id?: string | null
+          marker_length?: number | null
           notes?: string | null
           order_id?: string | null
           plan_no: string
           planned_date?: string | null
           plies?: number | null
+          shade?: string | null
+          sizes?: Json | null
           status?: string
           total_pieces?: number | null
+          total_qty?: number | null
           updated_at?: string
         }
         Update: {
           created_at?: string
           created_by?: string | null
+          cut_no?: number | null
+          date?: string | null
           fabric_type?: string | null
+          fabric_used?: number | null
           fabric_width?: number | null
           id?: string
+          lay_length?: number | null
+          marker_id?: string | null
+          marker_length?: number | null
           notes?: string | null
           order_id?: string | null
           plan_no?: string
           planned_date?: string | null
           plies?: number | null
+          shade?: string | null
+          sizes?: Json | null
           status?: string
           total_pieces?: number | null
+          total_qty?: number | null
           updated_at?: string
         }
         Relationships: [
@@ -233,6 +348,190 @@ export type Database = {
           },
         ]
       }
+      fabric_calculations: {
+        Row: {
+          balance: number | null
+          created_at: string
+          created_by: string | null
+          fabric_type: string
+          id: string
+          order_id: string | null
+          received_meters: number | null
+          remarks: string | null
+          request_with_allowance: number | null
+          total_meters: number | null
+          total_yards: number | null
+          updated_at: string
+          used_meters: number | null
+          wastage_percent: number | null
+        }
+        Insert: {
+          balance?: number | null
+          created_at?: string
+          created_by?: string | null
+          fabric_type: string
+          id?: string
+          order_id?: string | null
+          received_meters?: number | null
+          remarks?: string | null
+          request_with_allowance?: number | null
+          total_meters?: number | null
+          total_yards?: number | null
+          updated_at?: string
+          used_meters?: number | null
+          wastage_percent?: number | null
+        }
+        Update: {
+          balance?: number | null
+          created_at?: string
+          created_by?: string | null
+          fabric_type?: string
+          id?: string
+          order_id?: string | null
+          received_meters?: number | null
+          remarks?: string | null
+          request_with_allowance?: number | null
+          total_meters?: number | null
+          total_yards?: number | null
+          updated_at?: string
+          used_meters?: number | null
+          wastage_percent?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fabric_calculations_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fabric_rolls: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          fabric_type: string
+          id: string
+          received_date: string | null
+          roll_no: string
+          status: string | null
+          system_length: number | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          fabric_type: string
+          id?: string
+          received_date?: string | null
+          roll_no: string
+          status?: string | null
+          system_length?: number | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          fabric_type?: string
+          id?: string
+          received_date?: string | null
+          roll_no?: string
+          status?: string | null
+          system_length?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      lay_records: {
+        Row: {
+          actual_lays: number | null
+          big_end: number | null
+          created_at: string
+          created_by: string | null
+          cut_no: number | null
+          cut_plan_id: string | null
+          damage: number | null
+          id: string
+          layed_mts: number | null
+          marker_length: number | null
+          overlap_yards: number | null
+          recut_return: number | null
+          remarks: string | null
+          roll_end: number | null
+          roll_end_next_ply_1st: number | null
+          roll_end_next_ply_2nd: number | null
+          roll_id: string | null
+          roll_no: string | null
+          roll_shortage_increase: number | null
+          shade: string | null
+          system_roll_length: number | null
+          total_usage: number | null
+          unusable_roll_end: number | null
+          updated_at: string
+        }
+        Insert: {
+          actual_lays?: number | null
+          big_end?: number | null
+          created_at?: string
+          created_by?: string | null
+          cut_no?: number | null
+          cut_plan_id?: string | null
+          damage?: number | null
+          id?: string
+          layed_mts?: number | null
+          marker_length?: number | null
+          overlap_yards?: number | null
+          recut_return?: number | null
+          remarks?: string | null
+          roll_end?: number | null
+          roll_end_next_ply_1st?: number | null
+          roll_end_next_ply_2nd?: number | null
+          roll_id?: string | null
+          roll_no?: string | null
+          roll_shortage_increase?: number | null
+          shade?: string | null
+          system_roll_length?: number | null
+          total_usage?: number | null
+          unusable_roll_end?: number | null
+          updated_at?: string
+        }
+        Update: {
+          actual_lays?: number | null
+          big_end?: number | null
+          created_at?: string
+          created_by?: string | null
+          cut_no?: number | null
+          cut_plan_id?: string | null
+          damage?: number | null
+          id?: string
+          layed_mts?: number | null
+          marker_length?: number | null
+          overlap_yards?: number | null
+          recut_return?: number | null
+          remarks?: string | null
+          roll_end?: number | null
+          roll_end_next_ply_1st?: number | null
+          roll_end_next_ply_2nd?: number | null
+          roll_id?: string | null
+          roll_no?: string | null
+          roll_shortage_increase?: number | null
+          shade?: string | null
+          system_roll_length?: number | null
+          total_usage?: number | null
+          unusable_roll_end?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lay_records_cut_plan_id_fkey"
+            columns: ["cut_plan_id"]
+            isOneToOne: false
+            referencedRelation: "cut_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lay_sheets: {
         Row: {
           created_at: string
@@ -305,6 +604,7 @@ export type Database = {
           order_id: string | null
           pieces_per_marker: number | null
           size_combination: string | null
+          sizes: Json | null
           updated_at: string
         }
         Insert: {
@@ -319,6 +619,7 @@ export type Database = {
           order_id?: string | null
           pieces_per_marker?: number | null
           size_combination?: string | null
+          sizes?: Json | null
           updated_at?: string
         }
         Update: {
@@ -333,6 +634,7 @@ export type Database = {
           order_id?: string | null
           pieces_per_marker?: number | null
           size_combination?: string | null
+          sizes?: Json | null
           updated_at?: string
         }
         Relationships: [
@@ -345,40 +647,85 @@ export type Database = {
           },
         ]
       }
+      material_catalog: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string
+          id: string
+          item_code: string
+          uom: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description: string
+          id?: string
+          item_code: string
+          uom?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string
+          id?: string
+          item_code?: string
+          uom?: string | null
+        }
+        Relationships: []
+      }
       orders: {
         Row: {
           created_at: string
           created_by: string | null
+          custom_sizes: Json | null
           customer: string
+          delivery_date: string | null
           fabric_type: string | null
           id: string
+          order_date: string | null
           order_no: string
           quantity: number
+          shade: string | null
+          size_quantities: Json | null
           status: string
+          style_name: string | null
           style_no: string
           updated_at: string
         }
         Insert: {
           created_at?: string
           created_by?: string | null
+          custom_sizes?: Json | null
           customer: string
+          delivery_date?: string | null
           fabric_type?: string | null
           id?: string
+          order_date?: string | null
           order_no: string
           quantity?: number
+          shade?: string | null
+          size_quantities?: Json | null
           status?: string
+          style_name?: string | null
           style_no: string
           updated_at?: string
         }
         Update: {
           created_at?: string
           created_by?: string | null
+          custom_sizes?: Json | null
           customer?: string
+          delivery_date?: string | null
           fabric_type?: string | null
           id?: string
+          order_date?: string | null
           order_no?: string
           quantity?: number
+          shade?: string | null
+          size_quantities?: Json | null
           status?: string
+          style_name?: string | null
           style_no?: string
           updated_at?: string
         }
@@ -407,6 +754,59 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      ratios: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean | null
+          order_id: string | null
+          planned_qty: Json | null
+          plies: number | null
+          ratio_name: string | null
+          ratio_number: number | null
+          sizes: Json | null
+          total_qty: number | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean | null
+          order_id?: string | null
+          planned_qty?: Json | null
+          plies?: number | null
+          ratio_name?: string | null
+          ratio_number?: number | null
+          sizes?: Json | null
+          total_qty?: number | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean | null
+          order_id?: string | null
+          planned_qty?: Json | null
+          plies?: number | null
+          ratio_name?: string | null
+          ratio_number?: number | null
+          sizes?: Json | null
+          total_qty?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ratios_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       request_items: {
         Row: {
