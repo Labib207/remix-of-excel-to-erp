@@ -22,10 +22,10 @@ import {
 } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { Truck, Download, Package, CalendarIcon, FileText, RotateCcw } from 'lucide-react';
+import { Truck, Download, Package, CalendarIcon, FileText, RotateCcw, Plus, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { useRequestStore } from '@/store/requestStore';
 import { useCuttingStore } from '@/store/cuttingStore';
+import { useRequirementStore } from '@/store/requirementStore';
 import { exportDeliveryNotePDF } from '@/lib/requestPdfExport';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -43,88 +43,87 @@ interface DeliveryItem {
 
 const DeliveryNotes = () => {
   const { toast } = useToast();
-  const { submittedRequests } = useRequestStore();
   const { orders } = useCuttingStore();
+  const { requirements, materialCatalog } = useRequirementStore();
   
   // Form state
   const [selectedOrderId, setSelectedOrderId] = useState<string>('');
-  const [selectedRequestId, setSelectedRequestId] = useState<string>('');
   const [deliveryDate, setDeliveryDate] = useState<Date>(new Date());
   const [trNo, setTrNo] = useState('');
   const [line, setLine] = useState('');
   const [deliveryItems, setDeliveryItems] = useState<DeliveryItem[]>([]);
 
-  // Get orders that have submitted requests (raw-material or general-supplies)
-  const ordersWithRequests = useMemo(() => {
-    const orderIds = new Set<string>();
-    submittedRequests
-      .filter(req => req.type !== 'material-return' && (req.form as any).orderId)
-      .forEach(req => {
-        orderIds.add((req.form as any).orderId);
-      });
-    
+  // Get orders that have requirements (for offline mode)
+  const ordersWithRequirements = useMemo(() => {
+    const orderIds = new Set(requirements.map(r => r.orderId));
     return orders.filter(order => orderIds.has(order.id));
-  }, [submittedRequests, orders]);
-
-  // Get requests for selected order
-  const requestsForOrder = useMemo(() => {
-    if (!selectedOrderId) return [];
-    return submittedRequests.filter(
-      req => req.type !== 'material-return' && (req.form as any).orderId === selectedOrderId
-    );
-  }, [submittedRequests, selectedOrderId]);
+  }, [requirements, orders]);
 
   // Get selected order info
   const selectedOrder = useMemo(() => {
     return orders.find(o => o.id === selectedOrderId);
   }, [orders, selectedOrderId]);
 
-  // Get selected request info
-  const selectedRequest = useMemo(() => {
-    return submittedRequests.find(r => r.id === selectedRequestId);
-  }, [submittedRequests, selectedRequestId]);
-
-  // When order changes, reset request selection
+  // When order changes, load requirements as delivery items
   const handleOrderChange = (orderId: string) => {
     setSelectedOrderId(orderId);
-    setSelectedRequestId('');
-    setDeliveryItems([]);
     
     const order = orders.find(o => o.id === orderId);
     if (order) {
       setLine(order.orderNumber || '');
-    }
-  };
-
-  // When request is selected, load items
-  const handleRequestChange = (requestId: string) => {
-    setSelectedRequestId(requestId);
-    
-    const request = submittedRequests.find(r => r.id === requestId);
-    if (request) {
-      const items: DeliveryItem[] = request.items.map((item: any) => ({
-        id: item.id,
-        slNo: item.slNo,
-        itemCode: item.itemCode || '',
-        description: item.description,
-        requirementQty: item.requirementQty || item.requestedQty || 0,
+      
+      // Load requirements for this order
+      const orderRequirements = requirements.filter(r => r.orderId === orderId);
+      const items: DeliveryItem[] = orderRequirements.map((req, index) => ({
+        id: req.id,
+        slNo: index + 1,
+        itemCode: req.itemCode || '',
+        description: req.description,
+        requirementQty: req.requiredQty || 0,
         issuedQty: 0, // Empty for manual entry
-        balance: item.requirementQty || item.requestedQty || 0, // Full balance initially
-        remarks: item.remarks || '',
+        balance: req.requiredQty || 0,
+        remarks: req.remarks || '',
       }));
       setDeliveryItems(items);
+    } else {
+      setDeliveryItems([]);
     }
   };
 
-  // Update issued qty and calculate balance
-  const updateIssuedQty = (itemId: string, issuedQty: number) => {
+  // Add a new empty row
+  const addNewRow = () => {
+    const newSlNo = deliveryItems.length + 1;
+    setDeliveryItems(prev => [...prev, {
+      id: `new-${Date.now()}`,
+      slNo: newSlNo,
+      itemCode: '',
+      description: '',
+      requirementQty: 0,
+      issuedQty: 0,
+      balance: 0,
+      remarks: '',
+    }]);
+  };
+
+  // Remove a row
+  const removeRow = (id: string) => {
+    setDeliveryItems(prev => {
+      const filtered = prev.filter(item => item.id !== id);
+      // Re-number the rows
+      return filtered.map((item, index) => ({ ...item, slNo: index + 1 }));
+    });
+  };
+
+  // Update item fields
+  const updateItem = (id: string, field: keyof DeliveryItem, value: string | number) => {
     setDeliveryItems(prev => prev.map(item => {
-      if (item.id === itemId) {
-        return {
-          ...item,
-          issuedQty,
-          balance: item.requirementQty - issuedQty,
-        };
+      if (item.id === id) {
+        const updated = { ...item, [field]: value };
+        // Recalculate balance when requirement or issued qty changes
+        if (field === 'requirementQty' || field === 'issuedQty') {
+          updated.balance = (updated.requirementQty || 0) - (updated.issuedQty || 0);
+        }
+        return updated;
       }
       return item;
     }));
@@ -133,7 +132,6 @@ const DeliveryNotes = () => {
   // Reset form
   const handleReset = () => {
     setSelectedOrderId('');
-    setSelectedRequestId('');
     setDeliveryDate(new Date());
     setTrNo('');
     setLine('');
@@ -142,8 +140,8 @@ const DeliveryNotes = () => {
 
   // Download PDF
   const handleDownloadPDF = () => {
-    if (!selectedOrder || deliveryItems.length === 0) {
-      toast({ title: 'Please select an order and request first', variant: 'destructive' });
+    if (deliveryItems.length === 0) {
+      toast({ title: 'Please add at least one item', variant: 'destructive' });
       return;
     }
 
@@ -156,7 +154,9 @@ const DeliveryNotes = () => {
       remarks: item.remarks,
     }));
 
-    const orderName = `${selectedOrder.orderNumber} ${selectedOrder.styleNo || ''} ${selectedOrder.customer || ''} ${selectedOrder.totalQty || ''} QTY`.trim();
+    const orderName = selectedOrder 
+      ? `${selectedOrder.orderNumber} ${selectedOrder.styleNo || ''} ${selectedOrder.customer || ''} ${selectedOrder.totalQty || ''} QTY`.trim()
+      : line || 'General Delivery';
 
     exportDeliveryNotePDF(
       {
@@ -165,17 +165,16 @@ const DeliveryNotes = () => {
         trNo,
         line,
       },
-      pdfItems,
-      selectedRequest?.docNumber
+      pdfItems
     );
 
     toast({ title: 'Delivery Acknowledgment Report downloaded' });
   };
 
   // Stats
-  const totalRequirementQty = deliveryItems.reduce((sum, item) => sum + item.requirementQty, 0);
-  const totalIssuedQty = deliveryItems.reduce((sum, item) => sum + item.issuedQty, 0);
-  const totalBalance = deliveryItems.reduce((sum, item) => sum + item.balance, 0);
+  const totalRequirementQty = deliveryItems.reduce((sum, item) => sum + (item.requirementQty || 0), 0);
+  const totalIssuedQty = deliveryItems.reduce((sum, item) => sum + (item.issuedQty || 0), 0);
+  const totalBalance = deliveryItems.reduce((sum, item) => sum + (item.balance || 0), 0);
 
   return (
     <MainLayout>
@@ -202,56 +201,31 @@ const DeliveryNotes = () => {
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <FileText className="h-5 w-5" />
-              Select Order & Request
+              Delivery Details
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {/* Order Dropdown */}
+              {/* Order Dropdown (optional) */}
               <div className="space-y-2">
-                <Label>Order <span className="text-destructive">*</span></Label>
+                <Label>Order (Optional)</Label>
                 <Select value={selectedOrderId} onValueChange={handleOrderChange}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select Order" />
+                    <SelectValue placeholder="Select Order to load items" />
                   </SelectTrigger>
                   <SelectContent>
-                    {ordersWithRequests.length === 0 ? (
-                      <SelectItem value="none" disabled>No orders with requests</SelectItem>
+                    {orders.length === 0 ? (
+                      <SelectItem value="none" disabled>No orders available</SelectItem>
                     ) : (
-                      ordersWithRequests.map((order) => {
-                        const requestCount = requestsForOrder.length;
+                      orders.map((order) => {
+                        const hasRequirements = ordersWithRequirements.some(o => o.id === order.id);
                         return (
                           <SelectItem key={order.id} value={order.id}>
                             {order.orderNumber} - {order.customer || 'Unknown'}
-                            {selectedOrderId === order.id && requestCount > 0 && ` (${requestCount})`}
+                            {hasRequirements && ' (has requirements)'}
                           </SelectItem>
                         );
                       })
-                    )}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Request Dropdown */}
-              <div className="space-y-2">
-                <Label>Request No <span className="text-destructive">*</span></Label>
-                <Select 
-                  value={selectedRequestId} 
-                  onValueChange={handleRequestChange}
-                  disabled={!selectedOrderId}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder={selectedOrderId ? "Select Request" : "Select order first"} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {requestsForOrder.length === 0 ? (
-                      <SelectItem value="none" disabled>No requests for this order</SelectItem>
-                    ) : (
-                      requestsForOrder.map((request) => (
-                        <SelectItem key={request.id} value={request.id}>
-                          {request.docNumber} ({request.items.length} items)
-                        </SelectItem>
-                      ))
                     )}
                   </SelectContent>
                 </Select>
@@ -288,10 +262,8 @@ const DeliveryNotes = () => {
                   placeholder="Enter TR number"
                 />
               </div>
-            </div>
 
-            {/* Line */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              {/* Line */}
               <div className="space-y-2">
                 <Label>Line</Label>
                 <Input
@@ -315,111 +287,138 @@ const DeliveryNotes = () => {
         </Card>
 
         {/* Items Table */}
-        {deliveryItems.length > 0 && (
-          <Card className="shadow-card">
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Package className="h-5 w-5" />
-                Delivery Items
-              </CardTitle>
-              <Button onClick={handleDownloadPDF} className="gap-2">
+        <Card className="shadow-card">
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Package className="h-5 w-5" />
+              Delivery Items
+            </CardTitle>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={addNewRow} className="gap-2">
+                <Plus className="h-4 w-4" />
+                Add Row
+              </Button>
+              <Button 
+                onClick={handleDownloadPDF} 
+                className="gap-2"
+                disabled={deliveryItems.length === 0}
+              >
                 <Download className="h-4 w-4" />
                 Download PDF
               </Button>
-            </CardHeader>
-            <CardContent>
-              <div className="border rounded-lg overflow-hidden">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-muted/50">
-                      <TableHead className="w-14 text-center">NO</TableHead>
-                      <TableHead>ITEM</TableHead>
-                      <TableHead className="w-32 text-center">REQUIREMENT QTY</TableHead>
-                      <TableHead className="w-32 text-center">ISSUED QTY</TableHead>
-                      <TableHead className="w-28 text-center">BALANCE</TableHead>
-                      <TableHead className="w-40">REMARK</TableHead>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="border rounded-lg overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/50">
+                    <TableHead className="w-12 text-center">NO</TableHead>
+                    <TableHead>ITEM DESCRIPTION</TableHead>
+                    <TableHead className="w-28 text-center">REQ QTY</TableHead>
+                    <TableHead className="w-28 text-center">ISSUED QTY</TableHead>
+                    <TableHead className="w-24 text-center">BALANCE</TableHead>
+                    <TableHead className="w-36">REMARK</TableHead>
+                    <TableHead className="w-12"></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {deliveryItems.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                        Select an order to load requirements or click "Add Row" to enter items manually
+                      </TableCell>
                     </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {deliveryItems.map((item) => (
-                      <TableRow key={item.id}>
-                        <TableCell className="text-center font-mono">{item.slNo}</TableCell>
-                        <TableCell className="font-medium">{item.description}</TableCell>
-                        <TableCell className="text-center font-mono">{item.requirementQty}</TableCell>
+                  ) : (
+                    <>
+                      {deliveryItems.map((item) => (
+                        <TableRow key={item.id}>
+                          <TableCell className="text-center font-mono">{item.slNo}</TableCell>
+                          <TableCell>
+                            <Input
+                              value={item.description}
+                              onChange={(e) => updateItem(item.id, 'description', e.target.value)}
+                              className="h-8"
+                              placeholder="Item description"
+                            />
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <Input
+                              type="number"
+                              min="0"
+                              value={item.requirementQty || ''}
+                              onChange={(e) => updateItem(item.id, 'requirementQty', parseInt(e.target.value) || 0)}
+                              className="h-8 w-20 text-center mx-auto"
+                              placeholder="0"
+                            />
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <Input
+                              type="number"
+                              min="0"
+                              value={item.issuedQty || ''}
+                              onChange={(e) => updateItem(item.id, 'issuedQty', parseInt(e.target.value) || 0)}
+                              className="h-8 w-20 text-center mx-auto"
+                              placeholder="0"
+                            />
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <Badge 
+                              variant={item.balance === 0 ? 'default' : item.balance < 0 ? 'destructive' : 'secondary'}
+                              className="font-mono"
+                            >
+                              {item.balance}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Input
+                              value={item.remarks}
+                              onChange={(e) => updateItem(item.id, 'remarks', e.target.value)}
+                              className="h-8"
+                              placeholder="Remark"
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-destructive hover:text-destructive"
+                              onClick={() => removeRow(item.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      
+                      {/* Totals Row */}
+                      <TableRow className="bg-muted/50 font-bold">
+                        <TableCell></TableCell>
+                        <TableCell className="text-right">TOTAL</TableCell>
+                        <TableCell className="text-center font-mono">{totalRequirementQty}</TableCell>
+                        <TableCell className="text-center font-mono">{totalIssuedQty}</TableCell>
                         <TableCell className="text-center">
-                          <Input
-                            type="number"
-                            min="0"
-                            value={item.issuedQty || ''}
-                            onChange={(e) => updateIssuedQty(item.id, parseInt(e.target.value) || 0)}
-                            className="h-8 w-24 text-center mx-auto"
-                            placeholder="0"
-                          />
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <Badge 
-                            variant={item.balance === 0 ? 'default' : item.balance < 0 ? 'destructive' : 'secondary'}
-                            className="font-mono"
-                          >
-                            {item.balance}
+                          <Badge variant="outline" className="font-mono">
+                            {totalBalance}
                           </Badge>
                         </TableCell>
-                        <TableCell>
-                          <Input
-                            value={item.remarks}
-                            onChange={(e) => {
-                              setDeliveryItems(prev => prev.map(i => 
-                                i.id === item.id ? { ...i, remarks: e.target.value } : i
-                              ));
-                            }}
-                            className="h-8"
-                            placeholder="Remark"
-                          />
-                        </TableCell>
+                        <TableCell></TableCell>
+                        <TableCell></TableCell>
                       </TableRow>
-                    ))}
-                    
-                    {/* Totals Row */}
-                    <TableRow className="bg-muted/50 font-bold">
-                      <TableCell></TableCell>
-                      <TableCell className="text-right">TOTAL</TableCell>
-                      <TableCell className="text-center font-mono">{totalRequirementQty}</TableCell>
-                      <TableCell className="text-center font-mono">{totalIssuedQty}</TableCell>
-                      <TableCell className="text-center">
-                        <Badge variant="outline" className="font-mono">
-                          {totalBalance}
-                        </Badge>
-                      </TableCell>
-                      <TableCell></TableCell>
-                    </TableRow>
-                  </TableBody>
-                </Table>
-              </div>
+                    </>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
 
-              {/* Signature Section Info */}
-              <div className="mt-6 p-4 border rounded-lg bg-muted/20">
-                <p className="text-sm text-muted-foreground text-center">
-                  The PDF will include signature sections for <strong>Line Supervisor</strong> and <strong>Line Recorder</strong> acknowledgment.
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Empty State */}
-        {deliveryItems.length === 0 && (
-          <Card className="shadow-card">
-            <CardContent className="py-12 text-center">
-              <Truck className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
-              <p className="text-muted-foreground">
-                Select an <strong>Order</strong> and <strong>Request</strong> above to load delivery items.
+            {/* Signature Section Info */}
+            <div className="mt-6 p-4 border rounded-lg bg-muted/20">
+              <p className="text-sm text-muted-foreground text-center">
+                The PDF will include signature sections for <strong>Store In-Charge</strong>, <strong>Line Recorder</strong>, <strong>Line Supervisor</strong>, and <strong>Production Manager</strong> acknowledgment.
               </p>
-              <p className="text-sm text-muted-foreground/70 mt-2">
-                First submit a Raw Material Request for an order, then come here to record the delivery.
-              </p>
-            </CardContent>
-          </Card>
-        )}
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </MainLayout>
   );
