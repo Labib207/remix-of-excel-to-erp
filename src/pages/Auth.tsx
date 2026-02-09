@@ -11,8 +11,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2, LogIn, UserPlus, KeyRound, ArrowLeft } from 'lucide-react';
+import { Loader2, LogIn, UserPlus, KeyRound, ArrowLeft, WifiOff, Cloud } from 'lucide-react';
 import logo from '@/assets/logo.png';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 const loginSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -42,9 +43,24 @@ export default function Auth() {
   const [activeTab, setActiveTab] = useState('login');
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [resetEmailSent, setResetEmailSent] = useState(false);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
   const { signIn, signUp, user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  // Monitor online/offline status
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   useEffect(() => {
     if (user) {
@@ -243,17 +259,45 @@ export default function Auth() {
           <CardDescription>Sign in to manage your cutting operations</CardDescription>
         </CardHeader>
         <CardContent>
+          {/* Offline Warning */}
+          {!isOnline && (
+            <Alert className="mb-4 border-warning bg-warning/10">
+              <WifiOff className="h-4 w-4 text-warning" />
+              <AlertDescription className="text-warning">
+                You're offline. Sign up is only available when connected to the cloud.
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {/* Online indicator */}
+          {isOnline && (
+            <div className="flex items-center justify-center gap-2 mb-4 text-sm text-muted-foreground">
+              <Cloud className="h-4 w-4 text-success" />
+              <span>Connected to Cloud</span>
+            </div>
+          )}
+
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid w-full grid-cols-2 mb-6">
-              <TabsTrigger value="login" className="gap-2">
-                <LogIn className="h-4 w-4" />
-                Login
-              </TabsTrigger>
-              <TabsTrigger value="signup" className="gap-2">
-                <UserPlus className="h-4 w-4" />
-                Sign Up
-              </TabsTrigger>
-            </TabsList>
+            {/* Only show tabs if online, otherwise just login */}
+            {isOnline ? (
+              <TabsList className="grid w-full grid-cols-2 mb-6">
+                <TabsTrigger value="login" className="gap-2">
+                  <LogIn className="h-4 w-4" />
+                  Login
+                </TabsTrigger>
+                <TabsTrigger value="signup" className="gap-2">
+                  <UserPlus className="h-4 w-4" />
+                  Sign Up
+                </TabsTrigger>
+              </TabsList>
+            ) : (
+              <div className="mb-6 text-center">
+                <h3 className="text-lg font-medium flex items-center justify-center gap-2">
+                  <LogIn className="h-5 w-5" />
+                  Login
+                </h3>
+              </div>
+            )}
 
             <TabsContent value="login">
               <Form {...loginForm}>
@@ -311,77 +355,80 @@ export default function Auth() {
               </Form>
             </TabsContent>
 
-            <TabsContent value="signup">
-              <Form {...signupForm}>
-                <form onSubmit={signupForm.handleSubmit(handleSignup)} className="space-y-4">
-                  <FormField
-                    control={signupForm.control}
-                    name="fullName"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Full Name</FormLabel>
-                        <FormControl>
-                          <Input placeholder="John Doe" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={signupForm.control}
-                    name="email"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Email</FormLabel>
-                        <FormControl>
-                          <Input placeholder="you@example.com" type="email" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={signupForm.control}
-                    name="password"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Password</FormLabel>
-                        <FormControl>
-                          <Input placeholder="••••••••" type="password" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={signupForm.control}
-                    name="confirmPassword"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Confirm Password</FormLabel>
-                        <FormControl>
-                          <Input placeholder="••••••••" type="password" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <Button type="submit" className="w-full" disabled={isLoading}>
-                    {isLoading ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Creating account...
-                      </>
-                    ) : (
-                      <>
-                        <UserPlus className="mr-2 h-4 w-4" />
-                        Create Account
-                      </>
-                    )}
-                  </Button>
-                </form>
-              </Form>
-            </TabsContent>
+            {/* Only show signup tab when online */}
+            {isOnline && (
+              <TabsContent value="signup">
+                <Form {...signupForm}>
+                  <form onSubmit={signupForm.handleSubmit(handleSignup)} className="space-y-4">
+                    <FormField
+                      control={signupForm.control}
+                      name="fullName"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Full Name</FormLabel>
+                          <FormControl>
+                            <Input placeholder="John Doe" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={signupForm.control}
+                      name="email"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Email</FormLabel>
+                          <FormControl>
+                            <Input placeholder="you@example.com" type="email" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={signupForm.control}
+                      name="password"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Password</FormLabel>
+                          <FormControl>
+                            <Input placeholder="••••••••" type="password" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={signupForm.control}
+                      name="confirmPassword"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Confirm Password</FormLabel>
+                          <FormControl>
+                            <Input placeholder="••••••••" type="password" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <Button type="submit" className="w-full" disabled={isLoading}>
+                      {isLoading ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Creating account...
+                        </>
+                      ) : (
+                        <>
+                          <UserPlus className="mr-2 h-4 w-4" />
+                          Create Account
+                        </>
+                      )}
+                    </Button>
+                  </form>
+                </Form>
+              </TabsContent>
+            )}
           </Tabs>
         </CardContent>
       </Card>
