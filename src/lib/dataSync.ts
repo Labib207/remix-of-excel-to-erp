@@ -64,6 +64,9 @@ export class DataSyncService {
   private static instance: DataSyncService;
   private isSyncing = false;
   private lastSyncTime: Date | null = null;
+  private pendingChanges: boolean = false;
+  private autoSyncEnabled: boolean = true;
+  private syncListeners: ((status: 'syncing' | 'synced' | 'error' | 'pending') => void)[] = [];
 
   static getInstance(): DataSyncService {
     if (!DataSyncService.instance) {
@@ -72,9 +75,67 @@ export class DataSyncService {
     return DataSyncService.instance;
   }
 
+  constructor() {
+    // Listen for online/offline events
+    if (typeof window !== 'undefined') {
+      window.addEventListener('online', () => this.handleOnline());
+      window.addEventListener('offline', () => this.handleOffline());
+    }
+  }
+
+  // Subscribe to sync status changes
+  onSyncStatusChange(listener: (status: 'syncing' | 'synced' | 'error' | 'pending') => void) {
+    this.syncListeners.push(listener);
+    return () => {
+      this.syncListeners = this.syncListeners.filter(l => l !== listener);
+    };
+  }
+
+  private notifyListeners(status: 'syncing' | 'synced' | 'error' | 'pending') {
+    this.syncListeners.forEach(l => l(status));
+  }
+
+  // Handle coming online - sync pending changes
+  private async handleOnline() {
+    console.log('Network online - checking for pending changes');
+    if (this.pendingChanges && this.autoSyncEnabled) {
+      console.log('Syncing pending changes to cloud...');
+      // Get stores and sync
+      const cuttingStore = (await import('@/store/cuttingStore')).useCuttingStore.getState();
+      const requirementStore = (await import('@/store/requirementStore')).useRequirementStore.getState();
+      
+      await this.fullSyncToCloud({
+        orders: cuttingStore.orders,
+        cutPlans: cuttingStore.cutPlans,
+        markerPlans: cuttingStore.markerPlans,
+        requirements: requirementStore.requirements,
+      });
+      
+      this.pendingChanges = false;
+    }
+  }
+
+  private handleOffline() {
+    console.log('Network offline - changes will be synced when online');
+  }
+
+  // Mark that there are pending changes to sync
+  markPendingChanges() {
+    this.pendingChanges = true;
+    this.notifyListeners('pending');
+  }
+
+  hasPendingChanges(): boolean {
+    return this.pendingChanges;
+  }
+
   async isAuthenticated(): Promise<boolean> {
     const { data: { user } } = await supabase.auth.getUser();
     return !!user;
+  }
+
+  isOnline(): boolean {
+    return typeof navigator !== 'undefined' ? navigator.onLine : true;
   }
 
   // Sync orders from local to cloud
@@ -94,9 +155,16 @@ export class DataSyncService {
             id: dbOrder.id,
             order_no: dbOrder.order_no || '',
             style_no: dbOrder.style_no || '',
+            style_name: dbOrder.style_name,
             customer: dbOrder.customer || '',
             quantity: dbOrder.quantity || 0,
+            fabric_type: dbOrder.fabric_type,
+            shade: dbOrder.shade,
+            size_quantities: dbOrder.size_quantities,
+            order_date: dbOrder.order_date,
+            delivery_date: dbOrder.delivery_date,
             status: dbOrder.status || 'pending',
+            created_by: user.id,
           } as any, { onConflict: 'id' });
 
         if (error) throw error;
@@ -267,7 +335,14 @@ export class DataSyncService {
   }): Promise<{ success: boolean; error?: string; synced: { orders: number; cutPlans: number; markerPlans: number; requirements: number } }> {
     const synced = { orders: 0, cutPlans: 0, markerPlans: 0, requirements: 0 };
 
+    if (!this.isOnline()) {
+      this.markPendingChanges();
+      return { success: false, error: 'Offline - changes will sync when online', synced };
+    }
+
     try {
+      this.notifyListeners('syncing');
+      
       const isAuth = await this.isAuthenticated();
       if (!isAuth) return { success: false, error: 'Not authenticated', synced };
 
@@ -284,14 +359,17 @@ export class DataSyncService {
       const reqResult = await this.syncRequirementsToCloud(stores.requirements);
       if (reqResult.success) synced.requirements = stores.requirements.length;
 
+      this.pendingChanges = false;
+      this.notifyListeners('synced');
       return { success: true, synced };
     } catch (error: any) {
       console.error('Full sync error:', error);
+      this.notifyListeners('error');
       return { success: false, error: error.message, synced };
     }
   }
 
-  // Full sync - pull all cloud data to local
+  // Full sync - pull all cloud data to local and merge
   async fullSyncFromCloud(): Promise<{
     success: boolean;
     error?: string;
@@ -300,7 +378,13 @@ export class DataSyncService {
       requirements: MaterialRequirement[];
     } | null;
   }> {
+    if (!this.isOnline()) {
+      return { success: false, error: 'Offline', data: null };
+    }
+
     try {
+      this.notifyListeners('syncing');
+      
       const isAuth = await this.isAuthenticated();
       if (!isAuth) return { success: false, error: 'Not authenticated', data: null };
 
@@ -308,6 +392,9 @@ export class DataSyncService {
         this.fetchOrdersFromCloud(),
         this.fetchRequirementsFromCloud(),
       ]);
+
+      this.notifyListeners('synced');
+      this.lastSyncTime = new Date();
 
       return {
         success: true,
@@ -318,7 +405,56 @@ export class DataSyncService {
       };
     } catch (error: any) {
       console.error('Full sync from cloud error:', error);
+      this.notifyListeners('error');
       return { success: false, error: error.message, data: null };
+    }
+  }
+
+  // Merge cloud data with local data (cloud takes precedence for same IDs, but keep local-only items)
+  async mergeFromCloud(): Promise<{ success: boolean; error?: string }> {
+    if (!this.isOnline()) {
+      return { success: false, error: 'Offline' };
+    }
+
+    try {
+      const result = await this.fullSyncFromCloud();
+      if (!result.success || !result.data) {
+        return { success: false, error: result.error };
+      }
+
+      // Import stores dynamically to avoid circular deps
+      const { useCuttingStore } = await import('@/store/cuttingStore');
+      const { useRequirementStore } = await import('@/store/requirementStore');
+
+      const cuttingStore = useCuttingStore.getState();
+      const requirementStore = useRequirementStore.getState();
+
+      // Merge orders: cloud data + local-only items
+      const cloudOrderIds = new Set(result.data.orders.map(o => o.id));
+      const localOnlyOrders = cuttingStore.orders.filter(o => !cloudOrderIds.has(o.id));
+      const mergedOrders = [...result.data.orders, ...localOnlyOrders];
+
+      // Merge requirements: cloud data + local-only items
+      const cloudReqIds = new Set(result.data.requirements.map(r => r.id));
+      const localOnlyReqs = requirementStore.requirements.filter(r => !cloudReqIds.has(r.id));
+      const mergedReqs = [...result.data.requirements, ...localOnlyReqs];
+
+      // Update stores - use internal state setters
+      useCuttingStore.setState({ orders: mergedOrders });
+      useRequirementStore.setState({ requirements: mergedReqs });
+
+      // Now push local-only items to cloud
+      if (localOnlyOrders.length > 0) {
+        await this.syncOrdersToCloud(localOnlyOrders);
+      }
+      if (localOnlyReqs.length > 0) {
+        await this.syncRequirementsToCloud(localOnlyReqs);
+      }
+
+      return { success: true };
+    } catch (error: any) {
+      console.error('Merge from cloud error:', error);
+      return { success: false, error: error.message };
     }
   }
 
@@ -328,6 +464,10 @@ export class DataSyncService {
 
   isSyncInProgress(): boolean {
     return this.isSyncing;
+  }
+
+  setAutoSync(enabled: boolean) {
+    this.autoSyncEnabled = enabled;
   }
 }
 
