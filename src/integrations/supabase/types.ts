@@ -14,6 +14,376 @@ export type Database = {
   }
   public: {
     Tables: {
+      bundles: {
+        Row: {
+          bundle_no: string
+          color: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          lay_sheet_id: string | null
+          notes: string | null
+          quantity: number | null
+          scanned_at: string | null
+          size: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          bundle_no: string
+          color?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          lay_sheet_id?: string | null
+          notes?: string | null
+          quantity?: number | null
+          scanned_at?: string | null
+          size?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          bundle_no?: string
+          color?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          lay_sheet_id?: string | null
+          notes?: string | null
+          quantity?: number | null
+          scanned_at?: string | null
+          size?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bundles_lay_sheet_id_fkey"
+            columns: ["lay_sheet_id"]
+            isOneToOne: false
+            referencedRelation: "lay_sheets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cut_plans: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          fabric_type: string | null
+          fabric_width: number | null
+          id: string
+          notes: string | null
+          order_id: string | null
+          plan_no: string
+          planned_date: string | null
+          plies: number | null
+          status: string
+          total_pieces: number | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          fabric_type?: string | null
+          fabric_width?: number | null
+          id?: string
+          notes?: string | null
+          order_id?: string | null
+          plan_no: string
+          planned_date?: string | null
+          plies?: number | null
+          status?: string
+          total_pieces?: number | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          fabric_type?: string | null
+          fabric_width?: number | null
+          id?: string
+          notes?: string | null
+          order_id?: string | null
+          plan_no?: string
+          planned_date?: string | null
+          plies?: number | null
+          status?: string
+          total_pieces?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cut_plans_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      delivery_acknowledgments: {
+        Row: {
+          acknowledgment_no: string
+          created_at: string
+          created_by: string | null
+          delivery_date: string
+          id: string
+          line_recorder_signature: string | null
+          line_supervisor_signature: string | null
+          notes: string | null
+          received_by: string | null
+          request_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          acknowledgment_no: string
+          created_at?: string
+          created_by?: string | null
+          delivery_date?: string
+          id?: string
+          line_recorder_signature?: string | null
+          line_supervisor_signature?: string | null
+          notes?: string | null
+          received_by?: string | null
+          request_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          acknowledgment_no?: string
+          created_at?: string
+          created_by?: string | null
+          delivery_date?: string
+          id?: string
+          line_recorder_signature?: string | null
+          line_supervisor_signature?: string | null
+          notes?: string | null
+          received_by?: string | null
+          request_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "delivery_acknowledgments_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      delivery_items: {
+        Row: {
+          acknowledgment_id: string | null
+          balance_qty: number | null
+          color: string | null
+          created_at: string
+          description: string | null
+          id: string
+          issued_qty: number | null
+          item_code: string | null
+          request_item_id: string | null
+          requirement_qty: number | null
+          size: string | null
+          unit: string | null
+        }
+        Insert: {
+          acknowledgment_id?: string | null
+          balance_qty?: number | null
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          issued_qty?: number | null
+          item_code?: string | null
+          request_item_id?: string | null
+          requirement_qty?: number | null
+          size?: string | null
+          unit?: string | null
+        }
+        Update: {
+          acknowledgment_id?: string | null
+          balance_qty?: number | null
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          issued_qty?: number | null
+          item_code?: string | null
+          request_item_id?: string | null
+          requirement_qty?: number | null
+          size?: string | null
+          unit?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "delivery_items_acknowledgment_id_fkey"
+            columns: ["acknowledgment_id"]
+            isOneToOne: false
+            referencedRelation: "delivery_acknowledgments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "delivery_items_request_item_id_fkey"
+            columns: ["request_item_id"]
+            isOneToOne: false
+            referencedRelation: "request_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lay_sheets: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          cut_plan_id: string | null
+          fabric_type: string | null
+          fabric_width: number | null
+          id: string
+          lay_length: number | null
+          notes: string | null
+          plies: number | null
+          sheet_no: string
+          status: string
+          total_pieces: number | null
+          updated_at: string
+          wastage_percent: number | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          cut_plan_id?: string | null
+          fabric_type?: string | null
+          fabric_width?: number | null
+          id?: string
+          lay_length?: number | null
+          notes?: string | null
+          plies?: number | null
+          sheet_no: string
+          status?: string
+          total_pieces?: number | null
+          updated_at?: string
+          wastage_percent?: number | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          cut_plan_id?: string | null
+          fabric_type?: string | null
+          fabric_width?: number | null
+          id?: string
+          lay_length?: number | null
+          notes?: string | null
+          plies?: number | null
+          sheet_no?: string
+          status?: string
+          total_pieces?: number | null
+          updated_at?: string
+          wastage_percent?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lay_sheets_cut_plan_id_fkey"
+            columns: ["cut_plan_id"]
+            isOneToOne: false
+            referencedRelation: "cut_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      marker_plans: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          efficiency: number | null
+          id: string
+          marker_length: number | null
+          marker_no: string
+          marker_width: number | null
+          notes: string | null
+          order_id: string | null
+          pieces_per_marker: number | null
+          size_combination: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          efficiency?: number | null
+          id?: string
+          marker_length?: number | null
+          marker_no: string
+          marker_width?: number | null
+          notes?: string | null
+          order_id?: string | null
+          pieces_per_marker?: number | null
+          size_combination?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          efficiency?: number | null
+          id?: string
+          marker_length?: number | null
+          marker_no?: string
+          marker_width?: number | null
+          notes?: string | null
+          order_id?: string | null
+          pieces_per_marker?: number | null
+          size_combination?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marker_plans_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      orders: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          customer: string
+          fabric_type: string | null
+          id: string
+          order_no: string
+          quantity: number
+          status: string
+          style_no: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          customer: string
+          fabric_type?: string | null
+          id?: string
+          order_no: string
+          quantity?: number
+          status?: string
+          style_no: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          customer?: string
+          fabric_type?: string | null
+          id?: string
+          order_no?: string
+          quantity?: number
+          status?: string
+          style_no?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
@@ -37,6 +407,187 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      request_items: {
+        Row: {
+          balance_qty: number | null
+          color: string | null
+          created_at: string
+          description: string | null
+          id: string
+          issued_qty: number | null
+          item_code: string | null
+          notes: string | null
+          request_id: string | null
+          requested_qty: number
+          requirement_id: string | null
+          size: string | null
+          unit: string | null
+          updated_at: string
+        }
+        Insert: {
+          balance_qty?: number | null
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          issued_qty?: number | null
+          item_code?: string | null
+          notes?: string | null
+          request_id?: string | null
+          requested_qty?: number
+          requirement_id?: string | null
+          size?: string | null
+          unit?: string | null
+          updated_at?: string
+        }
+        Update: {
+          balance_qty?: number | null
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          issued_qty?: number | null
+          item_code?: string | null
+          notes?: string | null
+          request_id?: string | null
+          requested_qty?: number
+          requirement_id?: string | null
+          size?: string | null
+          unit?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "request_items_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "request_items_requirement_id_fkey"
+            columns: ["requirement_id"]
+            isOneToOne: false
+            referencedRelation: "requirements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      requests: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          department: string | null
+          id: string
+          notes: string | null
+          order_id: string | null
+          request_date: string
+          request_no: string
+          requested_by: string | null
+          status: string
+          submitted_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          department?: string | null
+          id?: string
+          notes?: string | null
+          order_id?: string | null
+          request_date?: string
+          request_no: string
+          requested_by?: string | null
+          status?: string
+          submitted_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          department?: string | null
+          id?: string
+          notes?: string | null
+          order_id?: string | null
+          request_date?: string
+          request_no?: string
+          requested_by?: string | null
+          status?: string
+          submitted_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "requests_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      requirements: {
+        Row: {
+          balance_qty: number | null
+          color: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          item_code: string
+          notes: string | null
+          order_id: string | null
+          received_qty: number | null
+          required_qty: number
+          size: string | null
+          status: string
+          unit: string | null
+          updated_at: string
+        }
+        Insert: {
+          balance_qty?: number | null
+          color?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          item_code: string
+          notes?: string | null
+          order_id?: string | null
+          received_qty?: number | null
+          required_qty?: number
+          size?: string | null
+          status?: string
+          unit?: string | null
+          updated_at?: string
+        }
+        Update: {
+          balance_qty?: number | null
+          color?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          item_code?: string
+          notes?: string | null
+          order_id?: string | null
+          received_qty?: number | null
+          required_qty?: number
+          size?: string | null
+          status?: string
+          unit?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "requirements_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
