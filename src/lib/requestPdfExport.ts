@@ -607,13 +607,13 @@ const drawDeliveryNoteHeader = (
   const titleBoxWidth = contentWidth - logoBoxWidth - 55;
   doc.rect(titleBoxX, headerTop, titleBoxWidth, logoBoxHeight);
   
-  doc.setFontSize(16);
+  doc.setFontSize(13);
   doc.setFont('helvetica', 'bold');
-  doc.text('DELIVERY ACKNOWLEDGMENT', titleBoxX + titleBoxWidth / 2, headerTop + 13, { align: 'center' });
+  doc.text('DELIVERY ACKNOWLEDGMENT', titleBoxX + titleBoxWidth / 2, headerTop + 12, { align: 'center' });
   
-  doc.setFontSize(10);
+  doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
-  doc.text('REPORT', titleBoxX + titleBoxWidth / 2, headerTop + 21, { align: 'center' });
+  doc.text('REPORT', titleBoxX + titleBoxWidth / 2, headerTop + 20, { align: 'center' });
 
   // Document ID section (right side)
   const docIdBoxX = marginLeft + contentWidth - 55;
