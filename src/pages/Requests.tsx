@@ -319,8 +319,9 @@ export default function Requests() {
         toast.error('Please add at least one item before downloading');
         return;
       }
-      const orderName = rawMaterialForm.orderId 
-        ? orders.find(o => o.id === rawMaterialForm.orderId)?.orderNumber || ''
+      const selectedOrder = rawMaterialForm.orderId ? orders.find(o => o.id === rawMaterialForm.orderId) : null;
+      const orderName = selectedOrder 
+        ? `${selectedOrder.orderNumber} ${selectedOrder.styleNo || ''} ${selectedOrder.customer || ''} ${selectedOrder.totalQty || ''} QTY`.trim()
         : '';
       // Auto-fill empty requestedQty with requirementQty before PDF export
       const itemsForPdf = autoFillRequestedQty(rawMaterialItems);
@@ -331,8 +332,9 @@ export default function Requests() {
         toast.error('Please add at least one item before downloading');
         return;
       }
-      const orderName = generalSuppliesForm.orderId 
-        ? orders.find(o => o.id === generalSuppliesForm.orderId)?.orderNumber || ''
+      const selectedOrder = generalSuppliesForm.orderId ? orders.find(o => o.id === generalSuppliesForm.orderId) : null;
+      const orderName = selectedOrder 
+        ? `${selectedOrder.orderNumber} ${selectedOrder.styleNo || ''} ${selectedOrder.customer || ''} ${selectedOrder.totalQty || ''} QTY`.trim()
         : '';
       // Auto-fill empty requestedQty with requirementQty before PDF export
       const itemsForPdf = autoFillRequestedQty(generalSuppliesItems);
@@ -343,8 +345,9 @@ export default function Requests() {
         toast.error('Please add at least one item before downloading');
         return;
       }
-      const orderName = materialReturnForm.orderId 
-        ? orders.find(o => o.id === materialReturnForm.orderId)?.orderNumber || ''
+      const selectedOrder = materialReturnForm.orderId ? orders.find(o => o.id === materialReturnForm.orderId) : null;
+      const orderName = selectedOrder 
+        ? `${selectedOrder.orderNumber} ${selectedOrder.styleNo || ''} ${selectedOrder.customer || ''} ${selectedOrder.totalQty || ''} QTY`.trim()
         : '';
       exportMaterialReturnSlipPDF({ ...materialReturnForm, orderName }, materialReturnItems);
       toast.success('Material Return Slip PDF downloaded');

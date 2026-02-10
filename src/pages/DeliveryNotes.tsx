@@ -144,7 +144,7 @@ const DeliveryNotes = () => {
     
     const order = orders.find(o => o.id === orderId);
     if (order) {
-      setLine(order.orderNumber || '');
+      setLine(''); // Line must be entered manually by user
       
       // Load requirements for this order
       const orderRequirements = requirements.filter(r => r.orderId === orderId);
@@ -215,6 +215,10 @@ const DeliveryNotes = () => {
 
   // Save delivery note to database
   const handleSave = async () => {
+    if (!line.trim()) {
+      toast({ title: 'Line Name is required', description: 'Please enter the Line Name before saving.', variant: 'destructive' });
+      return;
+    }
     if (deliveryItems.length === 0) {
       toast({ title: 'Please add at least one item', variant: 'destructive' });
       return;
@@ -272,6 +276,10 @@ const DeliveryNotes = () => {
 
   // Download PDF
   const handleDownloadPDF = () => {
+    if (!line.trim()) {
+      toast({ title: 'Line Name is required', description: 'Please enter the Line Name before downloading.', variant: 'destructive' });
+      return;
+    }
     if (deliveryItems.length === 0) {
       toast({ title: 'Please add at least one item', variant: 'destructive' });
       return;
@@ -288,7 +296,7 @@ const DeliveryNotes = () => {
 
     const orderName = selectedOrder 
       ? `${selectedOrder.orderNumber} ${selectedOrder.styleNo || ''} ${selectedOrder.customer || ''} ${selectedOrder.totalQty || ''} QTY`.trim()
-      : line || 'General Delivery';
+      : 'General Delivery';
 
     exportDeliveryNotePDF(
       {
@@ -493,11 +501,12 @@ const DeliveryNotes = () => {
 
               {/* Line */}
               <div className="space-y-2">
-                <Label>Line</Label>
+                <Label>Line <span className="text-destructive">*</span></Label>
                 <Input
                   value={line}
                   onChange={(e) => setLine(e.target.value)}
-                  placeholder="Enter line"
+                  placeholder="Enter line (required)"
+                  className={!line.trim() ? 'border-destructive' : ''}
                 />
               </div>
             </div>
