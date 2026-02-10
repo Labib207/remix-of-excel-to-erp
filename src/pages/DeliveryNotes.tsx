@@ -324,17 +324,17 @@ const DeliveryNotes = () => {
     <MainLayout>
       <div className="space-y-6 animate-fade-in">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center gap-3">
-              <Truck className="h-8 w-8 text-primary" />
-              Delivery Acknowledgment
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground flex items-center gap-3">
+              <Truck className="h-7 w-7 sm:h-8 sm:w-8 text-primary shrink-0" />
+              <span>Delivery Acknowledgment</span>
             </h1>
             <p className="text-muted-foreground mt-1">
               Record material delivery to production line for supervisor acknowledgment
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Badge variant={isOnline ? 'default' : 'secondary'} className="gap-1">
               {isOnline ? <Wifi className="h-3 w-3" /> : <WifiOff className="h-3 w-3" />}
               {isOnline ? 'Online' : 'Offline'}
