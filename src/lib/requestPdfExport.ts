@@ -607,13 +607,13 @@ const drawDeliveryNoteHeader = (
   const titleBoxWidth = contentWidth - logoBoxWidth - 55;
   doc.rect(titleBoxX, headerTop, titleBoxWidth, logoBoxHeight);
   
-  doc.setFontSize(22);
+  doc.setFontSize(16);
   doc.setFont('helvetica', 'bold');
-  doc.text('DELIVERY ACKNOWLEDGMENT', titleBoxX + titleBoxWidth / 2, headerTop + 12, { align: 'center' });
+  doc.text('DELIVERY ACKNOWLEDGMENT', titleBoxX + titleBoxWidth / 2, headerTop + 13, { align: 'center' });
   
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
-  doc.text('REPORT', titleBoxX + titleBoxWidth / 2, headerTop + 20, { align: 'center' });
+  doc.text('REPORT', titleBoxX + titleBoxWidth / 2, headerTop + 21, { align: 'center' });
 
   // Document ID section (right side)
   const docIdBoxX = marginLeft + contentWidth - 55;
@@ -674,32 +674,32 @@ const drawDeliveryNoteHeader = (
   return lineRowY + lineRowHeight;
 };
 
-// Professional Delivery Note signature section with 4 columns
+// Professional Delivery Note signature section with 2 columns
 const drawDeliveryNoteSignature = (
   doc: jsPDF,
   marginLeft: number,
   contentWidth: number,
   sigY: number
 ): void => {
-  const sigBoxWidth = contentWidth / 4;
+  const sigBoxWidth = contentWidth / 2;
   const sigBoxHeight = 38;
 
   doc.setLineWidth(0.3);
   
-  // Draw 4 signature boxes
-  for (let i = 0; i < 4; i++) {
+  // Draw 2 signature boxes
+  for (let i = 0; i < 2; i++) {
     doc.rect(marginLeft + (sigBoxWidth * i), sigY, sigBoxWidth, sigBoxHeight);
   }
 
   const sigLineY = sigY + 22;
 
-  // Box 1 - Issued By (Store)
+  // Box 1 - Line Recorder
   doc.setFontSize(10);
   doc.setFont('helvetica', 'bold');
-  doc.text('ISSUED BY', marginLeft + sigBoxWidth / 2, sigY + 7, { align: 'center' });
+  doc.text('RECEIVED BY', marginLeft + sigBoxWidth / 2, sigY + 7, { align: 'center' });
   
   doc.setLineWidth(0.2);
-  doc.line(marginLeft + 8, sigLineY, marginLeft + sigBoxWidth - 8, sigLineY);
+  doc.line(marginLeft + 12, sigLineY, marginLeft + sigBoxWidth - 12, sigLineY);
   
   doc.setFont('helvetica', 'italic');
   doc.setFontSize(7);
@@ -708,15 +708,15 @@ const drawDeliveryNoteSignature = (
   doc.setTextColor(0);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8);
-  doc.text('STORE IN-CHARGE', marginLeft + sigBoxWidth / 2, sigY + 34, { align: 'center' });
+  doc.text('LINE RECORDER', marginLeft + sigBoxWidth / 2, sigY + 34, { align: 'center' });
 
-  // Box 2 - Received By (Line)
+  // Box 2 - Line Supervisor
   doc.setFontSize(10);
   doc.setFont('helvetica', 'bold');
-  doc.text('RECEIVED BY', marginLeft + sigBoxWidth + sigBoxWidth / 2, sigY + 7, { align: 'center' });
+  doc.text('VERIFIED BY', marginLeft + sigBoxWidth + sigBoxWidth / 2, sigY + 7, { align: 'center' });
   
   doc.setLineWidth(0.2);
-  doc.line(marginLeft + sigBoxWidth + 8, sigLineY, marginLeft + sigBoxWidth * 2 - 8, sigLineY);
+  doc.line(marginLeft + sigBoxWidth + 12, sigLineY, marginLeft + sigBoxWidth * 2 - 12, sigLineY);
   
   doc.setFont('helvetica', 'italic');
   doc.setFontSize(7);
@@ -725,41 +725,7 @@ const drawDeliveryNoteSignature = (
   doc.setTextColor(0);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8);
-  doc.text('LINE RECORDER', marginLeft + sigBoxWidth + sigBoxWidth / 2, sigY + 34, { align: 'center' });
-
-  // Box 3 - Verified By (Line Supervisor)
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'bold');
-  doc.text('VERIFIED BY', marginLeft + sigBoxWidth * 2 + sigBoxWidth / 2, sigY + 7, { align: 'center' });
-  
-  doc.setLineWidth(0.2);
-  doc.line(marginLeft + sigBoxWidth * 2 + 8, sigLineY, marginLeft + sigBoxWidth * 3 - 8, sigLineY);
-  
-  doc.setFont('helvetica', 'italic');
-  doc.setFontSize(7);
-  doc.setTextColor(100);
-  doc.text('Name & Signature', marginLeft + sigBoxWidth * 2 + sigBoxWidth / 2, sigLineY + 5, { align: 'center' });
-  doc.setTextColor(0);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8);
-  doc.text('LINE SUPERVISOR', marginLeft + sigBoxWidth * 2 + sigBoxWidth / 2, sigY + 34, { align: 'center' });
-
-  // Box 4 - Acknowledged By (Production)
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'bold');
-  doc.text('ACKNOWLEDGED BY', marginLeft + sigBoxWidth * 3 + sigBoxWidth / 2, sigY + 7, { align: 'center' });
-  
-  doc.setLineWidth(0.2);
-  doc.line(marginLeft + sigBoxWidth * 3 + 8, sigLineY, marginLeft + sigBoxWidth * 4 - 8, sigLineY);
-  
-  doc.setFont('helvetica', 'italic');
-  doc.setFontSize(7);
-  doc.setTextColor(100);
-  doc.text('Name & Signature', marginLeft + sigBoxWidth * 3 + sigBoxWidth / 2, sigLineY + 5, { align: 'center' });
-  doc.setTextColor(0);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8);
-  doc.text('PRODUCTION MANAGER', marginLeft + sigBoxWidth * 3 + sigBoxWidth / 2, sigY + 34, { align: 'center' });
+  doc.text('LINE SUPERVISOR', marginLeft + sigBoxWidth + sigBoxWidth / 2, sigY + 34, { align: 'center' });
 };
 
 export const exportDeliveryNotePDF = async (
