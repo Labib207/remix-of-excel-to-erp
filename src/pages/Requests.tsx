@@ -192,9 +192,9 @@ export default function Requests() {
     setForm({ ...form, orderId: actualOrderId });
     
     if (actualOrderId) {
-      // Auto-fill items from requirements with pending quantity
+      // Auto-fill items from ALL requirements for this order
       const orderRequirements = requirements.filter(r => 
-        r.orderId === actualOrderId && r.pendingQty > 0
+        r.orderId === actualOrderId
       );
       
       if (orderRequirements.length > 0) {
@@ -204,7 +204,7 @@ export default function Requests() {
           itemCode: req.itemCode,
           description: req.description,
           uom: req.uom,
-          requirementQty: req.pendingQty, // Auto-filled from requirement (read-only)
+          requirementQty: req.pendingQty > 0 ? req.pendingQty : req.requiredQty, // Show pending or total qty
           requestedQty: 0, // Empty - user enters what they actually request
           issuedQty: 0, // Empty - to be filled manually by store keeper
           remainingQty: 0, // Will be calculated when issuedQty is entered
@@ -212,9 +212,9 @@ export default function Requests() {
           requirementId: req.id,
         }));
         setItems(newItems);
-        toast.info(`Loaded ${orderRequirements.length} pending requirements`);
+        toast.info(`Loaded ${orderRequirements.length} accessories for this order. Remove any you don't need.`);
       } else {
-        toast.info('No pending requirements for this order');
+        toast.info('No requirements found for this order');
       }
     }
   };
@@ -514,14 +514,13 @@ export default function Requests() {
                 </SelectTrigger>
                 <SelectContent className="bg-background">
                   <SelectItem value="none">-- No Order --</SelectItem>
-                  {orders
+                   {orders
                     .filter(order => order.id && requirements.some(r => r.orderId === order.id))
                     .map(order => {
-                      const pendingCount = requirements.filter(r => r.orderId === order.id && r.pendingQty > 0).length;
+                      const totalCount = requirements.filter(r => r.orderId === order.id).length;
                       return (
                         <SelectItem key={order.id} value={order.id}>
-                          {order.orderNumber} - {order.customer} ({order.styleName})
-                          {pendingCount > 0 && ` • ${pendingCount} pending`}
+                          {order.orderNumber} - {order.customer} ({order.styleName}) • {totalCount} items
                         </SelectItem>
                       );
                     })}
@@ -537,8 +536,8 @@ export default function Requests() {
                   >
                     <Pencil className="h-4 w-4" />
                   </Button>
-                  <Badge variant="outline" className="whitespace-nowrap">
-                    {selectedOrder.totalQty} pcs
+                  <Badge variant="secondary" className="whitespace-nowrap font-semibold">
+                    {selectedOrder.orderNumber} - {selectedOrder.styleNo} - {selectedOrder.customer} - {selectedOrder.totalQty} QTY
                   </Badge>
                 </>
               )}
