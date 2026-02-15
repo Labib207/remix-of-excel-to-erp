@@ -388,10 +388,14 @@ export default function Requests() {
         updateRequestedQty(requirementUpdates);
       }
       
+      const selectedOrder = rawMaterialForm.orderId ? orders.find(o => o.id === rawMaterialForm.orderId) : null;
+      const orderName = selectedOrder 
+        ? `${selectedOrder.orderNumber} ${selectedOrder.styleNo || ''} ${selectedOrder.customer || ''} ${selectedOrder.totalQty || ''} QTY`.trim()
+        : '';
       addRequest({
         type: 'raw-material',
         docNumber,
-        form: rawMaterialForm,
+        form: { ...rawMaterialForm, orderName },
         items: itemsToSubmit,
       });
       setRawMaterialForm(emptyRequestForm());
@@ -404,10 +408,14 @@ export default function Requests() {
       }
       // Auto-fill empty requestedQty with requirementQty before submission
       const itemsToSubmit = autoFillRequestedQty(generalSuppliesItems);
+      const selectedOrder = generalSuppliesForm.orderId ? orders.find(o => o.id === generalSuppliesForm.orderId) : null;
+      const orderName = selectedOrder 
+        ? `${selectedOrder.orderNumber} ${selectedOrder.styleNo || ''} ${selectedOrder.customer || ''} ${selectedOrder.totalQty || ''} QTY`.trim()
+        : '';
       addRequest({
         type: 'general-supplies',
         docNumber,
-        form: generalSuppliesForm,
+        form: { ...generalSuppliesForm, orderName },
         items: itemsToSubmit,
       });
       setGeneralSuppliesForm(emptyRequestForm());
@@ -418,10 +426,14 @@ export default function Requests() {
         toast.error('Please add at least one item before submitting');
         return;
       }
+      const selectedOrderReturn = materialReturnForm.orderId ? orders.find(o => o.id === materialReturnForm.orderId) : null;
+      const orderNameReturn = selectedOrderReturn 
+        ? `${selectedOrderReturn.orderNumber} ${selectedOrderReturn.styleNo || ''} ${selectedOrderReturn.customer || ''} ${selectedOrderReturn.totalQty || ''} QTY`.trim()
+        : '';
       addRequest({
         type: 'material-return',
         docNumber,
-        form: materialReturnForm,
+        form: { ...materialReturnForm, orderName: orderNameReturn },
         items: materialReturnItems,
       });
       setMaterialReturnForm(emptyRequestForm());
