@@ -64,6 +64,7 @@ interface ReturnItem {
 interface RequestForm {
   date: string;
   department: string;
+  orderName?: string;
   requestedBy: string;
   approvedBy: string;
   issuedBy: string;
@@ -176,7 +177,7 @@ export function RequestHistoryTable() {
 
     exportDeliveryNotePDF(
       {
-        orderName: (request.form as any).orderName || request.docNumber,
+        orderName: request.form.orderName || request.docNumber,
         date: request.form.date,
         trNo: '',
         line: request.form.department,
