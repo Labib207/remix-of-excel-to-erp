@@ -91,7 +91,8 @@ const drawPageHeader = (
   form: RequestForm,
   marginLeft: number,
   contentWidth: number,
-  pageWidth: number
+  pageWidth: number,
+  options?: { hideOrder?: boolean }
 ): number => {
   const headerTop = 10;
   const headerHeight = 30;
@@ -163,14 +164,17 @@ const drawPageHeader = (
   doc.text(form.department || '', marginLeft + 35, deptRowY + 5.5);
   doc.line(marginLeft, deptRowY + deptRowHeight, pageWidth - marginLeft, deptRowY + deptRowHeight);
 
-  // Order / PO row
-  const orderRowY = deptRowY + deptRowHeight;
-  const orderRowHeight = 8;
-  doc.text('Order / PO:', marginLeft + 3, orderRowY + 5.5);
-  doc.text(form.orderName || '', marginLeft + 32, orderRowY + 5.5);
-  doc.line(marginLeft, orderRowY + orderRowHeight, pageWidth - marginLeft, orderRowY + orderRowHeight);
+  // Order / PO row (skip for General Supplies)
+  if (!options?.hideOrder) {
+    const orderRowY = deptRowY + deptRowHeight;
+    const orderRowHeight = 8;
+    doc.text('Order / PO:', marginLeft + 3, orderRowY + 5.5);
+    doc.text(form.orderName || '', marginLeft + 32, orderRowY + 5.5);
+    doc.line(marginLeft, orderRowY + orderRowHeight, pageWidth - marginLeft, orderRowY + orderRowHeight);
+    return orderRowY + orderRowHeight;
+  }
 
-  return orderRowY + orderRowHeight; // Return table start Y
+  return deptRowY + deptRowHeight; // Return table start Y
 };
 
 // Helper to draw signature section on every page
@@ -379,7 +383,7 @@ export const exportGeneralSuppliesRequestPDF = async (form: RequestForm, items: 
   }
 
   // Draw initial header and signature
-  const tableStartY = drawPageHeader(doc, logoBase64, 'GENERAL SUPPLIES REQUEST', docNumber, issueNumber, form, marginLeft, contentWidth, pageWidth);
+  const tableStartY = drawPageHeader(doc, logoBase64, 'GENERAL SUPPLIES REQUEST', docNumber, issueNumber, form, marginLeft, contentWidth, pageWidth, { hideOrder: true });
   drawSignatureSection(doc, form, marginLeft, contentWidth, sigY, 'general');
 
   const tableRows = items.length > 0 
@@ -437,7 +441,7 @@ export const exportGeneralSuppliesRequestPDF = async (form: RequestForm, items: 
     didDrawPage: (data) => {
       // Draw header and signature on each new page
       if (data.pageNumber > 1) {
-        drawPageHeader(doc, logoBase64, 'GENERAL SUPPLIES REQUEST', docNumber, issueNumber, form, marginLeft, contentWidth, pageWidth);
+        drawPageHeader(doc, logoBase64, 'GENERAL SUPPLIES REQUEST', docNumber, issueNumber, form, marginLeft, contentWidth, pageWidth, { hideOrder: true });
         drawSignatureSection(doc, form, marginLeft, contentWidth, sigY, 'general');
       }
     }
