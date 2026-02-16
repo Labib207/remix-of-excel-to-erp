@@ -332,13 +332,9 @@ export default function Requests() {
         toast.error('Please add at least one item before downloading');
         return;
       }
-      const selectedOrder = generalSuppliesForm.orderId ? orders.find(o => o.id === generalSuppliesForm.orderId) : null;
-      const orderName = selectedOrder 
-        ? `${selectedOrder.orderNumber} ${selectedOrder.styleNo || ''} ${selectedOrder.customer || ''} ${selectedOrder.totalQty || ''} QTY`.trim()
-        : '';
       // Auto-fill empty requestedQty with requirementQty before PDF export
       const itemsForPdf = autoFillRequestedQty(generalSuppliesItems);
-      exportGeneralSuppliesRequestPDF({ ...generalSuppliesForm, orderName }, itemsForPdf);
+      exportGeneralSuppliesRequestPDF({ ...generalSuppliesForm }, itemsForPdf);
       toast.success('General Supplies Request PDF downloaded');
     } else {
       if (materialReturnItems.length === 0) {
@@ -408,14 +404,10 @@ export default function Requests() {
       }
       // Auto-fill empty requestedQty with requirementQty before submission
       const itemsToSubmit = autoFillRequestedQty(generalSuppliesItems);
-      const selectedOrder = generalSuppliesForm.orderId ? orders.find(o => o.id === generalSuppliesForm.orderId) : null;
-      const orderName = selectedOrder 
-        ? `${selectedOrder.orderNumber} ${selectedOrder.styleNo || ''} ${selectedOrder.customer || ''} ${selectedOrder.totalQty || ''} QTY`.trim()
-        : '';
       addRequest({
         type: 'general-supplies',
         docNumber,
-        form: { ...generalSuppliesForm, orderName },
+        form: { ...generalSuppliesForm },
         items: itemsToSubmit,
       });
       setGeneralSuppliesForm(emptyRequestForm());
