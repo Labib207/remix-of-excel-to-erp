@@ -239,7 +239,8 @@ export function RequestHistoryTable() {
           (request.items as RequestItem[])
             .sort((a, b) => a.slNo - b.slNo)
             .map(item => ({
-              'Order': request.docNumber,
+              'Doc Number': request.docNumber,
+              'Order': request.form.orderName || '-',
               'Date': format(new Date(request.form.date), 'dd/MM/yyyy'),
               'Department': request.form.department,
               'Requested By': request.form.requestedBy,
@@ -256,7 +257,7 @@ export function RequestHistoryTable() {
         );
         const ws = XLSX.utils.json_to_sheet(data);
         ws['!cols'] = [
-          { wch: 15 }, { wch: 12 }, { wch: 15 }, { wch: 15 }, { wch: 8 },
+          { wch: 15 }, { wch: 30 }, { wch: 12 }, { wch: 15 }, { wch: 15 }, { wch: 8 },
           { wch: 15 }, { wch: 30 }, { wch: 8 }, { wch: 12 }, { wch: 12 },
           { wch: 12 }, { wch: 20 }, { wch: 18 }
         ];
@@ -274,7 +275,8 @@ export function RequestHistoryTable() {
           (request.items as RequestItem[])
             .sort((a, b) => a.slNo - b.slNo)
             .map(item => ({
-              'Order': request.docNumber,
+              'Doc Number': request.docNumber,
+              'Order': request.form.orderName || '-',
               'Date': format(new Date(request.form.date), 'dd/MM/yyyy'),
               'Department': request.form.department,
               'Requested By': request.form.requestedBy,
@@ -291,7 +293,7 @@ export function RequestHistoryTable() {
         );
         const ws = XLSX.utils.json_to_sheet(data);
         ws['!cols'] = [
-          { wch: 15 }, { wch: 12 }, { wch: 15 }, { wch: 15 }, { wch: 8 },
+          { wch: 15 }, { wch: 30 }, { wch: 12 }, { wch: 15 }, { wch: 15 }, { wch: 8 },
           { wch: 15 }, { wch: 30 }, { wch: 8 }, { wch: 12 }, { wch: 12 },
           { wch: 12 }, { wch: 20 }, { wch: 18 }
         ];
@@ -309,7 +311,8 @@ export function RequestHistoryTable() {
           (request.items as ReturnItem[])
             .sort((a, b) => a.slNo - b.slNo)
             .map(item => ({
-              'Order': request.docNumber,
+              'Doc Number': request.docNumber,
+              'Order': request.form.orderName || '-',
               'Date': format(new Date(request.form.date), 'dd/MM/yyyy'),
               'Department': request.form.department,
               'Returned By': request.form.requestedBy,
@@ -510,6 +513,7 @@ export function RequestHistoryTable() {
                 <TableRow>
                   <TableHead>Doc Number</TableHead>
                   <TableHead>Type</TableHead>
+                  <TableHead>Order</TableHead>
                   <TableHead>Date</TableHead>
                   <TableHead>Department</TableHead>
                   <TableHead>Requested By</TableHead>
@@ -521,7 +525,7 @@ export function RequestHistoryTable() {
               <TableBody>
                 {filteredRequests.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
+                    <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
                       {submittedRequests.length === 0
                         ? 'No requests submitted yet'
                         : 'No requests match your filters'}
@@ -536,6 +540,9 @@ export function RequestHistoryTable() {
                           {typeIcons[request.type]}
                           {typeLabels[request.type]}
                         </Badge>
+                      </TableCell>
+                      <TableCell className="text-xs max-w-[200px] truncate" title={request.form.orderName || '-'}>
+                        {request.form.orderName || '-'}
                       </TableCell>
                       <TableCell>{format(new Date(request.form.date), 'dd/MM/yyyy')}</TableCell>
                       <TableCell>{request.form.department || '-'}</TableCell>
@@ -681,6 +688,10 @@ export function RequestHistoryTable() {
                   <div>
                     <span className="text-muted-foreground">Department:</span>{' '}
                     {selectedRequest.form.department || '-'}
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Order:</span>{' '}
+                    <span className="font-semibold">{selectedRequest.form.orderName || '-'}</span>
                   </div>
                   <div>
                     <span className="text-muted-foreground">ASWAQ Number:</span>{' '}

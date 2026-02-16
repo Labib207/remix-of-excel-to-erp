@@ -133,6 +133,7 @@ export const useRequestStore = create<RequestStore>()(
             (req.items as RequestItem[]).forEach(item => {
               rawData.push({
                 'Doc Number': req.docNumber,
+                'Order': req.form.orderName || '-',
                 'Date': new Date(req.form.date).toLocaleDateString(),
                 'Department': req.form.department,
                 'SL No': item.slNo,
@@ -162,6 +163,7 @@ export const useRequestStore = create<RequestStore>()(
             (req.items as RequestItem[]).forEach(item => {
               generalData.push({
                 'Doc Number': req.docNumber,
+                'Order': req.form.orderName || '-',
                 'Date': new Date(req.form.date).toLocaleDateString(),
                 'Department': req.form.department,
                 'SL No': item.slNo,
@@ -191,6 +193,7 @@ export const useRequestStore = create<RequestStore>()(
             (req.items as ReturnItem[]).forEach(item => {
               returnData.push({
                 'Doc Number': req.docNumber,
+                'Order': req.form.orderName || '-',
                 'Date': new Date(req.form.date).toLocaleDateString(),
                 'Department': req.form.department,
                 'SL No': item.slNo,
