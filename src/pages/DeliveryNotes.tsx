@@ -377,19 +377,28 @@ const DeliveryNotes = () => {
                   <TableHeader>
                     <TableRow className="bg-muted/50">
                       <TableHead>Doc No</TableHead>
+                      <TableHead>Order</TableHead>
                       <TableHead>Date</TableHead>
-                      <TableHead>Received By</TableHead>
+                      <TableHead>Line</TableHead>
                       <TableHead>Notes</TableHead>
                       <TableHead className="w-32 text-center">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {savedDeliveryNotes.map((note) => (
-                      <TableRow key={note.id}>
-                        <TableCell className="font-mono font-medium">{note.acknowledgment_no}</TableCell>
-                        <TableCell>{format(new Date(note.delivery_date), 'dd/MM/yyyy')}</TableCell>
-                        <TableCell>{note.received_by || '-'}</TableCell>
-                        <TableCell>{note.notes || '-'}</TableCell>
+                    {savedDeliveryNotes.map((note) => {
+                      // Find order name from the linked request
+                      const linkedRequest = dbRequests.find(r => r.id === note.request_id);
+                      const linkedOrder = linkedRequest ? orders.find(o => o.id === linkedRequest.order_id) : null;
+                      const orderDisplay = linkedOrder 
+                        ? `${linkedOrder.orderNumber} - ${linkedOrder.customer || ''}` 
+                        : (note.notes?.startsWith('ORDER:') ? note.notes.split('|')[0].replace('ORDER:', '') : '-');
+                      return (
+                        <TableRow key={note.id}>
+                          <TableCell className="font-mono font-medium">{note.acknowledgment_no}</TableCell>
+                          <TableCell className="text-xs max-w-[200px] truncate" title={orderDisplay}>{orderDisplay}</TableCell>
+                          <TableCell>{format(new Date(note.delivery_date), 'dd/MM/yyyy')}</TableCell>
+                          <TableCell>{note.received_by || '-'}</TableCell>
+                          <TableCell>{note.notes || '-'}</TableCell>
                         <TableCell className="text-center">
                           <div className="flex justify-center gap-2">
                             <Button
@@ -412,7 +421,8 @@ const DeliveryNotes = () => {
                           </div>
                         </TableCell>
                       </TableRow>
-                    ))}
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </div>
@@ -442,7 +452,7 @@ const DeliveryNotes = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               {/* Order Dropdown (optional) */}
               <div className="space-y-2">
-                <Label>Order (Optional)</Label>
+                <Label>Order <span className="text-destructive">*</span></Label>
                 <Select value={selectedOrderId} onValueChange={handleOrderChange}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select Order to load items" />
