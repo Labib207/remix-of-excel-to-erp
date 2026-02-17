@@ -311,8 +311,8 @@ export const exportRawMaterialRequestPDF = async (form: RequestForm, items: Requ
       ])
     : [];
   
-  // Pad to minimum 8 rows for proper layout (fits on single page)
-  const minRows = items.length > 0 ? Math.max(8, items.length + 3) : 8;
+  // Pad to minimum 15 rows for proper layout (fits on single page)
+  const minRows = items.length > 0 ? Math.max(15, items.length + 3) : 15;
   while (tableRows.length < minRows) {
     tableRows.push(['', '', '', '', '', '', '', '']);
   }
@@ -323,11 +323,11 @@ export const exportRawMaterialRequestPDF = async (form: RequestForm, items: Requ
     body: tableRows,
     theme: 'grid',
     styles: { 
-      fontSize: 8, 
-      cellPadding: 2,
+      fontSize: 7, 
+      cellPadding: 1.2,
       lineColor: [0, 0, 0],
       lineWidth: 0.3,
-      minCellHeight: 8,
+      minCellHeight: 5.5,
       valign: 'middle'
     },
     headStyles: { 
@@ -336,7 +336,7 @@ export const exportRawMaterialRequestPDF = async (form: RequestForm, items: Requ
       fontStyle: 'bold',
       halign: 'center',
       valign: 'middle',
-      minCellHeight: 12
+      minCellHeight: 9
     },
     columnStyles: {
       0: { cellWidth: 15, halign: 'center' },
@@ -399,8 +399,8 @@ export const exportGeneralSuppliesRequestPDF = async (form: RequestForm, items: 
       ])
     : [];
   
-  // Pad to minimum 8 rows for proper layout (fits on single page)
-  const minRows = items.length > 0 ? Math.max(8, items.length + 3) : 8;
+  // Pad to minimum 15 rows for proper layout (fits on single page)
+  const minRows = items.length > 0 ? Math.max(15, items.length + 3) : 15;
   while (tableRows.length < minRows) {
     tableRows.push(['', '', '', '', '', '', '', '']);
   }
@@ -411,11 +411,11 @@ export const exportGeneralSuppliesRequestPDF = async (form: RequestForm, items: 
     body: tableRows,
     theme: 'grid',
     styles: { 
-      fontSize: 8, 
-      cellPadding: 2,
+      fontSize: 7, 
+      cellPadding: 1.2,
       lineColor: [0, 0, 0],
       lineWidth: 0.2,
-      minCellHeight: 8,
+      minCellHeight: 5.5,
       valign: 'middle'
     },
     headStyles: { 
@@ -424,7 +424,7 @@ export const exportGeneralSuppliesRequestPDF = async (form: RequestForm, items: 
       fontStyle: 'bold',
       halign: 'center',
       valign: 'middle',
-      minCellHeight: 12
+      minCellHeight: 9
     },
     columnStyles: {
       0: { cellWidth: 15, halign: 'center' },
@@ -486,8 +486,8 @@ export const exportMaterialReturnSlipPDF = async (form: RequestForm, items: Retu
       ])
     : [];
   
-  // Pad to minimum 8 rows for proper layout (fits on single page)
-  const minRows = items.length > 0 ? Math.max(8, items.length + 3) : 8;
+  // Pad to minimum 15 rows for proper layout (fits on single page)
+  const minRows = items.length > 0 ? Math.max(15, items.length + 3) : 15;
   while (tableRows.length < minRows) {
     tableRows.push(['', '', '', '', '', '', '']);
   }
@@ -498,11 +498,11 @@ export const exportMaterialReturnSlipPDF = async (form: RequestForm, items: Retu
     body: tableRows,
     theme: 'grid',
     styles: { 
-      fontSize: 8, 
-      cellPadding: 2,
+      fontSize: 7, 
+      cellPadding: 1.2,
       lineColor: [0, 0, 0],
       lineWidth: 0.2,
-      minCellHeight: 8,
+      minCellHeight: 5.5,
       valign: 'middle'
     },
     headStyles: { 
@@ -511,7 +511,7 @@ export const exportMaterialReturnSlipPDF = async (form: RequestForm, items: Retu
       fontStyle: 'bold',
       halign: 'center',
       valign: 'middle',
-      minCellHeight: 12
+      minCellHeight: 9
     },
     columnStyles: {
       0: { cellWidth: 18, halign: 'center' },
