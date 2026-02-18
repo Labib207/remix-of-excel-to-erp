@@ -682,6 +682,7 @@ export type Database = {
           customer: string
           delivery_date: string | null
           fabric_type: string | null
+          fabric_width: number | null
           id: string
           order_date: string | null
           order_no: string
@@ -700,6 +701,7 @@ export type Database = {
           customer: string
           delivery_date?: string | null
           fabric_type?: string | null
+          fabric_width?: number | null
           id?: string
           order_date?: string | null
           order_no: string
@@ -718,6 +720,7 @@ export type Database = {
           customer?: string
           delivery_date?: string | null
           fabric_type?: string | null
+          fabric_width?: number | null
           id?: string
           order_date?: string | null
           order_no?: string

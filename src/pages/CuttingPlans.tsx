@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { MainLayout } from '@/components/layout/MainLayout';
-import { useCuttingStore } from '@/store/cuttingStore';
 import { SIZES, CutPlan, LaySheet } from '@/types/cutting';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,15 +11,27 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { Printer, FileText, Scissors, ArrowRight, Layers, Plus, Download } from 'lucide-react';
+import { Printer, FileText, Scissors, ArrowRight, Layers, Plus, Download, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { CutPlanForm } from '@/components/forms/CutPlanForm';
 import { LaySheetForm } from '@/components/forms/LaySheetForm';
 import { exportCutPlanPDF, exportLaySheetPDF } from '@/lib/pdfExport';
 import { Separator } from '@/components/ui/separator';
+import { useDbOrders } from '@/hooks/useDbOrders';
+import { useDbCutPlans, useCreateDbCutPlan } from '@/hooks/useDbCutPlans';
+import { useDbMarkerPlans } from '@/hooks/useDbMarkerPlans';
+import { useCuttingStore } from '@/store/cuttingStore';
 
 const CuttingPlans = () => {
-  const { cutPlans, orders, markerPlans, laySheets, addCutPlan, addLaySheet, updateLaySheet } = useCuttingStore();
+  // DB-backed data
+  const { data: orders = [] } = useDbOrders();
+  const { data: cutPlans = [], isLoading } = useDbCutPlans();
+  const { data: markerPlans = [] } = useDbMarkerPlans();
+  const createCutPlan = useCreateDbCutPlan();
+  
+  // Still using store for lay sheets (TODO: migrate later)
+  const { laySheets, addLaySheet, updateLaySheet } = useCuttingStore();
+  
   const { toast } = useToast();
   const [selectedPlan, setSelectedPlan] = useState<CutPlan | null>(null);
   const [selectedLaySheet, setSelectedLaySheet] = useState<LaySheet | null>(null);
@@ -39,19 +50,22 @@ const CuttingPlans = () => {
   };
 
   const handleCreateCutPlan = (cutPlan: CutPlan) => {
-    addCutPlan(cutPlan);
-    // Auto-create a lay sheet for the cut plan
-    const newLaySheet: LaySheet = {
-      id: `ls-${Date.now()}`,
-      cutPlanId: cutPlan.id,
-      layNo: laySheets.length + 1,
-      plies: cutPlan.plies,
-      layLength: cutPlan.layLength,
-      fabricRoll: '',
-    };
-    addLaySheet(newLaySheet);
-    setIsCreateCutPlanOpen(false);
-    toast({ title: 'Cut plan created with lay sheet' });
+    createCutPlan.mutate(cutPlan, {
+      onSuccess: (savedPlan) => {
+        // Auto-create a lay sheet for the cut plan
+        const newLaySheet: LaySheet = {
+          id: `ls-${Date.now()}`,
+          cutPlanId: savedPlan.id,
+          layNo: laySheets.length + 1,
+          plies: savedPlan.plies,
+          layLength: savedPlan.layLength,
+          fabricRoll: '',
+        };
+        addLaySheet(newLaySheet);
+        setIsCreateCutPlanOpen(false);
+        toast({ title: 'Cut plan created with lay sheet' });
+      }
+    });
   };
 
   const handleCreateLaySheet = (laySheet: LaySheet) => {
@@ -65,6 +79,16 @@ const CuttingPlans = () => {
     setEditingLaySheet(null);
     toast({ title: 'Lay sheet updated successfully' });
   };
+
+  if (isLoading) {
+    return (
+      <MainLayout>
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </MainLayout>
+    );
+  }
 
   return (
     <MainLayout>
@@ -352,9 +376,9 @@ const CuttingPlans = () => {
                     <table className="w-full text-sm border border-border rounded-lg overflow-hidden">
                       <thead>
                         <tr className="bg-muted">
-                          {SIZES.map((size) => (
-                            <th key={size.code} className="px-2 py-2 text-center font-mono text-xs font-medium border-r border-border last:border-r-0">
-                              {size.code}
+                          {Object.keys(selectedPlan.sizes).map((code) => (
+                            <th key={code} className="px-2 py-2 text-center font-mono text-xs font-medium border-r border-border last:border-r-0">
+                              {code}
                             </th>
                           ))}
                           <th className="px-3 py-2 text-center font-medium text-xs bg-primary/10">TOTAL</th>
@@ -362,9 +386,9 @@ const CuttingPlans = () => {
                       </thead>
                       <tbody>
                         <tr className="bg-background">
-                          {SIZES.map((size) => (
-                            <td key={size.code} className="px-2 py-2 text-center font-mono border-r border-border last:border-r-0">
-                              {selectedPlan.sizes[size.code] || 0}
+                          {Object.entries(selectedPlan.sizes).map(([code, qty]) => (
+                            <td key={code} className="px-2 py-2 text-center font-mono border-r border-border last:border-r-0">
+                              {qty || 0}
                             </td>
                           ))}
                           <td className="px-3 py-2 text-center font-mono font-bold bg-primary/10">
@@ -388,7 +412,7 @@ const CuttingPlans = () => {
                     <div className="text-right">
                       <p className="text-sm text-muted-foreground">Unit Consumption</p>
                       <p className="text-lg font-mono font-medium">
-                        {(selectedPlan.fabricUsed / selectedPlan.totalQty).toFixed(3)} m/pc
+                        {selectedPlan.totalQty > 0 ? (selectedPlan.fabricUsed / selectedPlan.totalQty).toFixed(3) : '0.000'} m/pc
                       </p>
                     </div>
                   </div>
