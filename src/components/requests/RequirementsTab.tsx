@@ -25,13 +25,16 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { Plus, Trash2, ClipboardList, Package, PlusCircle, Pencil } from 'lucide-react';
+import { Plus, Trash2, ClipboardList, Package, PlusCircle, Pencil, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { useRequirementStore, MaterialRequirement } from '@/store/requirementStore';
-import { useCuttingStore } from '@/store/cuttingStore';
+import { MaterialRequirement } from '@/store/requirementStore';
+import { useDbOrders, useCreateDbOrder, useDeleteDbOrder, useUpdateDbOrder } from '@/hooks/useDbOrders';
+import { useDbRequirements, useCreateDbRequirement, useUpdateDbRequirement, useDeleteDbRequirement } from '@/hooks/useDbRequirements';
+import { useRequirementStore } from '@/store/requirementStore';
 import { Badge } from '@/components/ui/badge';
 import { DescriptionAutocomplete } from './DescriptionAutocomplete';
 import { format } from 'date-fns';
+import { Order } from '@/types/cutting';
 
 interface NewRequirement {
   itemCode: string;
@@ -72,14 +75,19 @@ const emptyOrder = (): NewOrder => ({
 });
 
 export function RequirementsTab() {
-  const { orders, addOrder, deleteOrder, updateOrder } = useCuttingStore();
-  const { 
-    requirements, 
-    addRequirement, 
-    updateRequirement, 
-    deleteRequirement,
-    materialCatalog 
-  } = useRequirementStore();
+  // DB hooks
+  const { data: orders = [], isLoading: ordersLoading } = useDbOrders();
+  const createOrder = useCreateDbOrder();
+  const deleteOrderMutation = useDeleteDbOrder();
+  const updateOrderMutation = useUpdateDbOrder();
+  
+  const { data: allRequirements = [], isLoading: reqsLoading } = useDbRequirements();
+  const createRequirement = useCreateDbRequirement();
+  const updateRequirementMutation = useUpdateDbRequirement();
+  const deleteRequirementMutation = useDeleteDbRequirement();
+  
+  // Material catalog still from store (read-only reference data)
+  const { materialCatalog } = useRequirementStore();
   
   const [selectedOrderId, setSelectedOrderId] = useState<string>('');
   const [newItems, setNewItems] = useState<NewRequirement[]>([emptyRequirement()]);
@@ -89,24 +97,14 @@ export function RequirementsTab() {
   const [editOrder, setEditOrder] = useState<NewOrder>(emptyOrder());
   
   const selectedOrder = orders.find(o => o.id === selectedOrderId);
-  const orderRequirements = requirements.filter(r => r.orderId === selectedOrderId);
+  const orderRequirements = allRequirements.filter(r => r.orderId === selectedOrderId);
 
   const handleDeleteOrder = (orderId: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    
-    // Delete all requirements for this order
-    const orderReqs = requirements.filter(r => r.orderId === orderId);
-    orderReqs.forEach(req => deleteRequirement(req.id));
-    
-    // Delete the order
-    deleteOrder(orderId);
-    
-    // Clear selection if this was the selected order
+    deleteOrderMutation.mutate(orderId);
     if (selectedOrderId === orderId) {
       setSelectedOrderId('');
     }
-    
-    toast.success('Order and its requirements deleted');
   };
 
   const handleAddOrder = () => {
@@ -115,9 +113,8 @@ export function RequirementsTab() {
       return;
     }
 
-    const orderId = Math.random().toString(36).substr(2, 9);
-    addOrder({
-      id: orderId,
+    const orderData: Order = {
+      id: '',
       orderNumber: newOrder.orderNumber,
       customer: newOrder.customer,
       styleNo: newOrder.styleNo,
@@ -129,12 +126,15 @@ export function RequirementsTab() {
       orderDate: format(new Date(), 'yyyy-MM-dd'),
       deliveryDate: newOrder.deliveryDate,
       status: 'pending',
-    });
+    };
 
-    setSelectedOrderId(orderId);
-    setNewOrder(emptyOrder());
-    setIsAddOrderOpen(false);
-    toast.success(`Order ${newOrder.orderNumber} created successfully`);
+    createOrder.mutate(orderData, {
+      onSuccess: (savedOrder) => {
+        setSelectedOrderId(savedOrder.id);
+        setNewOrder(emptyOrder());
+        setIsAddOrderOpen(false);
+      }
+    });
   };
 
   const openEditOrder = () => {
@@ -161,7 +161,8 @@ export function RequirementsTab() {
       return;
     }
 
-    updateOrder(selectedOrderId, {
+    updateOrderMutation.mutate({
+      id: selectedOrderId,
       orderNumber: editOrder.orderNumber,
       customer: editOrder.customer,
       styleNo: editOrder.styleNo,
@@ -170,10 +171,11 @@ export function RequirementsTab() {
       totalQty: editOrder.totalQty,
       fabricWidth: editOrder.fabricWidth,
       deliveryDate: editOrder.deliveryDate,
+    }, {
+      onSuccess: () => {
+        setIsEditOrderOpen(false);
+      }
     });
-
-    setIsEditOrderOpen(false);
-    toast.success(`Order ${editOrder.orderNumber} updated successfully`);
   };
 
   const addNewItemRow = () => {
@@ -220,29 +222,43 @@ export function RequirementsTab() {
       return;
     }
 
+    // Save each requirement to DB
+    let savedCount = 0;
     validItems.forEach(item => {
-      addRequirement({
+      createRequirement.mutate({
         orderId: selectedOrderId,
         itemCode: item.itemCode,
         description: item.description,
         uom: item.uom,
         requiredQty: item.requiredQty,
         remarks: item.remarks,
+      }, {
+        onSuccess: () => {
+          savedCount++;
+          if (savedCount === validItems.length) {
+            setNewItems([emptyRequirement()]);
+            toast.success(`${validItems.length} requirement(s) added successfully`);
+          }
+        }
       });
     });
-
-    setNewItems([emptyRequirement()]);
-    toast.success(`${validItems.length} requirement(s) added successfully`);
   };
 
   const handleUpdateRequirement = (id: string, field: keyof MaterialRequirement, value: string | number) => {
-    updateRequirement(id, { [field]: value });
+    updateRequirementMutation.mutate({ id, [field]: value });
   };
 
   const handleDeleteRequirement = (id: string) => {
-    deleteRequirement(id);
-    toast.success('Requirement deleted');
+    deleteRequirementMutation.mutate(id);
   };
+
+  if (ordersLoading || reqsLoading) {
+    return (
+      <div className="flex items-center justify-center h-32">
+        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -385,7 +401,8 @@ export function RequirementsTab() {
                   <Button variant="outline" onClick={() => setIsAddOrderOpen(false)}>
                     Cancel
                   </Button>
-                  <Button onClick={handleAddOrder}>
+                  <Button onClick={handleAddOrder} disabled={createOrder.isPending}>
+                    {createOrder.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                     Create Order
                   </Button>
                 </div>
@@ -476,7 +493,8 @@ export function RequirementsTab() {
                   <Button variant="outline" onClick={() => setIsEditOrderOpen(false)}>
                     Cancel
                   </Button>
-                  <Button onClick={handleEditOrder}>
+                  <Button onClick={handleEditOrder} disabled={updateOrderMutation.isPending}>
+                    {updateOrderMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                     Save Changes
                   </Button>
                 </div>
@@ -576,7 +594,8 @@ export function RequirementsTab() {
                   <Plus className="h-4 w-4" />
                   Add Row
                 </Button>
-                <Button onClick={saveRequirements} className="gap-2">
+                <Button onClick={saveRequirements} className="gap-2" disabled={createRequirement.isPending}>
+                  {createRequirement.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                   <Package className="h-4 w-4" />
                   Save Requirements
                 </Button>

@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { MainLayout } from '@/components/layout/MainLayout';
-import { useCuttingStore } from '@/store/cuttingStore';
 import { SIZES, Order } from '@/types/cutting';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -12,10 +11,11 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { Plus, Eye, Edit, Trash2 } from 'lucide-react';
+import { Plus, Eye, Edit, Trash2, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { OrderForm } from '@/components/forms/OrderForm';
 import { Separator } from '@/components/ui/separator';
+import { useDbOrders, useCreateDbOrder, useUpdateDbOrder, useDeleteDbOrder } from '@/hooks/useDbOrders';
 
 const statusStyles = {
   pending: 'bg-muted text-muted-foreground',
@@ -30,7 +30,10 @@ const statusLabels = {
 };
 
 const Orders = () => {
-  const { orders, addOrder, updateOrder, deleteOrder } = useCuttingStore();
+  const { data: orders = [], isLoading } = useDbOrders();
+  const createOrder = useCreateDbOrder();
+  const updateOrder = useUpdateDbOrder();
+  const deleteOrder = useDeleteDbOrder();
   const { toast } = useToast();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
@@ -41,20 +44,30 @@ const Orders = () => {
   };
 
   const handleCreateOrder = (order: Order) => {
-    addOrder(order);
-    setIsCreateDialogOpen(false);
-    toast({ title: 'Order created successfully' });
+    createOrder.mutate(order, {
+      onSuccess: () => setIsCreateDialogOpen(false),
+    });
   };
 
   const handleUpdateOrder = (order: Order) => {
-    updateOrder(order.id, order);
-    setEditingOrder(null);
-    toast({ title: 'Order updated successfully' });
+    updateOrder.mutate({ id: order.id, ...order }, {
+      onSuccess: () => setEditingOrder(null),
+    });
   };
 
   const handleEditClick = (order: Order) => {
     setEditingOrder(order);
   };
+
+  if (isLoading) {
+    return (
+      <MainLayout>
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </MainLayout>
+    );
+  }
 
   return (
     <MainLayout>
@@ -125,8 +138,7 @@ const Orders = () => {
                       variant="outline" 
                       size="icon"
                       onClick={() => {
-                        deleteOrder(order.id);
-                        toast({ title: 'Order deleted' });
+                        deleteOrder.mutate(order.id);
                       }}
                     >
                       <Trash2 className="h-4 w-4" />
@@ -154,7 +166,7 @@ const Orders = () => {
                   <div>
                     <p className="text-xs text-muted-foreground">Delivery Date</p>
                     <p className="font-medium text-foreground">
-                      {new Date(order.deliveryDate).toLocaleDateString()}
+                      {order.deliveryDate ? new Date(order.deliveryDate).toLocaleDateString() : '-'}
                     </p>
                   </div>
                 </div>
@@ -165,16 +177,15 @@ const Orders = () => {
                 <div>
                   <p className="text-xs text-muted-foreground mb-2">Size Distribution</p>
                   <div className="flex flex-wrap gap-2">
-                    {SIZES.map((size) => {
-                      const qty = order.sizeQuantities[size.code];
+                    {Object.entries(order.sizeQuantities || {}).map(([code, qty]) => {
                       if (!qty) return null;
                       return (
                         <div 
-                          key={size.code}
+                          key={code}
                           className="flex items-center gap-1.5 rounded-md bg-muted px-2 py-1"
                         >
                           <span className="font-mono text-xs font-medium text-foreground">
-                            {size.code}
+                            {code}
                           </span>
                           <span className="text-xs text-muted-foreground">
                             {qty}
@@ -187,6 +198,13 @@ const Orders = () => {
               </CardContent>
             </Card>
             ))}
+            {orders.length === 0 && (
+              <Card className="shadow-card">
+                <CardContent className="py-12 text-center text-muted-foreground">
+                  No orders yet. Click "New Order" to create one.
+                </CardContent>
+              </Card>
+            )}
           </div>
         </div>
 
@@ -229,9 +247,9 @@ const Orders = () => {
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="border-b border-border">
-                          {SIZES.map((size) => (
-                            <th key={size.code} className="px-3 py-2 text-center font-mono font-medium">
-                              {size.code}
+                          {Object.keys(selectedOrder.sizeQuantities || {}).map((code) => (
+                            <th key={code} className="px-3 py-2 text-center font-mono font-medium">
+                              {code}
                             </th>
                           ))}
                           <th className="px-3 py-2 text-center font-medium bg-muted">TOTAL</th>
@@ -239,9 +257,9 @@ const Orders = () => {
                       </thead>
                       <tbody>
                         <tr>
-                          {SIZES.map((size) => (
-                            <td key={size.code} className="px-3 py-2 text-center font-mono">
-                              {selectedOrder.sizeQuantities[size.code] || 0}
+                          {Object.entries(selectedOrder.sizeQuantities || {}).map(([code, qty]) => (
+                            <td key={code} className="px-3 py-2 text-center font-mono">
+                              {qty || 0}
                             </td>
                           ))}
                           <td className="px-3 py-2 text-center font-mono font-bold bg-muted">
