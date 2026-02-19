@@ -825,6 +825,7 @@ export type Database = {
           requested_qty: number
           requirement_id: string | null
           size: string | null
+          sort_order: number | null
           unit: string | null
           updated_at: string
         }
@@ -841,6 +842,7 @@ export type Database = {
           requested_qty?: number
           requirement_id?: string | null
           size?: string | null
+          sort_order?: number | null
           unit?: string | null
           updated_at?: string
         }
@@ -857,6 +859,7 @@ export type Database = {
           requested_qty?: number
           requirement_id?: string | null
           size?: string | null
+          sort_order?: number | null
           unit?: string | null
           updated_at?: string
         }
