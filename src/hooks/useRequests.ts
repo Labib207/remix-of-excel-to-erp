@@ -86,6 +86,7 @@ export function useRequestItems(requestId?: string) {
         .from('request_items')
         .select('*')
         .eq('request_id', requestId)
+        .order('sort_order', { ascending: true })
         .order('created_at', { ascending: true });
       
       if (error) throw error;
