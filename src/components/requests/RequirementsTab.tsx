@@ -25,7 +25,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { Plus, Trash2, ClipboardList, Package, PlusCircle, Pencil, Loader2 } from 'lucide-react';
+import { Plus, Trash2, ClipboardList, Package, PlusCircle, Pencil, Loader2, Filter } from 'lucide-react';
 import { toast } from 'sonner';
 import { MaterialRequirement } from '@/store/requirementStore';
 import { useDbOrders, useCreateDbOrder, useDeleteDbOrder, useUpdateDbOrder } from '@/hooks/useDbOrders';
@@ -95,9 +95,33 @@ export function RequirementsTab() {
   const [isEditOrderOpen, setIsEditOrderOpen] = useState(false);
   const [newOrder, setNewOrder] = useState<NewOrder>(emptyOrder());
   const [editOrder, setEditOrder] = useState<NewOrder>(emptyOrder());
+  const [groupByDescription, setGroupByDescription] = useState(false);
   
   const selectedOrder = orders.find(o => o.id === selectedOrderId);
   const orderRequirements = allRequirements.filter(r => r.orderId === selectedOrderId);
+
+  // Group requirements by description keyword (first word or category)
+  const getGroupKey = (description: string) => {
+    if (!description) return 'Other';
+    const lower = description.toLowerCase();
+    // Common garment material categories
+    const categories = ['label', 'zipper', 'button', 'thread', 'elastic', 'tape', 'fabric', 'lining', 'interlining', 'fusing', 'velcro', 'buckle', 'cord', 'webbing', 'snap', 'hook', 'eyelet', 'rivet', 'patch', 'badge', 'ribbon', 'binding', 'drawstring', 'sticker', 'poly', 'carton', 'hanger', 'tag', 'needle', 'bobbin'];
+    for (const cat of categories) {
+      if (lower.includes(cat)) return cat.charAt(0).toUpperCase() + cat.slice(1);
+    }
+    // Fall back to first word
+    const firstWord = description.split(/[\s-_,]+/)[0];
+    return firstWord.charAt(0).toUpperCase() + firstWord.slice(1).toLowerCase();
+  };
+
+  const sortedRequirements = groupByDescription
+    ? [...orderRequirements].sort((a, b) => {
+        const groupA = getGroupKey(a.description);
+        const groupB = getGroupKey(b.description);
+        if (groupA !== groupB) return groupA.localeCompare(groupB);
+        return a.description.localeCompare(b.description);
+      })
+    : orderRequirements;
 
   const handleDeleteOrder = (orderId: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -611,7 +635,18 @@ export function RequirementsTab() {
                   <Package className="h-5 w-5" />
                   Order Requirements
                 </span>
-                <Badge variant="secondary">{orderRequirements.length} items</Badge>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant={groupByDescription ? "default" : "outline"}
+                    size="sm"
+                    className="gap-2"
+                    onClick={() => setGroupByDescription(!groupByDescription)}
+                  >
+                    <Filter className="h-4 w-4" />
+                    {groupByDescription ? 'Grouped' : 'Group by Type'}
+                  </Button>
+                  <Badge variant="secondary">{orderRequirements.length} items</Badge>
+                </div>
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -635,8 +670,21 @@ export function RequirementsTab() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {orderRequirements.map((req) => (
-                        <TableRow key={req.id}>
+                      {sortedRequirements.map((req, idx) => {
+                        const currentGroup = groupByDescription ? getGroupKey(req.description) : null;
+                        const prevGroup = idx > 0 && groupByDescription ? getGroupKey(sortedRequirements[idx - 1].description) : null;
+                        const showGroupHeader = groupByDescription && currentGroup !== prevGroup;
+                        
+                        return (
+                          <>
+                            {showGroupHeader && (
+                              <TableRow key={`group-${currentGroup}`}>
+                                <TableCell colSpan={8} className="bg-muted/50 py-2 font-semibold text-sm text-foreground">
+                                  {currentGroup}
+                                </TableCell>
+                              </TableRow>
+                            )}
+                            <TableRow key={req.id}>
                           <TableCell>
                             <Input
                               value={req.itemCode}
@@ -699,7 +747,9 @@ export function RequirementsTab() {
                             </Button>
                           </TableCell>
                         </TableRow>
-                      ))}
+                          </>
+                        );
+                      })}
                     </TableBody>
                   </Table>
                 </div>
