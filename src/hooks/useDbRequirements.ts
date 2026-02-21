@@ -36,7 +36,7 @@ export function useDbRequirements(orderId?: string) {
       let query = supabase
         .from('requirements')
         .select('*')
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: true });
       
       if (orderId) {
         query = query.eq('order_id', orderId);
