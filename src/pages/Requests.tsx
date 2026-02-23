@@ -1024,7 +1024,56 @@ export default function Requests() {
           </TabsContent>
 
           <TabsContent value="history" className="mt-6">
-            <RequestHistoryTable />
+            <RequestHistoryTable onEdit={(request) => {
+              // Load the request back into the appropriate form for editing
+              const tabType = request.type === 'raw-material' ? 'raw-material' : 
+                              request.type === 'general-supplies' ? 'general-supplies' : 'material-return';
+              setActiveTab(tabType);
+              
+              const form = {
+                date: request.form.date,
+                department: request.form.department || '',
+                orderId: (request.form as any).orderId || '',
+                requestedBy: request.form.requestedBy || '',
+                approvedBy: request.form.approvedBy || '',
+                issuedBy: request.form.issuedBy || '',
+                aswaqNumber: request.form.aswaqNumber || '',
+              };
+
+              if (request.type === 'material-return') {
+                setMaterialReturnForm(form);
+                const items = (request.items as any[]).map((item, idx) => ({
+                  id: generateId(),
+                  slNo: idx + 1,
+                  itemCode: item.itemCode || '',
+                  description: item.description || '',
+                  uom: item.uom || '',
+                  qtyReturned: item.qtyReturned || 0,
+                  qtyReceived: item.qtyReceived || 0,
+                  remarks: item.remarks || '',
+                }));
+                setMaterialReturnItems(items);
+              } else {
+                const setForm = request.type === 'raw-material' ? setRawMaterialForm : setGeneralSuppliesForm;
+                const setItems = request.type === 'raw-material' ? setRawMaterialItems : setGeneralSuppliesItems;
+                setForm(form);
+                const items = (request.items as any[]).map((item, idx) => ({
+                  id: generateId(),
+                  slNo: idx + 1,
+                  itemCode: item.itemCode || '',
+                  description: item.description || '',
+                  uom: item.uom || '',
+                  requirementQty: item.requirementQty || 0,
+                  requestedQty: item.requestedQty || 0,
+                  issuedQty: item.issuedQty || 0,
+                  remainingQty: item.remainingQty || 0,
+                  remarks: item.remarks || '',
+                  requirementId: item.requirementId,
+                }));
+                setItems(items);
+              }
+              toast.info(`Loaded ${request.docNumber} for editing`);
+            }} />
           </TabsContent>
         </Tabs>
 

@@ -18,11 +18,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Search, Download, FileText, Package, Undo2, Eye, FileSpreadsheet, CalendarIcon, Truck } from 'lucide-react';
+import { Search, Download, FileText, Package, Undo2, Eye, FileSpreadsheet, CalendarIcon, Truck, Trash2, Edit } from 'lucide-react';
 import { format, isWithinInterval, startOfDay, endOfDay, parseISO } from 'date-fns';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { useRequestStore } from '@/store/requestStore';
+import { toast } from 'sonner';
 import {
   Dialog,
   DialogContent,
@@ -98,8 +99,8 @@ const typeBadgeVariant: Record<string, 'default' | 'secondary' | 'outline'> = {
   'material-return': 'outline',
 };
 
-export function RequestHistoryTable() {
-  const { submittedRequests } = useRequestStore();
+export function RequestHistoryTable({ onEdit }: { onEdit?: (request: SubmittedRequest) => void }) {
+  const { submittedRequests, deleteRequest } = useRequestStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
@@ -561,6 +562,16 @@ export function RequestHistoryTable() {
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
+                          {onEdit && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => onEdit(request)}
+                              title="Edit Request"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                          )}
                           <Button
                             variant="ghost"
                             size="icon"
@@ -580,6 +591,20 @@ export function RequestHistoryTable() {
                               <Truck className="h-4 w-4" />
                             </Button>
                           )}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                              if (confirm('Are you sure you want to delete this request?')) {
+                                deleteRequest(request.id);
+                                toast.success(`Request ${request.docNumber} deleted`);
+                              }
+                            }}
+                            title="Delete Request"
+                            className="text-destructive hover:text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                         </div>
                       </TableCell>
                     </TableRow>
