@@ -36,6 +36,7 @@ export function useDbRequirements(orderId?: string) {
       let query = supabase
         .from('requirements')
         .select('*')
+        .order('sort_order', { ascending: true, nullsFirst: false })
         .order('created_at', { ascending: true });
       
       if (orderId) {
@@ -53,10 +54,23 @@ export function useCreateDbRequirement() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: async (req: Omit<MaterialRequirement, 'id' | 'requestedQty' | 'pendingQty'>) => {
+    mutationFn: async (req: Omit<MaterialRequirement, 'id' | 'requestedQty' | 'pendingQty'> & { sortOrder?: number }) => {
       const { data: { user } } = await supabase.auth.getUser();
       const dbData = appToDb({ ...req, requestedQty: 0 });
-      const insertData = { ...dbData, created_by: user?.id } as any;
+      
+      // Get next sort_order if not provided
+      let sortOrder = req.sortOrder;
+      if (sortOrder === undefined && req.orderId) {
+        const { data: existing } = await supabase
+          .from('requirements')
+          .select('sort_order')
+          .eq('order_id', req.orderId)
+          .order('sort_order', { ascending: false, nullsFirst: false })
+          .limit(1);
+        sortOrder = ((existing?.[0]?.sort_order as number) || 0) + 1;
+      }
+      
+      const insertData = { ...dbData, created_by: user?.id, sort_order: sortOrder } as any;
       const { data, error } = await supabase
         .from('requirements')
         .insert(insertData)
@@ -81,9 +95,24 @@ export function useCreateDbRequirements() {
   return useMutation({
     mutationFn: async (reqs: Omit<MaterialRequirement, 'id' | 'requestedQty' | 'pendingQty'>[]) => {
       const { data: { user } } = await supabase.auth.getUser();
-      const dbRows = reqs.map(req => ({
+      
+      // Get current max sort_order for the order
+      const orderId = reqs[0]?.orderId;
+      let startOrder = 1;
+      if (orderId) {
+        const { data: existing } = await supabase
+          .from('requirements')
+          .select('sort_order')
+          .eq('order_id', orderId)
+          .order('sort_order', { ascending: false, nullsFirst: false })
+          .limit(1);
+        startOrder = ((existing?.[0]?.sort_order as number) || 0) + 1;
+      }
+      
+      const dbRows = reqs.map((req, idx) => ({
         ...appToDb({ ...req, requestedQty: 0 }),
         created_by: user?.id,
+        sort_order: startOrder + idx,
       })) as any[];
       const { data, error } = await supabase
         .from('requirements')
