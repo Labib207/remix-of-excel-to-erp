@@ -1,55 +1,43 @@
-import { useEffect } from 'react';
-import { dataSync } from '@/lib/dataSync';
-import { useCuttingStore } from '@/store/cuttingStore';
-import { useRequirementStore } from '@/store/requirementStore';
+import { useEffect, useState } from 'react';
+import { syncEngine } from '@/lib/syncEngine';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
-// Component that handles automatic data synchronization
+// Component that handles automatic data synchronization with offline-first IndexedDB
 export function DataSyncProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
-  const cuttingStore = useCuttingStore();
-  const requirementStore = useRequirementStore();
+  const [initialized, setInitialized] = useState(false);
 
-  // Load cloud data on login
+  // Initial cloud pull on login
   useEffect(() => {
-    const loadAndMerge = async () => {
-      if (!user || !navigator.onLine) return;
+    const initSync = async () => {
+      if (!user) return;
 
-      try {
-        const result = await dataSync.mergeFromCloud();
-        if (result.success) {
-          console.log('Data synced from cloud');
+      if (navigator.onLine) {
+        try {
+          console.log('[DataSyncProvider] Initial cloud pull...');
+          await syncEngine.pullFromCloud();
+          console.log('[DataSyncProvider] Initial pull complete');
+        } catch (error) {
+          console.error('[DataSyncProvider] Initial pull failed:', error);
         }
-      } catch (error) {
-        console.error('Failed to merge cloud data:', error);
       }
+      setInitialized(true);
     };
 
-    loadAndMerge();
+    initSync();
   }, [user]);
 
   // Auto-sync when coming back online
   useEffect(() => {
     const handleOnline = async () => {
       if (!user) return;
-      
-      if (dataSync.hasPendingChanges()) {
+      const hasPending = await syncEngine.hasPendingChanges();
+      if (hasPending) {
         toast.info('Syncing offline changes...');
-        
         try {
-          const result = await dataSync.fullSyncToCloud({
-            orders: cuttingStore.orders,
-            cutPlans: cuttingStore.cutPlans,
-            markerPlans: cuttingStore.markerPlans,
-            requirements: requirementStore.requirements,
-          });
-
-          if (result.success) {
-            toast.success('Offline changes synced to cloud');
-          } else {
-            toast.error('Failed to sync: ' + result.error);
-          }
+          await syncEngine.syncAll();
+          toast.success('Offline changes synced');
         } catch (error: any) {
           toast.error('Sync failed: ' + error.message);
         }
@@ -58,21 +46,7 @@ export function DataSyncProvider({ children }: { children: React.ReactNode }) {
 
     window.addEventListener('online', handleOnline);
     return () => window.removeEventListener('online', handleOnline);
-  }, [user, cuttingStore.orders, cuttingStore.cutPlans, cuttingStore.markerPlans, requirementStore.requirements]);
-
-  // Mark pending changes when stores update (debounced)
-  useEffect(() => {
-    if (!user) return;
-    
-    // Just mark that there are pending changes
-    dataSync.markPendingChanges();
-  }, [
-    user,
-    cuttingStore.orders, 
-    cuttingStore.cutPlans, 
-    cuttingStore.markerPlans,
-    requirementStore.requirements
-  ]);
+  }, [user]);
 
   return <>{children}</>;
 }
