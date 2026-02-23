@@ -19,7 +19,7 @@ import { Separator } from '@/components/ui/separator';
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
-  { name: 'Requirements', href: '/requirements', icon: ClipboardList },
+  { name: 'Trim Chart', href: '/requirements', icon: ClipboardList },
   { name: 'Requests', href: '/requests', icon: FileBox },
   { name: 'Delivery Notes', href: '/delivery-notes', icon: Truck },
 ];
