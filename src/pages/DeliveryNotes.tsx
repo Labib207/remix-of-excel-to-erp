@@ -27,6 +27,7 @@ import { Truck, Download, Package, CalendarIcon, FileText, RotateCcw, Plus, Tras
 import { useToast } from '@/hooks/use-toast';
 import { useCuttingStore } from '@/store/cuttingStore';
 import { useRequirementStore } from '@/store/requirementStore';
+import { useDbRequirements } from '@/hooks/useDbRequirements';
 import { useRequests, useRequestItems } from '@/hooks/useRequests';
 import { 
   useDeliveryAcknowledgments, 
@@ -55,7 +56,7 @@ const DeliveryNotes = () => {
   const { toast } = useToast();
   const { orders } = useCuttingStore();
   const { requirements, materialCatalog } = useRequirementStore();
-  
+  const { data: dbRequirementsData = [] } = useDbRequirements();
   // Online status
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   
@@ -146,8 +147,8 @@ const DeliveryNotes = () => {
     if (order) {
       setLine(''); // Line must be entered manually by user
       
-      // Load requirements for this order
-      const orderRequirements = requirements.filter(r => r.orderId === orderId);
+      // Load requirements for this order from DB (sorted by sort_order)
+      const orderRequirements = dbRequirementsData.filter(r => r.orderId === orderId);
       const items: DeliveryItem[] = orderRequirements.map((req, index) => ({
         id: req.id,
         slNo: index + 1,
@@ -155,7 +156,7 @@ const DeliveryNotes = () => {
         description: req.description,
         requirementQty: req.requiredQty || 0,
         issuedQty: 0, // Empty for manual entry
-        balance: req.requiredQty || 0,
+        balance: 0, // Keep empty as requested
         remarks: req.remarks || '',
       }));
       setDeliveryItems(items);
