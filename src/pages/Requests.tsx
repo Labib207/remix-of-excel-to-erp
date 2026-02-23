@@ -572,16 +572,16 @@ export default function Requests() {
               </TableHeader>
               <TableBody>
                 {items.map((item) => (
-                  <TableRow key={item.id} className="h-14">
-                    <TableCell>{item.slNo}</TableCell>
-                    <TableCell>
+                  <TableRow key={item.id} className="h-16">
+                    <TableCell className="py-2">{item.slNo}</TableCell>
+                    <TableCell className="py-2">
                       <Input
                         value={item.itemCode}
                         onChange={(e) => updateRequestItem(type, item.id, 'itemCode', e.target.value)}
-                        className="h-8"
+                        className="h-10"
                       />
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="py-2">
                       <DescriptionAutocomplete
                         value={item.description}
                         onChange={(value) => updateRequestItem(type, item.id, 'description', value)}
@@ -589,51 +589,51 @@ export default function Requests() {
                         catalog={materialCatalog}
                       />
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="py-2">
                       <Input
                         value={item.uom}
                         onChange={(e) => updateRequestItem(type, item.id, 'uom', e.target.value)}
-                        className="h-8"
+                        className="h-10"
                       />
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="py-2">
                       <Input
                         type="number"
                         value={item.requirementQty || ''}
                         readOnly
-                        className="h-8 bg-muted/50 text-muted-foreground"
+                        className="h-10 bg-muted/50 text-muted-foreground"
                         title="Auto-filled from order requirements"
                       />
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="py-2">
                       <Input
                         type="number"
                         value={item.requestedQty || ''}
                         onChange={(e) => updateRequestItem(type, item.id, 'requestedQty', parseInt(e.target.value) || 0)}
-                        className="h-8"
+                        className="h-10"
                         placeholder="Enter qty"
                       />
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="py-2">
                       <Input
                         type="number"
                         value={item.issuedQty || ''}
                         onChange={(e) => updateRequestItem(type, item.id, 'issuedQty', parseInt(e.target.value) || 0)}
-                        className="h-8"
+                        className="h-10"
                       />
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="py-2">
                       <Input
                         value={item.remainingQty || ''}
                         readOnly
-                        className="h-8 bg-muted"
+                        className="h-10 bg-muted"
                       />
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="py-2">
                       <Input
                         value={item.remarks}
                         onChange={(e) => updateRequestItem(type, item.id, 'remarks', e.target.value)}
-                        className="h-8"
+                        className="h-10"
                       />
                     </TableCell>
                     <TableCell>
