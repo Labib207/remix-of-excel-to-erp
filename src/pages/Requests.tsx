@@ -572,7 +572,7 @@ export default function Requests() {
               </TableHeader>
               <TableBody>
                 {items.map((item) => (
-                  <TableRow key={item.id}>
+                  <TableRow key={item.id} className="h-14">
                     <TableCell>{item.slNo}</TableCell>
                     <TableCell>
                       <Input
