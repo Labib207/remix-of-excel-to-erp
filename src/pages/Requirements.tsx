@@ -6,7 +6,7 @@ const Requirements = () => {
     <MainLayout>
       <div className="space-y-6 animate-fade-in">
         <div className="flex flex-col gap-1">
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">Requirements</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">Trim Chart</h1>
           <p className="text-muted-foreground">
             Manage order-wise raw material requirements
           </p>
