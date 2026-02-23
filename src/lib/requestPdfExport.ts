@@ -311,8 +311,8 @@ export const exportRawMaterialRequestPDF = async (form: RequestForm, items: Requ
       ])
     : [];
   
-  // Pad to minimum 15 rows for proper layout (fits on single page)
-  const minRows = items.length > 0 ? Math.max(15, items.length + 3) : 15;
+  // Pad to fill page without overflowing to a second page
+  const minRows = items.length > 0 ? items.length : 14;
   while (tableRows.length < minRows) {
     tableRows.push(['', '', '', '', '', '', '', '']);
   }
@@ -399,8 +399,8 @@ export const exportGeneralSuppliesRequestPDF = async (form: RequestForm, items: 
       ])
     : [];
   
-  // Pad to minimum 15 rows for proper layout (fits on single page)
-  const minRows = items.length > 0 ? Math.max(15, items.length + 3) : 15;
+  // Pad to fill page without overflowing to a second page
+  const minRows = items.length > 0 ? items.length : 14;
   while (tableRows.length < minRows) {
     tableRows.push(['', '', '', '', '', '', '', '']);
   }
@@ -486,8 +486,8 @@ export const exportMaterialReturnSlipPDF = async (form: RequestForm, items: Retu
       ])
     : [];
   
-  // Pad to minimum 15 rows for proper layout (fits on single page)
-  const minRows = items.length > 0 ? Math.max(15, items.length + 3) : 15;
+  // Pad to fill page without overflowing to a second page
+  const minRows = items.length > 0 ? items.length : 14;
   while (tableRows.length < minRows) {
     tableRows.push(['', '', '', '', '', '', '']);
   }
