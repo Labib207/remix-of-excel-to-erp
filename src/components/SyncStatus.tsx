@@ -2,9 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Cloud, CloudOff, RefreshCw, Check, AlertCircle, Download, Upload } from 'lucide-react';
-import { dataSync } from '@/lib/dataSync';
-import { useCuttingStore } from '@/store/cuttingStore';
-import { useRequirementStore } from '@/store/requirementStore';
+import { syncEngine } from '@/lib/syncEngine';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import {
@@ -20,122 +18,75 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
+import { useQueryClient } from '@tanstack/react-query';
 
 export function SyncStatus() {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [isSyncing, setIsSyncing] = useState(false);
   const [lastSync, setLastSync] = useState<Date | null>(null);
   const [syncError, setSyncError] = useState<string | null>(null);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
-  const [hasPendingChanges, setHasPendingChanges] = useState(false);
-
-  const { orders, cutPlans, markerPlans } = useCuttingStore();
-  const { requirements } = useRequirementStore();
+  const [syncStatus, setSyncStatus] = useState<string>('idle');
 
   // Monitor online status
   useEffect(() => {
-    const handleOnline = () => {
-      setIsOnline(true);
-      // Auto-sync when coming back online
-      if (user && hasPendingChanges) {
-        handleSync();
-      }
-    };
+    const handleOnline = () => setIsOnline(true);
     const handleOffline = () => setIsOnline(false);
-
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
-
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
-  }, [user, hasPendingChanges]);
+  }, []);
 
-  // Auto-fetch from cloud on login
+  // Listen to sync engine status
   useEffect(() => {
-    if (user && isOnline) {
-      handleMerge();
-    }
-  }, [user]);
+    const unsub = syncEngine.onStatusChange((status) => {
+      setSyncStatus(status);
+      if (status === 'syncing') {
+        setIsSyncing(true);
+      } else if (status === 'synced') {
+        setIsSyncing(false);
+        setLastSync(new Date());
+        setSyncError(null);
+        // Invalidate all queries so UI refreshes from IndexedDB
+        queryClient.invalidateQueries();
+      } else if (status === 'error') {
+        setIsSyncing(false);
+        setSyncError('Sync failed');
+      } else {
+        setIsSyncing(false);
+      }
+    });
+    return unsub;
+  }, [queryClient]);
 
-  // Track pending changes
-  useEffect(() => {
-    setHasPendingChanges(dataSync.hasPendingChanges());
-  }, [orders, cutPlans, markerPlans, requirements]);
-
-  const handleSync = async () => {
-    if (!user) {
-      toast.error('Please log in to sync data');
-      return;
-    }
-
-    if (!isOnline) {
-      dataSync.markPendingChanges();
-      setHasPendingChanges(true);
-      toast.info('Offline - changes will sync when online');
-      return;
-    }
-
+  const handlePush = async () => {
+    if (!user || !isOnline) return;
     setIsSyncing(true);
     setSyncError(null);
-
     try {
-      const result = await dataSync.fullSyncToCloud({
-        orders,
-        cutPlans,
-        markerPlans,
-        requirements,
-      });
-
-      if (result.success) {
-        setLastSync(new Date());
-        setHasPendingChanges(false);
-        toast.success(
-          `Synced ${result.synced.orders} orders, ${result.synced.cutPlans} cut plans, ${result.synced.requirements} requirements`
-        );
-      } else {
-        setSyncError(result.error || 'Sync failed');
-        toast.error('Sync failed: ' + result.error);
-      }
+      await syncEngine.pushToCloud();
+      queryClient.invalidateQueries();
+      toast.success('Data pushed to cloud');
     } catch (error: any) {
       setSyncError(error.message);
-      toast.error('Sync failed: ' + error.message);
+      toast.error('Push failed: ' + error.message);
     } finally {
       setIsSyncing(false);
     }
   };
 
   const handlePull = async () => {
-    if (!user) {
-      toast.error('Please log in to sync data');
-      return;
-    }
-
-    if (!isOnline) {
-      toast.error('Cannot pull data while offline');
-      return;
-    }
-
+    if (!user || !isOnline) return;
     setIsSyncing(true);
     setSyncError(null);
-
     try {
-      const result = await dataSync.fullSyncFromCloud();
-
-      if (result.success && result.data) {
-        // Update local stores with cloud data
-        useCuttingStore.setState({ orders: result.data.orders });
-        useRequirementStore.setState({ requirements: result.data.requirements });
-        
-        toast.success(
-          `Loaded ${result.data.orders.length} orders, ${result.data.requirements.length} requirements from cloud`
-        );
-        setLastSync(new Date());
-      } else {
-        setSyncError(result.error || 'Pull failed');
-        toast.error('Pull failed: ' + result.error);
-      }
+      await syncEngine.pullFromCloud();
+      queryClient.invalidateQueries();
+      toast.success('Data pulled from cloud');
     } catch (error: any) {
       setSyncError(error.message);
       toast.error('Pull failed: ' + error.message);
@@ -144,18 +95,17 @@ export function SyncStatus() {
     }
   };
 
-  const handleMerge = async () => {
+  const handleSyncAll = async () => {
     if (!user || !isOnline) return;
-
     setIsSyncing(true);
+    setSyncError(null);
     try {
-      const result = await dataSync.mergeFromCloud();
-      if (result.success) {
-        setLastSync(new Date());
-        setHasPendingChanges(false);
-      }
+      await syncEngine.syncAll();
+      queryClient.invalidateQueries();
+      toast.success('Full sync completed');
     } catch (error: any) {
-      console.error('Merge error:', error);
+      setSyncError(error.message);
+      toast.error('Sync failed: ' + error.message);
     } finally {
       setIsSyncing(false);
     }
@@ -168,7 +118,7 @@ export function SyncStatus() {
           <TooltipTrigger asChild>
             <Badge variant="outline" className="gap-1.5 text-muted-foreground">
               <CloudOff className="h-3 w-3" />
-              Offline
+              Local Only
             </Badge>
           </TooltipTrigger>
           <TooltipContent>
@@ -203,18 +153,11 @@ export function SyncStatus() {
               <p>{syncError}</p>
             </TooltipContent>
           </Tooltip>
-        ) : hasPendingChanges ? (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Badge variant="outline" className="gap-1.5 text-warning border-warning/30">
-                <Upload className="h-3 w-3" />
-                Pending
-              </Badge>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>Changes waiting to sync</p>
-            </TooltipContent>
-          </Tooltip>
+        ) : syncStatus === 'syncing' ? (
+          <Badge variant="outline" className="gap-1.5">
+            <RefreshCw className="h-3 w-3 animate-spin" />
+            Syncing...
+          </Badge>
         ) : lastSync ? (
           <Tooltip>
             <TooltipTrigger asChild>
@@ -247,7 +190,7 @@ export function SyncStatus() {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={handleSync} disabled={!isOnline}>
+            <DropdownMenuItem onClick={handlePush} disabled={!isOnline}>
               <Upload className="h-4 w-4 mr-2" />
               Push to Cloud
             </DropdownMenuItem>
@@ -256,7 +199,7 @@ export function SyncStatus() {
               Pull from Cloud
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleMerge} disabled={!isOnline}>
+            <DropdownMenuItem onClick={handleSyncAll} disabled={!isOnline}>
               <RefreshCw className="h-4 w-4 mr-2" />
               Sync Both Ways
             </DropdownMenuItem>
