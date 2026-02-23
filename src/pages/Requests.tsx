@@ -32,6 +32,7 @@ import { toast } from 'sonner';
 import { useRequestStore } from '@/store/requestStore';
 import { useRequirementStore } from '@/store/requirementStore';
 import { useCuttingStore } from '@/store/cuttingStore';
+import { useDbRequirements } from '@/hooks/useDbRequirements';
 import {
   exportRawMaterialRequestPDF,
   exportGeneralSuppliesRequestPDF,
@@ -113,7 +114,8 @@ const emptyRequestForm = (): RequestForm => ({
 export default function Requests() {
   const [activeTab, setActiveTab] = useState('raw-material');
   const { addRequest, exportMonthlyExcel, submittedRequests } = useRequestStore();
-  const { requirements, updateRequestedQty, materialCatalog } = useRequirementStore();
+  const { updateRequestedQty, materialCatalog } = useRequirementStore();
+  const { data: requirements = [] } = useDbRequirements();
   const { orders, updateOrder } = useCuttingStore();
   
   // Month/Year selector for export
