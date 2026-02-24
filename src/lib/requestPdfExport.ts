@@ -311,9 +311,8 @@ export const exportRawMaterialRequestPDF = async (form: RequestForm, items: Requ
       ])
     : [];
   
-  // Pad to fill page without overflowing to a second page
-  const minRows = items.length > 0 ? items.length : 14;
-  while (tableRows.length < minRows) {
+  // Always pad to at least 14 rows to fill the page
+  while (tableRows.length < 14) {
     tableRows.push(['', '', '', '', '', '', '', '']);
   }
 
@@ -399,9 +398,8 @@ export const exportGeneralSuppliesRequestPDF = async (form: RequestForm, items: 
       ])
     : [];
   
-  // Pad to fill page without overflowing to a second page
-  const minRows = items.length > 0 ? items.length : 14;
-  while (tableRows.length < minRows) {
+  // Always pad to at least 14 rows to fill the page
+  while (tableRows.length < 14) {
     tableRows.push(['', '', '', '', '', '', '', '']);
   }
 
@@ -486,9 +484,8 @@ export const exportMaterialReturnSlipPDF = async (form: RequestForm, items: Retu
       ])
     : [];
   
-  // Pad to fill page without overflowing to a second page
-  const minRows = items.length > 0 ? items.length : 14;
-  while (tableRows.length < minRows) {
+  // Always pad to at least 14 rows to fill the page
+  while (tableRows.length < 14) {
     tableRows.push(['', '', '', '', '', '', '']);
   }
 
