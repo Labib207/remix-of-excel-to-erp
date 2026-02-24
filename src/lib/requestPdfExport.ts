@@ -306,7 +306,7 @@ export const exportRawMaterialRequestPDF = async (form: RequestForm, items: Requ
         item.uom,
         item.requestedQty > 0 ? item.requestedQty.toString() : '',
         item.issuedQty > 0 ? item.issuedQty.toString() : '',
-        item.remainingQty !== 0 ? item.remainingQty.toString() : '',
+        item.issuedQty > 0 ? item.remainingQty.toString() : '',
         item.remarks
       ])
     : [];
@@ -393,7 +393,7 @@ export const exportGeneralSuppliesRequestPDF = async (form: RequestForm, items: 
         item.uom,
         item.requestedQty > 0 ? item.requestedQty.toString() : '',
         item.issuedQty > 0 ? item.issuedQty.toString() : '',
-        item.remainingQty !== 0 ? item.remainingQty.toString() : '',
+        item.issuedQty > 0 ? item.remainingQty.toString() : '',
         item.remarks
       ])
     : [];
