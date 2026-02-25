@@ -31,7 +31,7 @@ import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { useRequestStore } from '@/store/requestStore';
 import { useRequirementStore } from '@/store/requirementStore';
-import { useCuttingStore } from '@/store/cuttingStore';
+import { useDbOrders, useUpdateDbOrder } from '@/hooks/useDbOrders';
 import { useDbRequirements } from '@/hooks/useDbRequirements';
 import {
   exportRawMaterialRequestPDF,
@@ -116,7 +116,8 @@ export default function Requests() {
   const { addRequest, exportMonthlyExcel, submittedRequests } = useRequestStore();
   const { updateRequestedQty, materialCatalog } = useRequirementStore();
   const { data: requirements = [] } = useDbRequirements();
-  const { orders, updateOrder } = useCuttingStore();
+  const { data: orders = [] } = useDbOrders();
+  const updateOrderMutation = useUpdateDbOrder();
   
   // Month/Year selector for export
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth().toString());
@@ -224,7 +225,8 @@ export default function Requests() {
       toast.error('Order Number and Customer are required');
       return;
     }
-    updateOrder(editingOrderId, {
+    updateOrderMutation.mutate({
+      id: editingOrderId,
       orderNumber: editOrderData.orderNumber,
       customer: editOrderData.customer,
       styleNo: editOrderData.styleNo,
@@ -233,9 +235,12 @@ export default function Requests() {
       totalQty: editOrderData.totalQty,
       fabricWidth: editOrderData.fabricWidth,
       deliveryDate: editOrderData.deliveryDate,
+    }, {
+      onSuccess: () => {
+        setIsEditOrderOpen(false);
+        toast.success(`Order ${editOrderData.orderNumber} updated successfully`);
+      }
     });
-    setIsEditOrderOpen(false);
-    toast.success(`Order ${editOrderData.orderNumber} updated successfully`);
   };
   // Handle order selection for raw material request
   const handleOrderSelect = (orderId: string, type: 'raw' | 'general') => {

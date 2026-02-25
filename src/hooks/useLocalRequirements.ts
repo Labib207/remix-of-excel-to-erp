@@ -158,6 +158,11 @@ export function useUpdateLocalRequirement() {
         _synced: 0,
       };
 
+      // Recalculate balance_qty when required_qty or received_qty changes
+      const reqQty = Number(updated.required_qty) || 0;
+      const recvQty = Number(updated.received_qty) || 0;
+      updated.balance_qty = reqQty - recvQty;
+
       await db.put('requirements', updated);
       syncEngine.scheduleSyncDebounced();
       return localToApp(updated);
