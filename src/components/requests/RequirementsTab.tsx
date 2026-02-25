@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,7 +25,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { Plus, Trash2, ClipboardList, Package, PlusCircle, Pencil, Loader2, Filter } from 'lucide-react';
+import { Plus, Trash2, ClipboardList, Package, PlusCircle, Pencil, Loader2, Filter, Save } from 'lucide-react';
+import { syncEngine } from '@/lib/syncEngine';
 import { toast } from 'sonner';
 import { MaterialRequirement } from '@/store/requirementStore';
 import { useDbOrders, useCreateDbOrder, useDeleteDbOrder, useUpdateDbOrder } from '@/hooks/useDbOrders';
@@ -96,6 +97,7 @@ export function RequirementsTab() {
   const [newOrder, setNewOrder] = useState<NewOrder>(emptyOrder());
   const [editOrder, setEditOrder] = useState<NewOrder>(emptyOrder());
   const [groupByDescription, setGroupByDescription] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   
   const selectedOrder = orders.find(o => o.id === selectedOrderId);
   const orderRequirements = allRequirements.filter(r => r.orderId === selectedOrderId);
@@ -275,6 +277,18 @@ export function RequirementsTab() {
   const handleDeleteRequirement = (id: string) => {
     deleteRequirementMutation.mutate(id);
   };
+
+  const handleSaveAllChanges = useCallback(async () => {
+    setIsSaving(true);
+    try {
+      await syncEngine.syncAll();
+      toast.success('All changes saved and synced');
+    } catch (error: any) {
+      toast.error('Save failed: ' + error.message);
+    } finally {
+      setIsSaving(false);
+    }
+  }, []);
 
   if (ordersLoading || reqsLoading) {
     return (
@@ -752,6 +766,18 @@ export function RequirementsTab() {
                       })}
                     </TableBody>
                   </Table>
+                </div>
+              )}
+              {orderRequirements.length > 0 && (
+                <div className="flex justify-end mt-4">
+                  <Button 
+                    onClick={handleSaveAllChanges} 
+                    disabled={isSaving}
+                    className="gap-2"
+                  >
+                    {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                    Save Changes
+                  </Button>
                 </div>
               )}
             </CardContent>

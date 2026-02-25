@@ -134,7 +134,8 @@ export function useDeleteLocalOrder() {
       if (existing) {
         await db.put('orders', { ...existing, _deleted: 1, _synced: 0, updated_at: nowISO() });
       }
-      syncEngine.scheduleSyncDebounced();
+      // Sync immediately for deletes (don't debounce)
+      await syncEngine.syncAll();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['local_orders'] });

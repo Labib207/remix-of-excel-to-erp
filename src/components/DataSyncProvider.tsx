@@ -15,9 +15,9 @@ export function DataSyncProvider({ children }: { children: React.ReactNode }) {
 
       if (navigator.onLine) {
         try {
-          console.log('[DataSyncProvider] Initial cloud pull...');
-          await syncEngine.pullFromCloud();
-          console.log('[DataSyncProvider] Initial pull complete');
+          console.log('[DataSyncProvider] Initial sync (push + pull)...');
+          await syncEngine.syncAll();
+          console.log('[DataSyncProvider] Initial sync complete');
         } catch (error) {
           console.error('[DataSyncProvider] Initial pull failed:', error);
         }
