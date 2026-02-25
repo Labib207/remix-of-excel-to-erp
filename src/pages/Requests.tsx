@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -148,6 +148,59 @@ export default function Requests() {
     deliveryDate: '',
   });
 
+  // Track if user has manually edited items (to avoid overwriting their changes)
+  const rawManualEdit = useRef(false);
+  const generalManualEdit = useRef(false);
+
+  // Auto-refresh items when requirements data changes (e.g. after Trim Chart edit/delete)
+  useEffect(() => {
+    if (rawMaterialForm.orderId && !rawManualEdit.current) {
+      const orderReqs = requirements.filter(r => r.orderId === rawMaterialForm.orderId);
+      if (orderReqs.length > 0) {
+        const newItems: RequestItem[] = orderReqs.map((req, idx) => ({
+          id: generateId(),
+          slNo: idx + 1,
+          itemCode: req.itemCode,
+          description: req.description,
+          uom: req.uom,
+          requirementQty: req.pendingQty > 0 ? req.pendingQty : req.requiredQty,
+          requestedQty: 0,
+          issuedQty: 0,
+          remainingQty: 0,
+          remarks: req.remarks,
+          requirementId: req.id,
+        }));
+        setRawMaterialItems(newItems);
+      } else {
+        setRawMaterialItems([]);
+      }
+    }
+  }, [requirements, rawMaterialForm.orderId]);
+
+  useEffect(() => {
+    if (generalSuppliesForm.orderId && !generalManualEdit.current) {
+      const orderReqs = requirements.filter(r => r.orderId === generalSuppliesForm.orderId);
+      if (orderReqs.length > 0) {
+        const newItems: RequestItem[] = orderReqs.map((req, idx) => ({
+          id: generateId(),
+          slNo: idx + 1,
+          itemCode: req.itemCode,
+          description: req.description,
+          uom: req.uom,
+          requirementQty: req.pendingQty > 0 ? req.pendingQty : req.requiredQty,
+          requestedQty: 0,
+          issuedQty: 0,
+          remainingQty: 0,
+          remarks: req.remarks,
+          requirementId: req.id,
+        }));
+        setGeneralSuppliesItems(newItems);
+      } else {
+        setGeneralSuppliesItems([]);
+      }
+    }
+  }, [requirements, generalSuppliesForm.orderId]);
+
   const openEditOrderDialog = (orderId: string) => {
     const order = orders.find(o => o.id === orderId);
     if (order) {
@@ -190,6 +243,10 @@ export default function Requests() {
     const setForm = type === 'raw' ? setRawMaterialForm : setGeneralSuppliesForm;
     const setItems = type === 'raw' ? setRawMaterialItems : setGeneralSuppliesItems;
     const form = type === 'raw' ? rawMaterialForm : generalSuppliesForm;
+    
+    // Reset manual edit flag so useEffect can auto-sync
+    if (type === 'raw') rawManualEdit.current = false;
+    else generalManualEdit.current = false;
     
     setForm({ ...form, orderId: actualOrderId });
     
@@ -257,6 +314,9 @@ export default function Requests() {
   const updateRequestItem = (type: 'raw' | 'general', id: string, field: keyof RequestItem, value: string | number) => {
     const items = type === 'raw' ? rawMaterialItems : generalSuppliesItems;
     const setItems = type === 'raw' ? setRawMaterialItems : setGeneralSuppliesItems;
+    // Mark as manually edited so auto-sync doesn't overwrite user changes
+    if (type === 'raw') rawManualEdit.current = true;
+    else generalManualEdit.current = true;
     
     setItems(items.map(item => {
       if (item.id === id) {
