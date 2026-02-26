@@ -25,7 +25,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Truck, Download, Package, CalendarIcon, FileText, RotateCcw, Plus, Trash2, Edit, Save, Wifi, WifiOff, List } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { useCuttingStore } from '@/store/cuttingStore';
+import { useDbOrders } from '@/hooks/useDbOrders';
 import { useRequirementStore } from '@/store/requirementStore';
 import { useDbRequirements } from '@/hooks/useDbRequirements';
 import { useRequests, useRequestItems } from '@/hooks/useRequests';
@@ -54,7 +54,7 @@ interface DeliveryItem {
 
 const DeliveryNotes = () => {
   const { toast } = useToast();
-  const { orders } = useCuttingStore();
+  const { data: dbOrders = [] } = useDbOrders();
   const { requirements, materialCatalog } = useRequirementStore();
   const { data: dbRequirementsData = [] } = useDbRequirements();
   // Online status
@@ -116,8 +116,8 @@ const DeliveryNotes = () => {
   // Get orders that have requirements (for offline mode)
   const ordersWithRequirements = useMemo(() => {
     const orderIds = new Set(requirements.map(r => r.orderId));
-    return orders.filter(order => orderIds.has(order.id));
-  }, [requirements, orders]);
+    return dbOrders.filter(order => orderIds.has(order.id));
+  }, [requirements, dbOrders]);
 
   // Get requests for selected order
   const orderRequests = useMemo(() => {
@@ -127,8 +127,8 @@ const DeliveryNotes = () => {
 
   // Get selected order info
   const selectedOrder = useMemo(() => {
-    return orders.find(o => o.id === selectedOrderId);
-  }, [orders, selectedOrderId]);
+    return dbOrders.find(o => o.id === selectedOrderId);
+  }, [dbOrders, selectedOrderId]);
 
   // Get delivery notes linked to requests
   const deliveryNotesForOrder = useMemo(() => {
@@ -143,7 +143,7 @@ const DeliveryNotes = () => {
     setSelectedRequestId('');
     setEditingNoteId(null);
     
-    const order = orders.find(o => o.id === orderId);
+    const order = dbOrders.find(o => o.id === orderId);
     if (order) {
       setLine(''); // Line must be entered manually by user
       
@@ -389,7 +389,7 @@ const DeliveryNotes = () => {
                     {savedDeliveryNotes.map((note) => {
                       // Find order name from the linked request
                       const linkedRequest = dbRequests.find(r => r.id === note.request_id);
-                      const linkedOrder = linkedRequest ? orders.find(o => o.id === linkedRequest.order_id) : null;
+                      const linkedOrder = linkedRequest ? dbOrders.find(o => o.id === linkedRequest.order_id) : null;
                       const orderDisplay = linkedOrder 
                         ? `${linkedOrder.orderNumber} - ${linkedOrder.customer || ''}` 
                         : (note.notes?.startsWith('ORDER:') ? note.notes.split('|')[0].replace('ORDER:', '') : '-');
@@ -459,10 +459,10 @@ const DeliveryNotes = () => {
                     <SelectValue placeholder="Select Order to load items" />
                   </SelectTrigger>
                   <SelectContent>
-                    {orders.length === 0 ? (
+                    {dbOrders.length === 0 ? (
                       <SelectItem value="none" disabled>No orders available</SelectItem>
                     ) : (
-                      orders.map((order) => {
+                      dbOrders.map((order) => {
                         const hasRequirements = ordersWithRequirements.some(o => o.id === order.id);
                         const hasRequests = dbRequests.some(r => r.order_id === order.id);
                         return (
