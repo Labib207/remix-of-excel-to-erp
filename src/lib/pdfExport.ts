@@ -331,8 +331,8 @@ export const exportBundleGuidePDF = async (guides: BundleGuide[], cutPlan: CutPl
     ],
     theme: 'grid',
     headStyles: { fillColor: [59, 130, 246], fontStyle: 'bold', halign: 'center' },
-    styles: { fontSize: 7, halign: 'center' },
-    bodyStyles: { fontSize: 7 },
+    styles: { fontSize: 8, halign: 'center', fontStyle: 'bold' },
+    bodyStyles: { fontSize: 8, fontStyle: 'bold' },
   });
   
   addFooter(doc, 1, 1, docNumber);
