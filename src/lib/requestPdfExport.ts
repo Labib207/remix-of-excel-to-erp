@@ -311,8 +311,8 @@ export const exportRawMaterialRequestPDF = async (form: RequestForm, items: Requ
       ])
     : [];
   
-  // Always pad to at least 14 rows to fill the page
-  while (tableRows.length < 14) {
+  // Pad to fill page but not overflow (max 10 rows to stay on one page)
+  while (tableRows.length < 10) {
     tableRows.push(['', '', '', '', '', '', '', '']);
   }
 
@@ -399,8 +399,8 @@ export const exportGeneralSuppliesRequestPDF = async (form: RequestForm, items: 
       ])
     : [];
   
-  // Always pad to at least 14 rows to fill the page
-  while (tableRows.length < 14) {
+  // Pad to fill page but not overflow (max 10 rows to stay on one page)
+  while (tableRows.length < 10) {
     tableRows.push(['', '', '', '', '', '', '', '']);
   }
 
@@ -486,8 +486,8 @@ export const exportMaterialReturnSlipPDF = async (form: RequestForm, items: Retu
       ])
     : [];
   
-  // Always pad to at least 14 rows to fill the page
-  while (tableRows.length < 14) {
+  // Pad to fill page but not overflow (max 10 rows to stay on one page)
+  while (tableRows.length < 10) {
     tableRows.push(['', '', '', '', '', '', '']);
   }
 
@@ -782,9 +782,8 @@ export const exportDeliveryNotePDF = async (
       })
     : [];
   
-  // Pad to fill page properly (accounting for header and signature)
-  const minRows = Math.max(18, items.length + 2);
-  while (tableRows.length < minRows) {
+  // Pad to fill page but not overflow
+  while (tableRows.length < 10) {
     tableRows.push(['', '', '', '', '', '']);
   }
 
