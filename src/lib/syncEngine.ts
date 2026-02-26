@@ -166,6 +166,11 @@ class SyncEngine {
               cloudData.created_by = user.id;
             }
 
+            // Remove generated columns that can't be inserted
+            if (table === 'requirements' || table === 'request_items' || table === 'delivery_items') {
+              delete cloudData.balance_qty;
+            }
+
             const { error } = await supabase
               .from(table)
               .upsert(cloudData, { onConflict: 'id' });

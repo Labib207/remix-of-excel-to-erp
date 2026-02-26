@@ -322,7 +322,8 @@ export const exportRawMaterialRequestPDF = async (form: RequestForm, items: Requ
     body: tableRows,
     theme: 'grid',
     styles: { 
-      fontSize: 7, 
+      fontSize: 8, 
+      fontStyle: 'bold',
       cellPadding: 1.2,
       lineColor: [0, 0, 0],
       lineWidth: 0.3,
@@ -409,7 +410,8 @@ export const exportGeneralSuppliesRequestPDF = async (form: RequestForm, items: 
     body: tableRows,
     theme: 'grid',
     styles: { 
-      fontSize: 7, 
+      fontSize: 8, 
+      fontStyle: 'bold',
       cellPadding: 1.2,
       lineColor: [0, 0, 0],
       lineWidth: 0.2,
@@ -495,7 +497,8 @@ export const exportMaterialReturnSlipPDF = async (form: RequestForm, items: Retu
     body: tableRows,
     theme: 'grid',
     styles: { 
-      fontSize: 7, 
+      fontSize: 8, 
+      fontStyle: 'bold',
       cellPadding: 1.2,
       lineColor: [0, 0, 0],
       lineWidth: 0.2,
@@ -802,6 +805,7 @@ export const exportDeliveryNotePDF = async (
     theme: 'grid',
     styles: { 
       fontSize: 9, 
+      fontStyle: 'bold',
       cellPadding: 2,
       lineColor: [0, 0, 0],
       lineWidth: 0.3,
