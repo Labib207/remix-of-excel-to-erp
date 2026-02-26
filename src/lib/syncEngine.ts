@@ -105,8 +105,12 @@ class SyncEngine {
           const store = tx.objectStore(table as any);
 
           for (const row of data) {
-            // Only overwrite if not locally modified (or if no local record exists)
             const existing = await store.get(row.id);
+            // If locally deleted (pending cloud delete), don't restore from cloud
+            if (existing && existing._deleted === 1) {
+              continue;
+            }
+            // Only overwrite if not locally modified (or if no local record exists)
             if (!existing || existing._synced === 1) {
               await store.put({ ...row, _synced: 1, _deleted: 0 } as any);
             }
