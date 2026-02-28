@@ -103,18 +103,24 @@ class SyncEngine {
         // Build a set of cloud IDs for this table
         const cloudIds = new Set((data || []).map((row: any) => row.id));
 
-        // First: remove local synced records that no longer exist in cloud
-        const tx1 = db.transaction(table as any, 'readwrite');
-        const store1 = tx1.objectStore(table as any);
-        const allLocal = await store1.getAll();
-        for (const local of allLocal) {
-          const loc = local as any;
-          // Only remove if it was synced (not a local-only new record) and not in cloud
-          if (loc._synced === 1 && loc._deleted === 0 && !cloudIds.has(loc.id)) {
-            await store1.delete(loc.id);
+        // Only clean up local records deleted from cloud if:
+        // 1. Cloud returned some data (not empty = could be a network issue)
+        // 2. Not hitting the 1000 row limit (which means we might have partial data)
+        if (data && data.length > 0 && data.length < 1000) {
+          const tx1 = db.transaction(table as any, 'readwrite');
+          const store1 = tx1.objectStore(table as any);
+          const allLocal = await store1.getAll();
+          for (const local of allLocal) {
+            const loc = local as any;
+            // Only remove if it was already synced to cloud AND cloud confirmed it's gone
+            // Never remove unsynced local records (they haven't been pushed yet)
+            if (loc._synced === 1 && loc._deleted === 0 && !cloudIds.has(loc.id)) {
+              console.log(`[SyncEngine] Removing locally cached ${table} record ${loc.id} (deleted from cloud)`);
+              await store1.delete(loc.id);
+            }
           }
+          await tx1.done;
         }
-        await tx1.done;
 
         // Then: upsert cloud data into local
         if (data && data.length > 0) {
