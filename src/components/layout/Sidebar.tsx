@@ -8,7 +8,8 @@ import {
   User,
   FileBox,
   ChevronRight,
-  Truck
+  Truck,
+  Scissors
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import logo from '@/assets/logo.png';
@@ -22,6 +23,7 @@ const navigation = [
   { name: 'Trim Chart', href: '/requirements', icon: ClipboardList },
   { name: 'Requests', href: '/requests', icon: FileBox },
   { name: 'Delivery Notes', href: '/delivery-notes', icon: Truck },
+  { name: 'Damage & Recut', href: '/damage-recutting', icon: Scissors },
 ];
 
 export function Sidebar() {
