@@ -1,0 +1,1 @@
+ALTER TABLE public.damage_recutting ADD COLUMN remark text DEFAULT NULL;

@@ -251,6 +251,7 @@ export type Database = {
           part_name: string
           quantity: number
           reason: string | null
+          remark: string | null
           size_code: string
           unit: string
           updated_at: string
@@ -267,6 +268,7 @@ export type Database = {
           part_name: string
           quantity?: number
           reason?: string | null
+          remark?: string | null
           size_code: string
           unit?: string
           updated_at?: string
@@ -283,6 +285,7 @@ export type Database = {
           part_name?: string
           quantity?: number
           reason?: string | null
+          remark?: string | null
           size_code?: string
           unit?: string
           updated_at?: string
