@@ -26,6 +26,7 @@ interface DamageRecord {
   unit: string;
   fabric_usage: number;
   reason: string | null;
+  remark: string | null;
   line_no: string | null;
   created_at: string;
 }
@@ -44,9 +45,19 @@ const SIZE_CODES = [
 ];
 
 const PART_NAMES = [
-  'Front Panel', 'Back Panel', 'Sleeve', 'Collar', 'Cuff',
-  'Pocket', 'Yoke', 'Placket', 'Waistband', 'Fly', 'Other'
+  'Right Front', 'Left Front', 'Center Back', 'Side Back',
+  'Front Sleeve', 'Back Sleeve', 'CF- Inner facing', 'Collar',
+  'Knee pocket', 'Lower pocket', 'Chest pocket', 'Pen pocket',
+  'Shoulder tab', 'Lower flap', 'Chest pocket PKT FLAP', 'Upper pkt',
+  'ELBOW POCKET', 'BACK', 'BONE',
+  'Slant Pkt', 'Back', 'Front', 'Waist Band',
+  'Slant pkt flap', 'Back Pocket Flap', 'back pkt velt',
+  'front pocket', 'back pocket', 'slant pocket facing', 'Other'
 ];
+
+const REMARKS = ['BODY', 'BODY + FUSE'];
+
+const REASONS = ['F.D', 'VEHD', 'C.D', 'Other'];
 
 const emptyForm = {
   order_id: '',
@@ -57,6 +68,7 @@ const emptyForm = {
   marker_length: 0,
   unit: 'yards',
   reason: '',
+  remark: '',
   line_no: '',
 };
 
@@ -114,6 +126,7 @@ export default function DamageRecutting() {
       marker_length: form.marker_length,
       unit: form.unit,
       reason: form.reason || null,
+      remark: form.remark || null,
       line_no: form.line_no || null,
       created_by: user?.id,
     };
@@ -147,6 +160,7 @@ export default function DamageRecutting() {
       marker_length: record.marker_length,
       unit: record.unit,
       reason: record.reason || '',
+      remark: record.remark || '',
       line_no: record.line_no || '',
     });
     setDialogOpen(true);
@@ -268,12 +282,30 @@ export default function DamageRecutting() {
                   <p className="text-2xl font-bold text-primary">{fabricUsage.toFixed(2)} <span className="text-sm font-normal">{form.unit}</span></p>
                 </div>
                 <div>
+                  <Label>Remark</Label>
+                  <Select value={form.remark} onValueChange={v => setForm(p => ({ ...p, remark: v }))}>
+                    <SelectTrigger><SelectValue placeholder="Select remark" /></SelectTrigger>
+                    <SelectContent>
+                      {REMARKS.map(r => (
+                        <SelectItem key={r} value={r}>{r}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
                   <Label>Line No</Label>
                   <Input value={form.line_no} onChange={e => setForm(p => ({ ...p, line_no: e.target.value }))} placeholder="e.g. Line 5" />
                 </div>
                 <div>
                   <Label>Reason</Label>
-                  <Input value={form.reason} onChange={e => setForm(p => ({ ...p, reason: e.target.value }))} placeholder="e.g. Fabric defect" />
+                  <Select value={form.reason} onValueChange={v => setForm(p => ({ ...p, reason: v }))}>
+                    <SelectTrigger><SelectValue placeholder="Select reason" /></SelectTrigger>
+                    <SelectContent>
+                      {REASONS.map(r => (
+                        <SelectItem key={r} value={r}>{r}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
               <div className="flex justify-end gap-2 mt-4">
@@ -334,6 +366,7 @@ export default function DamageRecutting() {
                     <TableHead className="text-right">YY</TableHead>
                     <TableHead className="text-right">Fabric Usage</TableHead>
                     <TableHead>Unit</TableHead>
+                    <TableHead>Remark</TableHead>
                     <TableHead>Reason</TableHead>
                     <TableHead>Line</TableHead>
                     <TableHead className="w-20">Actions</TableHead>
@@ -341,9 +374,9 @@ export default function DamageRecutting() {
                 </TableHeader>
                 <TableBody>
                   {loading ? (
-                    <TableRow><TableCell colSpan={12} className="text-center py-8 text-muted-foreground">Loading...</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={13} className="text-center py-8 text-muted-foreground">Loading...</TableCell></TableRow>
                   ) : filtered.length === 0 ? (
-                    <TableRow><TableCell colSpan={12} className="text-center py-8 text-muted-foreground">No damage records found</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={13} className="text-center py-8 text-muted-foreground">No damage records found</TableCell></TableRow>
                   ) : (
                     filtered.map((r, i) => (
                       <TableRow key={r.id}>
@@ -358,6 +391,7 @@ export default function DamageRecutting() {
                         <TableCell className="text-right">{r.marker_length}</TableCell>
                         <TableCell className="text-right font-bold text-destructive">{r.fabric_usage?.toFixed(2)}</TableCell>
                         <TableCell>{r.unit}</TableCell>
+                        <TableCell>{r.remark || '-'}</TableCell>
                         <TableCell className="max-w-[120px] truncate">{r.reason || '-'}</TableCell>
                         <TableCell>{r.line_no || '-'}</TableCell>
                         <TableCell>
