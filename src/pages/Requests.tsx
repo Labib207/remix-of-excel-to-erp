@@ -113,7 +113,7 @@ const emptyRequestForm = (): RequestForm => ({
 
 export default function Requests() {
   const [activeTab, setActiveTab] = useState('raw-material');
-  const { addRequest, exportMonthlyExcel, submittedRequests } = useRequestStore();
+  const { addRequest, updateRequest, exportMonthlyExcel, submittedRequests } = useRequestStore();
   const { updateRequestedQty, materialCatalog } = useRequirementStore();
   const { data: requirements = [] } = useDbRequirements();
   const { data: orders = [] } = useDbOrders();
@@ -134,6 +134,9 @@ export default function Requests() {
   // Material Return Slip State
   const [materialReturnForm, setMaterialReturnForm] = useState<RequestForm>(emptyRequestForm());
   const [materialReturnItems, setMaterialReturnItems] = useState<ReturnItem[]>([]);
+
+  // Track editing request from history
+  const [editingRequestId, setEditingRequestId] = useState<string | null>(null);
 
   // Edit Order State
   const [isEditOrderOpen, setIsEditOrderOpen] = useState(false);
@@ -426,9 +429,23 @@ export default function Requests() {
       return;
     }
 
-    const docNumber = getNextDocNumber(
+    // Use existing doc number if editing, otherwise generate new one
+    const isEditing = !!editingRequestId;
+    const existingRequest = isEditing ? submittedRequests.find(r => r.id === editingRequestId) : null;
+    const docNumber = existingRequest?.docNumber || getNextDocNumber(
       type === 'raw' ? 'RMR' : type === 'general' ? 'GSR' : 'MRS'
     );
+
+    const saveOrUpdate = (requestData: Parameters<typeof addRequest>[0]) => {
+      if (isEditing && editingRequestId) {
+        updateRequest(editingRequestId, requestData);
+        setEditingRequestId(null);
+        toast.success(`Request ${docNumber} updated successfully`);
+      } else {
+        addRequest(requestData);
+        toast.success(`Request ${docNumber} submitted successfully`);
+      }
+    };
 
     if (type === 'raw') {
       if (rawMaterialItems.length === 0) {
@@ -455,7 +472,7 @@ export default function Requests() {
       const orderName = selectedOrder 
         ? `${selectedOrder.orderNumber} ${selectedOrder.styleNo || ''} ${selectedOrder.customer || ''} ${selectedOrder.totalQty || ''} QTY`.trim()
         : '';
-      addRequest({
+      saveOrUpdate({
         type: 'raw-material',
         docNumber,
         form: { ...rawMaterialForm, orderName },
@@ -463,7 +480,6 @@ export default function Requests() {
       });
       setRawMaterialForm(emptyRequestForm());
       setRawMaterialItems([]);
-      toast.success(`Raw Material Request ${docNumber} submitted successfully`);
     } else if (type === 'general') {
       if (generalSuppliesItems.length === 0) {
         toast.error('Please add at least one item before submitting');
@@ -471,7 +487,7 @@ export default function Requests() {
       }
       // Auto-fill empty requestedQty with requirementQty before submission
       const itemsToSubmit = autoFillRequestedQty(generalSuppliesItems);
-      addRequest({
+      saveOrUpdate({
         type: 'general-supplies',
         docNumber,
         form: { ...generalSuppliesForm },
@@ -479,7 +495,6 @@ export default function Requests() {
       });
       setGeneralSuppliesForm(emptyRequestForm());
       setGeneralSuppliesItems([]);
-      toast.success(`General Supplies Request ${docNumber} submitted successfully`);
     } else {
       if (materialReturnItems.length === 0) {
         toast.error('Please add at least one item before submitting');
@@ -489,7 +504,7 @@ export default function Requests() {
       const orderNameReturn = selectedOrderReturn 
         ? `${selectedOrderReturn.orderNumber} ${selectedOrderReturn.styleNo || ''} ${selectedOrderReturn.customer || ''} ${selectedOrderReturn.totalQty || ''} QTY`.trim()
         : '';
-      addRequest({
+      saveOrUpdate({
         type: 'material-return',
         docNumber,
         form: { ...materialReturnForm, orderName: orderNameReturn },
@@ -497,7 +512,6 @@ export default function Requests() {
       });
       setMaterialReturnForm(emptyRequestForm());
       setMaterialReturnItems([]);
-      toast.success(`Material Return Slip ${docNumber} submitted successfully`);
     }
   };
 
@@ -540,7 +554,7 @@ export default function Requests() {
             </Button>
             <Button onClick={() => submitRequest(type)} className="gap-2">
               <Send className="h-4 w-4" />
-              Submit
+              {editingRequestId ? 'Update' : 'Submit'}
             </Button>
           </div>
         </CardHeader>
@@ -928,7 +942,7 @@ export default function Requests() {
                   </Button>
                   <Button onClick={() => submitRequest('return')} className="gap-2">
                     <Send className="h-4 w-4" />
-                    Submit
+                    {editingRequestId ? 'Update' : 'Submit'}
                   </Button>
                 </div>
               </CardHeader>
@@ -1090,6 +1104,9 @@ export default function Requests() {
 
           <TabsContent value="history" className="mt-6">
             <RequestHistoryTable onEdit={(request) => {
+              // Track which request we're editing so submit updates instead of duplicating
+              setEditingRequestId(request.id);
+              
               // Load the request back into the appropriate form for editing
               const tabType = request.type === 'raw-material' ? 'raw-material' : 
                               request.type === 'general-supplies' ? 'general-supplies' : 'material-return';
@@ -1121,6 +1138,9 @@ export default function Requests() {
               } else {
                 const setForm = request.type === 'raw-material' ? setRawMaterialForm : setGeneralSuppliesForm;
                 const setItems = request.type === 'raw-material' ? setRawMaterialItems : setGeneralSuppliesItems;
+                // Mark as manually edited so auto-sync doesn't overwrite
+                if (request.type === 'raw-material') rawManualEdit.current = true;
+                else generalManualEdit.current = true;
                 setForm(form);
                 const items = (request.items as any[]).map((item, idx) => ({
                   id: generateId(),

@@ -50,6 +50,7 @@ interface RequestStore {
   submittedRequests: SubmittedRequest[];
   addRequest: (request: Omit<SubmittedRequest, 'id' | 'submittedAt'>) => void;
   addExternalRequest: (request: Omit<SubmittedRequest, 'id' | 'submittedAt' | 'isExternal'>) => void;
+  updateRequest: (id: string, request: Omit<SubmittedRequest, 'id' | 'submittedAt'>) => void;
   deleteRequest: (id: string) => void;
   getRequestsByMonth: (year: number, month: number) => SubmittedRequest[];
   exportMonthlyExcel: (year: number, month: number) => void;
@@ -99,6 +100,16 @@ export const useRequestStore = create<RequestStore>()(
         };
         set((state) => ({
           submittedRequests: [...state.submittedRequests, newRequest],
+        }));
+      },
+
+      updateRequest: (id, request) => {
+        set((state) => ({
+          submittedRequests: state.submittedRequests.map((req) =>
+            req.id === id
+              ? { ...request, id, submittedAt: req.submittedAt }
+              : req
+          ),
         }));
       },
 
