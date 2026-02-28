@@ -100,24 +100,40 @@ class SyncEngine {
           continue;
         }
 
+        // Build a set of cloud IDs for this table
+        const cloudIds = new Set((data || []).map((row: any) => row.id));
+
+        // First: remove local synced records that no longer exist in cloud
+        const tx1 = db.transaction(table as any, 'readwrite');
+        const store1 = tx1.objectStore(table as any);
+        const allLocal = await store1.getAll();
+        for (const local of allLocal) {
+          const loc = local as any;
+          // Only remove if it was synced (not a local-only new record) and not in cloud
+          if (loc._synced === 1 && loc._deleted === 0 && !cloudIds.has(loc.id)) {
+            await store1.delete(loc.id);
+          }
+        }
+        await tx1.done;
+
+        // Then: upsert cloud data into local
         if (data && data.length > 0) {
-          const tx = db.transaction(table as any, 'readwrite');
-          const store = tx.objectStore(table as any);
+          const tx2 = db.transaction(table as any, 'readwrite');
+          const store2 = tx2.objectStore(table as any);
 
           for (const row of data) {
-            const existing = await store.get(row.id);
+            const existing = await store2.get(row.id);
             // If locally deleted (pending cloud delete), don't restore from cloud
             if (existing && existing._deleted === 1) {
               continue;
             }
             // Only overwrite if not locally modified (or if no local record exists)
             if (!existing || existing._synced === 1) {
-              await store.put({ ...row, _synced: 1, _deleted: 0 } as any);
+              await store2.put({ ...row, _synced: 1, _deleted: 0 } as any);
             }
-            // If local record exists and is unsynced, keep local version (it has priority)
           }
 
-          await tx.done;
+          await tx2.done;
         }
       }
 
