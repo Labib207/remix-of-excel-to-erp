@@ -238,6 +238,65 @@ export type Database = {
           },
         ]
       }
+      damage_recutting: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          date: string
+          fabric_usage: number | null
+          id: string
+          line_no: string | null
+          marker_length: number
+          order_id: string | null
+          part_name: string
+          quantity: number
+          reason: string | null
+          size_code: string
+          unit: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          date?: string
+          fabric_usage?: number | null
+          id?: string
+          line_no?: string | null
+          marker_length?: number
+          order_id?: string | null
+          part_name: string
+          quantity?: number
+          reason?: string | null
+          size_code: string
+          unit?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          date?: string
+          fabric_usage?: number | null
+          id?: string
+          line_no?: string | null
+          marker_length?: number
+          order_id?: string | null
+          part_name?: string
+          quantity?: number
+          reason?: string | null
+          size_code?: string
+          unit?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "damage_recutting_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       delivery_acknowledgments: {
         Row: {
           acknowledgment_no: string
