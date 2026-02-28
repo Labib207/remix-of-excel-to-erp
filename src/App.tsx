@@ -22,7 +22,7 @@ import Requirements from "./pages/Requirements";
 import Auth from "./pages/Auth";
 import Admin from "./pages/Admin";
 import Profile from "./pages/Profile";
-import DamageRecutting from "./pages/DamageRecutting";
+
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -48,7 +48,7 @@ const App = () => (
               <Route path="/requirements" element={<ProtectedRoute><Requirements /></ProtectedRoute>} />
               <Route path="/requests" element={<ProtectedRoute><Requests /></ProtectedRoute>} />
               <Route path="/delivery-notes" element={<ProtectedRoute><DeliveryNotes /></ProtectedRoute>} />
-              <Route path="/damage-recutting" element={<ProtectedRoute><DamageRecutting /></ProtectedRoute>} />
+              
               <Route path="/reconciliation" element={<ProtectedRoute><Reconciliation /></ProtectedRoute>} />
               <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
               <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
