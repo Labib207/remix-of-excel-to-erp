@@ -30,7 +30,7 @@ import { syncEngine } from '@/lib/syncEngine';
 import { toast } from 'sonner';
 import { MaterialRequirement } from '@/store/requirementStore';
 import { useDbOrders, useCreateDbOrder, useDeleteDbOrder, useUpdateDbOrder } from '@/hooks/useDbOrders';
-import { useDbRequirements, useCreateDbRequirement, useUpdateDbRequirement, useDeleteDbRequirement } from '@/hooks/useDbRequirements';
+import { useDbRequirements, useCreateDbRequirement, useCreateDbRequirements, useUpdateDbRequirement, useDeleteDbRequirement } from '@/hooks/useDbRequirements';
 import { useRequirementStore } from '@/store/requirementStore';
 import { Badge } from '@/components/ui/badge';
 import { DescriptionAutocomplete } from './DescriptionAutocomplete';
@@ -84,6 +84,7 @@ export function RequirementsTab() {
   
   const { data: allRequirements = [], isLoading: reqsLoading } = useDbRequirements();
   const createRequirement = useCreateDbRequirement();
+  const createRequirementsBatch = useCreateDbRequirements();
   const updateRequirementMutation = useUpdateDbRequirement();
   const deleteRequirementMutation = useDeleteDbRequirement();
   
@@ -248,25 +249,21 @@ export function RequirementsTab() {
       return;
     }
 
-    // Save each requirement to DB
-    let savedCount = 0;
-    validItems.forEach(item => {
-      createRequirement.mutate({
-        orderId: selectedOrderId,
-        itemCode: item.itemCode,
-        description: item.description,
-        uom: item.uom,
-        requiredQty: item.requiredQty,
-        remarks: item.remarks,
-      }, {
-        onSuccess: () => {
-          savedCount++;
-          if (savedCount === validItems.length) {
-            setNewItems([emptyRequirement()]);
-            toast.success(`${validItems.length} requirement(s) added successfully`);
-          }
-        }
-      });
+    // Use batch creation to prevent race conditions
+    const batchItems = validItems.map(item => ({
+      orderId: selectedOrderId,
+      itemCode: item.itemCode,
+      description: item.description,
+      uom: item.uom,
+      requiredQty: item.requiredQty,
+      remarks: item.remarks,
+    }));
+
+    createRequirementsBatch.mutate(batchItems, {
+      onSuccess: () => {
+        setNewItems([emptyRequirement()]);
+        toast.success(`${validItems.length} requirement(s) added successfully`);
+      }
     });
   };
 
@@ -632,8 +629,8 @@ export function RequirementsTab() {
                   <Plus className="h-4 w-4" />
                   Add Row
                 </Button>
-                <Button onClick={saveRequirements} className="gap-2" disabled={createRequirement.isPending}>
-                  {createRequirement.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                <Button onClick={saveRequirements} className="gap-2" disabled={createRequirementsBatch.isPending}>
+                  {createRequirementsBatch.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                   <Package className="h-4 w-4" />
                   Save Requirements
                 </Button>
