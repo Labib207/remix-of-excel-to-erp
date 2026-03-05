@@ -26,7 +26,12 @@ export function useLocalRequirements(orderId?: string) {
       const all = await db.getAll('requirements');
       return all
         .filter(r => r._deleted === 0 && (!orderId || r.order_id === orderId))
-        .sort((a, b) => (a.sort_order ?? 999) - (b.sort_order ?? 999))
+        .sort((a, b) => {
+          const sa = a.sort_order ?? 999;
+          const sb = b.sort_order ?? 999;
+          if (sa !== sb) return sa - sb;
+          return (a.created_at ?? '').localeCompare(b.created_at ?? '');
+        })
         .map(localToApp);
     },
   });
