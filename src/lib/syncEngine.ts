@@ -135,7 +135,13 @@ class SyncEngine {
             }
             // Only overwrite if not locally modified (or if no local record exists)
             if (!existing || existing._synced === 1) {
-              await store2.put({ ...row, _synced: 1, _deleted: 0 } as any);
+              await store2.put({
+                ...row,
+                // Preserve local sort_order if server doesn't provide one
+                sort_order: (row as any).sort_order ?? existing?.sort_order ?? null,
+                _synced: 1,
+                _deleted: 0,
+              } as any);
             }
           }
 
