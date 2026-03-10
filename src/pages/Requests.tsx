@@ -84,8 +84,7 @@ interface RequestForm {
 
 const generateId = () => Math.random().toString(36).substr(2, 9);
 
-// Document number generation now uses shared utility
-import { getNextDocNumber } from '@/lib/docNumberGenerator';
+
 
 const emptyRequestForm = (): RequestForm => ({
   date: format(new Date(), 'yyyy-MM-dd'),
