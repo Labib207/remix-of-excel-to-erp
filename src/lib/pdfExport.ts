@@ -11,18 +11,7 @@ declare module 'jspdf' {
   }
 }
 
-// Document number counter (persisted in localStorage)
-const getNextDocNumber = (prefix: string): string => {
-  const key = `ghoush_doc_counter_${prefix}`;
-  const yearMonth = new Date().toISOString().slice(0, 7).replace('-', '');
-  const counterKey = `${key}_${yearMonth}`;
-  
-  let counter = parseInt(localStorage.getItem(counterKey) || '0', 10);
-  counter++;
-  localStorage.setItem(counterKey, counter.toString());
-  
-  return `${prefix}-${yearMonth}-${counter.toString().padStart(5, '0')}`;
-};
+import { getNextDocNumber } from '@/lib/docNumberGenerator';
 
 // Generate barcode as base64 image
 const generateBarcode = (text: string, width: number = 150, height: number = 40): string => {
