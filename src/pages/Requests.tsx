@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { getNextDocNumber } from '@/lib/docNumberGenerator';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
