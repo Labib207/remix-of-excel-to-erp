@@ -83,23 +83,8 @@ interface RequestForm {
 
 const generateId = () => Math.random().toString(36).substr(2, 9);
 
-const getNextDocNumber = (prefix: string) => {
-  const key = `docNumber_${prefix}`;
-  const stored = localStorage.getItem(key);
-  const now = new Date();
-  const yearMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-  
-  let counter = 1;
-  if (stored) {
-    const [storedYearMonth, storedCounter] = stored.split('-');
-    if (storedYearMonth === yearMonth) {
-      counter = parseInt(storedCounter) + 1;
-    }
-  }
-  
-  localStorage.setItem(key, `${yearMonth}-${counter}`);
-  return `${prefix}-${String(counter).padStart(4, '0')}-${yearMonth}`;
-};
+// Document number generation now uses shared utility
+import { getNextDocNumber } from '@/lib/docNumberGenerator';
 
 const emptyRequestForm = (): RequestForm => ({
   date: format(new Date(), 'yyyy-MM-dd'),
