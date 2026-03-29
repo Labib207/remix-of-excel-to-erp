@@ -38,6 +38,7 @@ export default function Admin() {
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
   const { toast } = useToast();
 
   const fetchUsers = async () => {
