@@ -32,6 +32,9 @@ class SyncEngine {
   private status: SyncStatus = 'idle';
   private isSyncing = false;
   private syncTimer: ReturnType<typeof setTimeout> | null = null;
+  // Track recently deleted IDs to prevent resurrection during pull
+  private recentlyDeletedIds: Map<string, number> = new Map(); // id -> timestamp
+  private static DELETED_ID_TTL = 30000; // 30 seconds
 
   static getInstance(): SyncEngine {
     if (!SyncEngine.instance) {
