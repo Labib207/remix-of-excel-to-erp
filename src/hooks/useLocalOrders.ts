@@ -129,19 +129,40 @@ export function useDeleteLocalOrder() {
 
   return useMutation({
     mutationFn: async (id: string) => {
+      // Track this ID to prevent resurrection during sync pull
+      syncEngine.trackDeletedId(id);
+
       const db = await getLocalDb();
       const existing = await db.get('orders', id);
       if (existing) {
         await db.put('orders', { ...existing, _deleted: 1, _synced: 0, updated_at: nowISO() });
       }
-      // Sync immediately for deletes (don't debounce)
+      return id;
+    },
+    onMutate: async (id: string) => {
+      await queryClient.cancelQueries({ queryKey: ['local_orders'] });
+
+      const previous = queryClient.getQueriesData({ queryKey: ['local_orders'] });
+
+      queryClient.setQueriesData({ queryKey: ['local_orders'] }, (old: any) => {
+        if (Array.isArray(old)) {
+          return old.filter((item: any) => item.id !== id);
+        }
+        return old;
+      });
+
+      return { previous };
+    },
+    onSuccess: async () => {
       await syncEngine.syncAll();
-    },
-    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['local_orders'] });
-      toast.success('Order deleted');
     },
-    onError: (error) => {
+    onError: (error, _id, context) => {
+      if (context?.previous) {
+        for (const [key, data] of context.previous) {
+          queryClient.setQueryData(key, data);
+        }
+      }
       toast.error('Failed to delete order: ' + error.message);
     },
   });
