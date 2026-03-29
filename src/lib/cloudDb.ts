@@ -80,11 +80,11 @@ export async function cloudInsert(table: TableName, data: any, userId?: string):
   const cleanRow = stripGenerated(table, row);
 
   if (navigator.onLine) {
-    const { data: inserted, error } = await supabase
+    const { data: inserted, error } = await (supabase
       .from(table)
       .insert(cleanRow)
       .select()
-      .single();
+      .single() as any);
 
     if (error) throw new Error(`Insert ${table} failed: ${error.message}`);
 
