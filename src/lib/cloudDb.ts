@@ -166,11 +166,11 @@ export async function cloudUpsert(table: TableName, data: any, userId?: string):
   const cleanRow = stripGenerated(table, row);
 
   if (navigator.onLine) {
-    const { data: result, error } = await supabase
+    const { data: result, error } = await (supabase
       .from(table)
       .upsert(cleanRow, { onConflict: 'id' })
       .select()
-      .single();
+      .single() as any);
 
     if (error) throw new Error(`Upsert ${table} failed: ${error.message}`);
 
