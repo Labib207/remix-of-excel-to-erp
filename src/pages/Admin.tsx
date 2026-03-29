@@ -146,6 +146,26 @@ export default function Admin() {
           <p className="text-muted-foreground mt-1">
             Manage users and their roles
           </p>
+          <Button
+            variant="outline"
+            className="mt-2"
+            disabled={isExporting}
+            onClick={async () => {
+              setIsExporting(true);
+              try {
+                const data = await exportAllLocalData();
+                downloadBackupJson(data);
+                toast({ title: 'Backup Downloaded', description: 'All local data exported as JSON' });
+              } catch (e: any) {
+                toast({ variant: 'destructive', title: 'Export Failed', description: e.message });
+              } finally {
+                setIsExporting(false);
+              }
+            }}
+          >
+            {isExporting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Download className="h-4 w-4 mr-2" />}
+            Backup Local Data
+          </Button>
         </div>
 
         {/* Stats */}
