@@ -33,7 +33,7 @@ class SyncEngine {
   private isSyncing = false;
   private syncTimer: ReturnType<typeof setTimeout> | null = null;
   // Track recently deleted IDs to prevent resurrection during pull
-  private recentlyDeletedIds: Map<string, number> = new Map(); // id -> timestamp
+  private recentlyDeletedIds: Map<string, number> = new Map();
   private static DELETED_ID_TTL = 30000; // 30 seconds
 
   static getInstance(): SyncEngine {
@@ -69,7 +69,7 @@ class SyncEngine {
     this.listeners.forEach(l => l(status));
   }
 
-  // Track a deleted ID to prevent resurrection
+  // Track a deleted ID to prevent resurrection during pull
   trackDeletedId(id: string) {
     this.recentlyDeletedIds.set(id, Date.now());
     // Clean up old entries
@@ -89,6 +89,7 @@ class SyncEngine {
     return true;
   }
 
+  private async handleOnline() {
     console.log('[SyncEngine] Back online, starting sync...');
     await this.syncAll();
   }
@@ -150,8 +151,14 @@ class SyncEngine {
           const store2 = tx2.objectStore(table as any);
 
           for (const row of data) {
+            // GUARD 1: Skip if this ID was recently deleted locally
+            if (this.isRecentlyDeleted(row.id)) {
+              console.log(`[SyncEngine] Skipping recently deleted ${table} record ${row.id}`);
+              continue;
+            }
+
             const existing = await store2.get(row.id);
-            // If locally deleted (pending cloud delete), don't restore from cloud
+            // GUARD 2: If locally deleted (pending cloud delete), don't restore from cloud
             if (existing && existing._deleted === 1) {
               continue;
             }
@@ -244,10 +251,15 @@ class SyncEngine {
         // Delete records
         if (toDelete.length > 0) {
           for (const record of toDelete) {
+            const recordId = (record as any).id;
+            
+            // Track this ID as recently deleted BEFORE removing from IndexedDB
+            this.trackDeletedId(recordId);
+
             const { error } = await supabase
               .from(table)
               .delete()
-              .eq('id', (record as any).id);
+              .eq('id', recordId);
 
             if (error) {
               console.error(`[SyncEngine] Delete error for ${table}:`, error);
@@ -256,7 +268,7 @@ class SyncEngine {
 
             // Remove from local DB
             const tx = db.transaction(table as any, 'readwrite');
-            await tx.objectStore(table as any).delete((record as any).id);
+            await tx.objectStore(table as any).delete(recordId);
             await tx.done;
           }
         }
