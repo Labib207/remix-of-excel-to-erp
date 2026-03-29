@@ -114,18 +114,33 @@ export function useDeleteLocalCutPlan() {
 
   return useMutation({
     mutationFn: async (id: string) => {
+      syncEngine.trackDeletedId(id);
       const db = await getLocalDb();
       const existing = await db.get('cut_plans', id);
       if (existing) {
         await db.put('cut_plans', { ...existing, _deleted: 1, _synced: 0, updated_at: nowISO() });
       }
-      syncEngine.scheduleSyncDebounced();
+      return id;
     },
-    onSuccess: () => {
+    onMutate: async (id: string) => {
+      await queryClient.cancelQueries({ queryKey: ['local_cut_plans'] });
+      const previous = queryClient.getQueriesData({ queryKey: ['local_cut_plans'] });
+      queryClient.setQueriesData({ queryKey: ['local_cut_plans'] }, (old: any) => {
+        if (Array.isArray(old)) return old.filter((item: any) => item.id !== id);
+        return old;
+      });
+      return { previous };
+    },
+    onSuccess: async () => {
+      await syncEngine.syncAll();
       queryClient.invalidateQueries({ queryKey: ['local_cut_plans'] });
-      toast.success('Cut plan deleted');
     },
-    onError: (error) => {
+    onError: (error, _id, context) => {
+      if (context?.previous) {
+        for (const [key, data] of context.previous) {
+          queryClient.setQueryData(key, data);
+        }
+      }
       toast.error('Failed to delete cut plan: ' + error.message);
     },
   });

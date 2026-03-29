@@ -186,19 +186,46 @@ export function useDeleteLocalRequirement() {
 
   return useMutation({
     mutationFn: async (id: string) => {
+      // Track this ID to prevent resurrection during sync pull
+      syncEngine.trackDeletedId(id);
+
       const db = await getLocalDb();
       const existing = await db.get('requirements', id);
       if (existing) {
         await db.put('requirements', { ...existing, _deleted: 1, _synced: 0, updated_at: nowISO() });
       }
-      // Sync immediately for deletes (don't debounce)
+      return id;
+    },
+    onMutate: async (id: string) => {
+      // Cancel any outgoing refetches so they don't overwrite our optimistic update
+      await queryClient.cancelQueries({ queryKey: ['local_requirements'] });
+
+      // Snapshot current data
+      const previous = queryClient.getQueriesData({ queryKey: ['local_requirements'] });
+
+      // Optimistically remove the item from all requirement queries
+      queryClient.setQueriesData({ queryKey: ['local_requirements'] }, (old: any) => {
+        if (Array.isArray(old)) {
+          return old.filter((item: any) => item.id !== id);
+        }
+        return old;
+      });
+
+      return { previous };
+    },
+    onSuccess: async () => {
+      // Sync to cloud after optimistic update is already applied
       await syncEngine.syncAll();
-    },
-    onSuccess: () => {
+      // Re-invalidate after sync to ensure consistency
       queryClient.invalidateQueries({ queryKey: ['local_requirements'] });
-      toast.success('Requirement deleted');
     },
-    onError: (error) => {
+    onError: (error, _id, context) => {
+      // Rollback optimistic update on error
+      if (context?.previous) {
+        for (const [key, data] of context.previous) {
+          queryClient.setQueryData(key, data);
+        }
+      }
       toast.error('Failed to delete requirement: ' + error.message);
     },
   });

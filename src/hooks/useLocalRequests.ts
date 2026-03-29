@@ -174,29 +174,46 @@ export function useDeleteLocalRequest() {
 
   return useMutation({
     mutationFn: async (id: string) => {
+      syncEngine.trackDeletedId(id);
       const db = await getLocalDb();
       const existing = await db.get('requests', id);
       if (existing) {
         await db.put('requests', { ...existing, _deleted: 1, _synced: 0, updated_at: nowISO() });
       }
-      // Also soft-delete related items
+      // Also soft-delete related items and track their IDs
       const items = await db.getAll('request_items');
       const tx = db.transaction('request_items', 'readwrite');
       for (const item of items) {
         if (item.request_id === id) {
+          syncEngine.trackDeletedId(item.id);
           await tx.store.put({ ...item, _deleted: 1, _synced: 0 });
         }
       }
       await tx.done;
-
-      syncEngine.scheduleSyncDebounced();
+      return id;
     },
-    onSuccess: () => {
+    onMutate: async (id: string) => {
+      await queryClient.cancelQueries({ queryKey: ['local_requests'] });
+      await queryClient.cancelQueries({ queryKey: ['local_request_items'] });
+      const prevRequests = queryClient.getQueriesData({ queryKey: ['local_requests'] });
+      const prevItems = queryClient.getQueriesData({ queryKey: ['local_request_items'] });
+      queryClient.setQueriesData({ queryKey: ['local_requests'] }, (old: any) => {
+        if (Array.isArray(old)) return old.filter((item: any) => item.id !== id);
+        return old;
+      });
+      return { prevRequests, prevItems };
+    },
+    onSuccess: async () => {
+      await syncEngine.syncAll();
       queryClient.invalidateQueries({ queryKey: ['local_requests'] });
       queryClient.invalidateQueries({ queryKey: ['local_request_items'] });
-      toast.success('Request deleted');
     },
-    onError: (error) => {
+    onError: (error, _id, context) => {
+      if (context?.prevRequests) {
+        for (const [key, data] of context.prevRequests) {
+          queryClient.setQueryData(key, data);
+        }
+      }
       toast.error('Failed to delete request: ' + error.message);
     },
   });
