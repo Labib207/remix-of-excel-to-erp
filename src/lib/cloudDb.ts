@@ -108,12 +108,12 @@ export async function cloudUpdate(table: TableName, id: string, updates: any): P
   const cleanUpdates = stripGenerated(table, updates);
 
   if (navigator.onLine) {
-    const { data: updated, error } = await supabase
+    const { data: updated, error } = await (supabase
       .from(table)
       .update(cleanUpdates)
       .eq('id', id)
       .select()
-      .single();
+      .single() as any);
 
     if (error) throw new Error(`Update ${table} failed: ${error.message}`);
 
