@@ -21,8 +21,9 @@ import {
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Shield, Users, Search, Loader2, Save } from 'lucide-react';
+import { Shield, Users, Search, Loader2, Save, Download } from 'lucide-react';
 import { format } from 'date-fns';
+import { exportAllLocalData, downloadBackupJson } from '@/lib/backupExport';
 
 interface UserWithRole {
   id: string;
