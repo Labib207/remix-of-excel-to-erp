@@ -37,7 +37,7 @@ export async function cloudFetch(table: TableName, filters?: Record<string, any>
   // Try cloud first
   if (navigator.onLine) {
     try {
-      let query = supabase.from(table).select('*');
+      let query = supabase.from(table).select('*') as any;
       if (filters) {
         for (const [key, value] of Object.entries(filters)) {
           if (value !== undefined && value !== null) {
