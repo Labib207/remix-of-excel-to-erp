@@ -69,7 +69,26 @@ class SyncEngine {
     this.listeners.forEach(l => l(status));
   }
 
-  private async handleOnline() {
+  // Track a deleted ID to prevent resurrection
+  trackDeletedId(id: string) {
+    this.recentlyDeletedIds.set(id, Date.now());
+    // Clean up old entries
+    const cutoff = Date.now() - SyncEngine.DELETED_ID_TTL;
+    for (const [key, ts] of this.recentlyDeletedIds) {
+      if (ts < cutoff) this.recentlyDeletedIds.delete(key);
+    }
+  }
+
+  isRecentlyDeleted(id: string): boolean {
+    const ts = this.recentlyDeletedIds.get(id);
+    if (!ts) return false;
+    if (Date.now() - ts > SyncEngine.DELETED_ID_TTL) {
+      this.recentlyDeletedIds.delete(id);
+      return false;
+    }
+    return true;
+  }
+
     console.log('[SyncEngine] Back online, starting sync...');
     await this.syncAll();
   }
