@@ -1,11 +1,13 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getLocalDb, generateLocalId, nowISO } from '@/lib/localDb';
+import { generateLocalId, nowISO } from '@/lib/localDb';
+import { cloudFetch, cloudInsert, cloudDelete } from '@/lib/cloudDb';
 import { syncEngine } from '@/lib/syncEngine';
 import { toast } from 'sonner';
 import { MarkerPlan } from '@/types/cutting';
 import { dbMarkerPlanToApp } from '@/lib/dbMappers';
+import { useAuth } from '@/contexts/AuthContext';
 
-function localToApp(row: any): MarkerPlan {
+function rowToApp(row: any): MarkerPlan {
   return dbMarkerPlanToApp(row);
 }
 
@@ -13,22 +15,21 @@ export function useLocalMarkerPlans(orderId?: string) {
   return useQuery({
     queryKey: ['local_marker_plans', orderId],
     queryFn: async () => {
-      const db = await getLocalDb();
-      const all = await db.getAll('marker_plans');
-      return all
-        .filter(r => r._deleted === 0 && (!orderId || r.order_id === orderId))
-        .sort((a, b) => (a.marker_no ?? '').localeCompare(b.marker_no ?? ''))
-        .map(localToApp);
+      const filters = orderId ? { order_id: orderId } : undefined;
+      const rows = await cloudFetch('marker_plans', filters);
+      return rows
+        .sort((a: any, b: any) => (a.marker_no ?? '').localeCompare(b.marker_no ?? ''))
+        .map(rowToApp);
     },
   });
 }
 
 export function useCreateLocalMarkerPlan() {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
   return useMutation({
     mutationFn: async (marker: MarkerPlan) => {
-      const db = await getLocalDb();
       const row = {
         id: generateLocalId(),
         order_id: marker.orderId || null,
@@ -37,18 +38,14 @@ export function useCreateLocalMarkerPlan() {
         marker_width: marker.fabricWidth,
         efficiency: marker.efficiency,
         sizes: marker.sizes || {},
-        size_combination: null as string | null,
-        pieces_per_marker: null as number | null,
-        notes: null as string | null,
+        size_combination: null,
+        pieces_per_marker: null,
+        notes: null,
         created_at: nowISO(),
         updated_at: nowISO(),
-        created_by: null as string | null,
-        _synced: 0,
-        _deleted: 0,
       };
-      await db.put('marker_plans', row);
-      syncEngine.scheduleSyncDebounced();
-      return localToApp(row);
+      const result = await cloudInsert('marker_plans', row, user?.id);
+      return rowToApp(result);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['local_marker_plans'] });
@@ -66,11 +63,7 @@ export function useDeleteLocalMarkerPlan() {
   return useMutation({
     mutationFn: async (id: string) => {
       syncEngine.trackDeletedId(id);
-      const db = await getLocalDb();
-      const existing = await db.get('marker_plans', id);
-      if (existing) {
-        await db.put('marker_plans', { ...existing, _deleted: 1, _synced: 0, updated_at: nowISO() });
-      }
+      await cloudDelete('marker_plans', id);
       return id;
     },
     onMutate: async (id: string) => {
@@ -82,8 +75,7 @@ export function useDeleteLocalMarkerPlan() {
       });
       return { previous };
     },
-    onSuccess: async () => {
-      await syncEngine.syncAll();
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['local_marker_plans'] });
     },
     onError: (error, _id, context) => {

@@ -1,11 +1,13 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getLocalDb, generateLocalId, nowISO } from '@/lib/localDb';
+import { generateLocalId, nowISO } from '@/lib/localDb';
+import { cloudFetch, cloudInsert, cloudUpdate, cloudDelete } from '@/lib/cloudDb';
 import { syncEngine } from '@/lib/syncEngine';
 import { toast } from 'sonner';
 import { CutPlan } from '@/types/cutting';
 import { dbCutPlanToApp } from '@/lib/dbMappers';
+import { useAuth } from '@/contexts/AuthContext';
 
-function localToApp(row: any): CutPlan {
+function rowToApp(row: any): CutPlan {
   return dbCutPlanToApp(row);
 }
 
@@ -13,22 +15,21 @@ export function useLocalCutPlans(orderId?: string) {
   return useQuery({
     queryKey: ['local_cut_plans', orderId],
     queryFn: async () => {
-      const db = await getLocalDb();
-      const all = await db.getAll('cut_plans');
-      return all
-        .filter(r => r._deleted === 0 && (!orderId || r.order_id === orderId))
-        .sort((a, b) => (a.cut_no ?? 0) - (b.cut_no ?? 0))
-        .map(localToApp);
+      const filters = orderId ? { order_id: orderId } : undefined;
+      const rows = await cloudFetch('cut_plans', filters);
+      return rows
+        .sort((a: any, b: any) => (a.cut_no ?? 0) - (b.cut_no ?? 0))
+        .map(rowToApp);
     },
   });
 }
 
 export function useCreateLocalCutPlan() {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
   return useMutation({
     mutationFn: async (cutPlan: CutPlan) => {
-      const db = await getLocalDb();
       const row = {
         id: generateLocalId(),
         order_id: cutPlan.orderId || null,
@@ -42,21 +43,17 @@ export function useCreateLocalCutPlan() {
         sizes: cutPlan.sizes || {},
         total_qty: cutPlan.totalQty,
         fabric_used: cutPlan.fabricUsed,
-        fabric_type: null as string | null,
-        fabric_width: null as number | null,
+        fabric_type: null,
+        fabric_width: null,
         date: cutPlan.date || null,
-        planned_date: null as string | null,
+        planned_date: null,
         status: cutPlan.status || 'planned',
-        notes: null as string | null,
+        notes: null,
         created_at: nowISO(),
         updated_at: nowISO(),
-        created_by: null as string | null,
-        _synced: 0,
-        _deleted: 0,
       };
-      await db.put('cut_plans', row);
-      syncEngine.scheduleSyncDebounced();
-      return localToApp(row);
+      const result = await cloudInsert('cut_plans', row, user?.id);
+      return rowToApp(result);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['local_cut_plans'] });
@@ -73,31 +70,22 @@ export function useUpdateLocalCutPlan() {
 
   return useMutation({
     mutationFn: async ({ id, ...updates }: Partial<CutPlan> & { id: string }) => {
-      const db = await getLocalDb();
-      const existing = await db.get('cut_plans', id);
-      if (!existing) throw new Error('Cut plan not found');
+      const cloudUpdates: any = { updated_at: nowISO() };
+      if (updates.orderId !== undefined) cloudUpdates.order_id = updates.orderId;
+      if (updates.markerId !== undefined) cloudUpdates.marker_id = updates.markerId;
+      if (updates.cutNo !== undefined) cloudUpdates.cut_no = updates.cutNo;
+      if (updates.shade !== undefined) cloudUpdates.shade = updates.shade;
+      if (updates.plies !== undefined) cloudUpdates.plies = updates.plies;
+      if (updates.markerLength !== undefined) cloudUpdates.marker_length = updates.markerLength;
+      if (updates.layLength !== undefined) cloudUpdates.lay_length = updates.layLength;
+      if (updates.sizes !== undefined) cloudUpdates.sizes = updates.sizes;
+      if (updates.totalQty !== undefined) cloudUpdates.total_qty = updates.totalQty;
+      if (updates.fabricUsed !== undefined) cloudUpdates.fabric_used = updates.fabricUsed;
+      if (updates.date !== undefined) cloudUpdates.date = updates.date;
+      if (updates.status !== undefined) cloudUpdates.status = updates.status;
 
-      const updated = {
-        ...existing,
-        ...(updates.orderId !== undefined && { order_id: updates.orderId }),
-        ...(updates.markerId !== undefined && { marker_id: updates.markerId }),
-        ...(updates.cutNo !== undefined && { cut_no: updates.cutNo }),
-        ...(updates.shade !== undefined && { shade: updates.shade }),
-        ...(updates.plies !== undefined && { plies: updates.plies }),
-        ...(updates.markerLength !== undefined && { marker_length: updates.markerLength }),
-        ...(updates.layLength !== undefined && { lay_length: updates.layLength }),
-        ...(updates.sizes !== undefined && { sizes: updates.sizes }),
-        ...(updates.totalQty !== undefined && { total_qty: updates.totalQty }),
-        ...(updates.fabricUsed !== undefined && { fabric_used: updates.fabricUsed }),
-        ...(updates.date !== undefined && { date: updates.date }),
-        ...(updates.status !== undefined && { status: updates.status }),
-        updated_at: nowISO(),
-        _synced: 0,
-      };
-
-      await db.put('cut_plans', updated);
-      syncEngine.scheduleSyncDebounced();
-      return localToApp(updated);
+      const result = await cloudUpdate('cut_plans', id, cloudUpdates);
+      return rowToApp(result);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['local_cut_plans'] });
@@ -115,11 +103,7 @@ export function useDeleteLocalCutPlan() {
   return useMutation({
     mutationFn: async (id: string) => {
       syncEngine.trackDeletedId(id);
-      const db = await getLocalDb();
-      const existing = await db.get('cut_plans', id);
-      if (existing) {
-        await db.put('cut_plans', { ...existing, _deleted: 1, _synced: 0, updated_at: nowISO() });
-      }
+      await cloudDelete('cut_plans', id);
       return id;
     },
     onMutate: async (id: string) => {
@@ -131,8 +115,7 @@ export function useDeleteLocalCutPlan() {
       });
       return { previous };
     },
-    onSuccess: async () => {
-      await syncEngine.syncAll();
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['local_cut_plans'] });
     },
     onError: (error, _id, context) => {
