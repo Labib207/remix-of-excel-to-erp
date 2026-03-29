@@ -140,7 +140,7 @@ export async function cloudUpdate(table: TableName, id: string, updates: any): P
  */
 export async function cloudDelete(table: TableName, id: string): Promise<void> {
   if (navigator.onLine) {
-    const { error } = await supabase.from(table).delete().eq('id', id);
+    const { error } = await (supabase.from(table).delete().eq('id', id) as any);
     if (error) throw new Error(`Delete ${table} failed: ${error.message}`);
 
     // Remove from local cache
