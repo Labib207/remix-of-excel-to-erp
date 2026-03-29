@@ -1,10 +1,12 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getLocalDb, generateLocalId, nowISO } from '@/lib/localDb';
+import { generateLocalId, nowISO } from '@/lib/localDb';
+import { cloudFetch, cloudInsert, cloudUpdate, cloudDelete } from '@/lib/cloudDb';
 import { syncEngine } from '@/lib/syncEngine';
 import { toast } from 'sonner';
 import { MaterialRequirement } from '@/store/requirementStore';
+import { useAuth } from '@/contexts/AuthContext';
 
-function localToApp(row: any): MaterialRequirement {
+function rowToApp(row: any): MaterialRequirement {
   return {
     id: row.id,
     orderId: row.order_id || '',
@@ -22,34 +24,30 @@ export function useLocalRequirements(orderId?: string) {
   return useQuery({
     queryKey: ['local_requirements', orderId],
     queryFn: async () => {
-      const db = await getLocalDb();
-      const all = await db.getAll('requirements');
-      return all
-        .filter(r => r._deleted === 0 && (!orderId || r.order_id === orderId))
-        .sort((a, b) => {
+      const filters = orderId ? { order_id: orderId } : undefined;
+      const rows = await cloudFetch('requirements', filters);
+      return rows
+        .sort((a: any, b: any) => {
           const sa = a.sort_order ?? 999;
           const sb = b.sort_order ?? 999;
           if (sa !== sb) return sa - sb;
           return (a.created_at ?? '').localeCompare(b.created_at ?? '');
         })
-        .map(localToApp);
+        .map(rowToApp);
     },
   });
 }
 
 export function useCreateLocalRequirement() {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
   return useMutation({
     mutationFn: async (req: Omit<MaterialRequirement, 'id' | 'requestedQty' | 'pendingQty'> & { sortOrder?: number }) => {
-      const db = await getLocalDb();
-      
-      // Get next sort order
       let sortOrder = req.sortOrder;
       if (sortOrder === undefined && req.orderId) {
-        const all = await db.getAll('requirements');
-        const orderReqs = all.filter(r => r.order_id === req.orderId && r._deleted === 0);
-        const maxSort = orderReqs.reduce((max, r) => Math.max(max, r.sort_order ?? 0), 0);
+        const existing = await cloudFetch('requirements', { order_id: req.orderId });
+        const maxSort = existing.reduce((max: number, r: any) => Math.max(max, r.sort_order ?? 0), 0);
         sortOrder = maxSort + 1;
       }
 
@@ -58,25 +56,20 @@ export function useCreateLocalRequirement() {
         order_id: req.orderId || null,
         item_code: req.itemCode,
         description: req.description || null,
-        color: null as string | null,
-        size: null as string | null,
+        color: null,
+        size: null,
         unit: req.uom || 'pcs',
         required_qty: req.requiredQty,
         received_qty: 0,
-        balance_qty: req.requiredQty,
         sort_order: sortOrder ?? null,
         status: 'pending',
         notes: req.remarks || null,
         created_at: nowISO(),
         updated_at: nowISO(),
-        created_by: null as string | null,
-        _synced: 0,
-        _deleted: 0,
       };
 
-      await db.put('requirements', row);
-      syncEngine.scheduleSyncDebounced();
-      return localToApp(row);
+      const result = await cloudInsert('requirements', row, user?.id);
+      return rowToApp(result);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['local_requirements'] });
@@ -89,48 +82,41 @@ export function useCreateLocalRequirement() {
 
 export function useCreateLocalRequirements() {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
   return useMutation({
     mutationFn: async (reqs: Omit<MaterialRequirement, 'id' | 'requestedQty' | 'pendingQty'>[]) => {
-      const db = await getLocalDb();
       const orderId = reqs[0]?.orderId;
-      
       let startOrder = 1;
       if (orderId) {
-        const all = await db.getAll('requirements');
-        const orderReqs = all.filter(r => r.order_id === orderId && r._deleted === 0);
-        startOrder = orderReqs.reduce((max, r) => Math.max(max, r.sort_order ?? 0), 0) + 1;
+        const existing = await cloudFetch('requirements', { order_id: orderId });
+        startOrder = existing.reduce((max: number, r: any) => Math.max(max, r.sort_order ?? 0), 0) + 1;
       }
 
-      const rows = reqs.map((req, idx) => ({
-        id: generateLocalId(),
-        order_id: req.orderId || null,
-        item_code: req.itemCode,
-        description: req.description || null,
-        color: null as string | null,
-        size: null as string | null,
-        unit: req.uom || 'pcs',
-        required_qty: req.requiredQty,
-        received_qty: 0,
-        balance_qty: req.requiredQty,
-        sort_order: startOrder + idx,
-        status: 'pending',
-        notes: req.remarks || null,
-        created_at: nowISO(),
-        updated_at: nowISO(),
-        created_by: null as string | null,
-        _synced: 0,
-        _deleted: 0,
-      }));
-
-      const tx = db.transaction('requirements', 'readwrite');
-      for (const row of rows) {
-        await tx.store.put(row);
+      const results = [];
+      for (let idx = 0; idx < reqs.length; idx++) {
+        const req = reqs[idx];
+        const row = {
+          id: generateLocalId(),
+          order_id: req.orderId || null,
+          item_code: req.itemCode,
+          description: req.description || null,
+          color: null,
+          size: null,
+          unit: req.uom || 'pcs',
+          required_qty: req.requiredQty,
+          received_qty: 0,
+          sort_order: startOrder + idx,
+          status: 'pending',
+          notes: req.remarks || null,
+          created_at: nowISO(),
+          updated_at: nowISO(),
+        };
+        const result = await cloudInsert('requirements', row, user?.id);
+        results.push(rowToApp(result));
       }
-      await tx.done;
 
-      syncEngine.scheduleSyncDebounced();
-      return rows.map(localToApp);
+      return results;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['local_requirements'] });
@@ -146,31 +132,17 @@ export function useUpdateLocalRequirement() {
 
   return useMutation({
     mutationFn: async ({ id, ...updates }: Partial<MaterialRequirement> & { id: string }) => {
-      const db = await getLocalDb();
-      const existing = await db.get('requirements', id);
-      if (!existing) throw new Error('Requirement not found');
+      const cloudUpdates: any = { updated_at: nowISO() };
+      if (updates.orderId !== undefined) cloudUpdates.order_id = updates.orderId;
+      if (updates.itemCode !== undefined) cloudUpdates.item_code = updates.itemCode;
+      if (updates.description !== undefined) cloudUpdates.description = updates.description;
+      if (updates.uom !== undefined) cloudUpdates.unit = updates.uom;
+      if (updates.requiredQty !== undefined) cloudUpdates.required_qty = updates.requiredQty;
+      if (updates.requestedQty !== undefined) cloudUpdates.received_qty = updates.requestedQty;
+      if (updates.remarks !== undefined) cloudUpdates.notes = updates.remarks;
 
-      const updated = {
-        ...existing,
-        ...(updates.orderId !== undefined && { order_id: updates.orderId }),
-        ...(updates.itemCode !== undefined && { item_code: updates.itemCode }),
-        ...(updates.description !== undefined && { description: updates.description }),
-        ...(updates.uom !== undefined && { unit: updates.uom }),
-        ...(updates.requiredQty !== undefined && { required_qty: updates.requiredQty }),
-        ...(updates.requestedQty !== undefined && { received_qty: updates.requestedQty }),
-        ...(updates.remarks !== undefined && { notes: updates.remarks }),
-        updated_at: nowISO(),
-        _synced: 0,
-      };
-
-      // Recalculate balance_qty when required_qty or received_qty changes
-      const reqQty = Number(updated.required_qty) || 0;
-      const recvQty = Number(updated.received_qty) || 0;
-      updated.balance_qty = reqQty - recvQty;
-
-      await db.put('requirements', updated);
-      syncEngine.scheduleSyncDebounced();
-      return localToApp(updated);
+      const result = await cloudUpdate('requirements', id, cloudUpdates);
+      return rowToApp(result);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['local_requirements'] });
@@ -186,41 +158,23 @@ export function useDeleteLocalRequirement() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      // Track this ID to prevent resurrection during sync pull
       syncEngine.trackDeletedId(id);
-
-      const db = await getLocalDb();
-      const existing = await db.get('requirements', id);
-      if (existing) {
-        await db.put('requirements', { ...existing, _deleted: 1, _synced: 0, updated_at: nowISO() });
-      }
+      await cloudDelete('requirements', id);
       return id;
     },
     onMutate: async (id: string) => {
-      // Cancel any outgoing refetches so they don't overwrite our optimistic update
       await queryClient.cancelQueries({ queryKey: ['local_requirements'] });
-
-      // Snapshot current data
       const previous = queryClient.getQueriesData({ queryKey: ['local_requirements'] });
-
-      // Optimistically remove the item from all requirement queries
       queryClient.setQueriesData({ queryKey: ['local_requirements'] }, (old: any) => {
-        if (Array.isArray(old)) {
-          return old.filter((item: any) => item.id !== id);
-        }
+        if (Array.isArray(old)) return old.filter((item: any) => item.id !== id);
         return old;
       });
-
       return { previous };
     },
-    onSuccess: async () => {
-      // Sync to cloud after optimistic update is already applied
-      await syncEngine.syncAll();
-      // Re-invalidate after sync to ensure consistency
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['local_requirements'] });
     },
     onError: (error, _id, context) => {
-      // Rollback optimistic update on error
       if (context?.previous) {
         for (const [key, data] of context.previous) {
           queryClient.setQueryData(key, data);
@@ -236,24 +190,14 @@ export function useUpdateLocalRequestedQty() {
 
   return useMutation({
     mutationFn: async (updates: { id: string; qty: number }[]) => {
-      const db = await getLocalDb();
-      const tx = db.transaction('requirements', 'readwrite');
-
       for (const update of updates) {
-        const existing = await tx.store.get(update.id);
-        if (existing) {
+        const rows = await cloudFetch('requirements', { id: update.id });
+        if (rows.length > 0) {
+          const existing = rows[0];
           const newQty = (Number(existing.received_qty) || 0) + update.qty;
-          await tx.store.put({
-            ...existing,
-            received_qty: newQty,
-            updated_at: nowISO(),
-            _synced: 0,
-          });
+          await cloudUpdate('requirements', update.id, { received_qty: newQty, updated_at: nowISO() });
         }
       }
-
-      await tx.done;
-      syncEngine.scheduleSyncDebounced();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['local_requirements'] });

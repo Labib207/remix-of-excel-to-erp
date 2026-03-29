@@ -1,17 +1,17 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getLocalDb, generateLocalId, nowISO } from '@/lib/localDb';
+import { generateLocalId, nowISO } from '@/lib/localDb';
+import { cloudFetch, cloudInsert, cloudDelete } from '@/lib/cloudDb';
 import { syncEngine } from '@/lib/syncEngine';
 import { toast } from 'sonner';
+import { useAuth } from '@/contexts/AuthContext';
 
 export function useLocalDeliveryAcknowledgments(requestId?: string) {
   return useQuery({
     queryKey: ['local_delivery_acknowledgments', requestId],
     queryFn: async () => {
-      const db = await getLocalDb();
-      const all = await db.getAll('delivery_acknowledgments');
-      return all
-        .filter(r => r._deleted === 0 && (!requestId || r.request_id === requestId))
-        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      const filters = requestId ? { request_id: requestId } : undefined;
+      const rows = await cloudFetch('delivery_acknowledgments', filters);
+      return rows.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
     },
   });
 }
@@ -21,11 +21,8 @@ export function useLocalDeliveryItems(acknowledgmentId?: string) {
     queryKey: ['local_delivery_items', acknowledgmentId],
     queryFn: async () => {
       if (!acknowledgmentId) return [];
-      const db = await getLocalDb();
-      const all = await db.getAll('delivery_items');
-      return all
-        .filter(r => r._deleted === 0 && r.acknowledgment_id === acknowledgmentId)
-        .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+      const rows = await cloudFetch('delivery_items', { acknowledgment_id: acknowledgmentId });
+      return rows.sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
     },
     enabled: !!acknowledgmentId,
   });
@@ -33,10 +30,10 @@ export function useLocalDeliveryItems(acknowledgmentId?: string) {
 
 export function useCreateLocalDeliveryAcknowledgment() {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
   return useMutation({
     mutationFn: async (ack: { request_id?: string; acknowledgment_no: string; delivery_date?: string; received_by?: string; line_supervisor_signature?: string; line_recorder_signature?: string; notes?: string }) => {
-      const db = await getLocalDb();
       const row = {
         id: generateLocalId(),
         request_id: ack.request_id || null,
@@ -48,13 +45,9 @@ export function useCreateLocalDeliveryAcknowledgment() {
         notes: ack.notes || null,
         created_at: nowISO(),
         updated_at: nowISO(),
-        created_by: null as string | null,
-        _synced: 0,
-        _deleted: 0,
       };
-      await db.put('delivery_acknowledgments', row);
-      syncEngine.scheduleSyncDebounced();
-      return row;
+      const result = await cloudInsert('delivery_acknowledgments', row, user?.id);
+      return result;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['local_delivery_acknowledgments'] });
@@ -71,33 +64,25 @@ export function useCreateLocalDeliveryItems() {
 
   return useMutation({
     mutationFn: async (items: { acknowledgment_id: string; request_item_id?: string; item_code?: string; description?: string; color?: string; size?: string; unit?: string; requirement_qty?: number; issued_qty?: number }[]) => {
-      const db = await getLocalDb();
-      const tx = db.transaction('delivery_items', 'readwrite');
-
-      const rows = items.map(item => ({
-        id: generateLocalId(),
-        acknowledgment_id: item.acknowledgment_id || null,
-        request_item_id: item.request_item_id || null,
-        item_code: item.item_code || null,
-        description: item.description || null,
-        color: item.color || null,
-        size: item.size || null,
-        unit: item.unit || 'pcs',
-        requirement_qty: item.requirement_qty || 0,
-        issued_qty: item.issued_qty || 0,
-        balance_qty: (item.requirement_qty || 0) - (item.issued_qty || 0),
-        created_at: nowISO(),
-        _synced: 0,
-        _deleted: 0,
-      }));
-
-      for (const row of rows) {
-        await tx.store.put(row);
+      const results = [];
+      for (const item of items) {
+        const row = {
+          id: generateLocalId(),
+          acknowledgment_id: item.acknowledgment_id || null,
+          request_item_id: item.request_item_id || null,
+          item_code: item.item_code || null,
+          description: item.description || null,
+          color: item.color || null,
+          size: item.size || null,
+          unit: item.unit || 'pcs',
+          requirement_qty: item.requirement_qty || 0,
+          issued_qty: item.issued_qty || 0,
+          created_at: nowISO(),
+        };
+        const result = await cloudInsert('delivery_items', row);
+        results.push(result);
       }
-      await tx.done;
-
-      syncEngine.scheduleSyncDebounced();
-      return rows;
+      return results;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['local_delivery_items'] });
@@ -114,21 +99,13 @@ export function useDeleteLocalDeliveryAcknowledgment() {
   return useMutation({
     mutationFn: async (id: string) => {
       syncEngine.trackDeletedId(id);
-      const db = await getLocalDb();
-      const existing = await db.get('delivery_acknowledgments', id);
-      if (existing) {
-        await db.put('delivery_acknowledgments', { ...existing, _deleted: 1, _synced: 0, updated_at: nowISO() });
-      }
-      // Soft-delete items and track their IDs
-      const items = await db.getAll('delivery_items');
-      const tx = db.transaction('delivery_items', 'readwrite');
+      // Delete related items first
+      const items = await cloudFetch('delivery_items', { acknowledgment_id: id });
       for (const item of items) {
-        if (item.acknowledgment_id === id) {
-          syncEngine.trackDeletedId(item.id);
-          await tx.store.put({ ...item, _deleted: 1, _synced: 0 });
-        }
+        syncEngine.trackDeletedId(item.id);
+        await cloudDelete('delivery_items', item.id);
       }
-      await tx.done;
+      await cloudDelete('delivery_acknowledgments', id);
       return id;
     },
     onMutate: async (id: string) => {
@@ -141,8 +118,7 @@ export function useDeleteLocalDeliveryAcknowledgment() {
       });
       return { previous };
     },
-    onSuccess: async () => {
-      await syncEngine.syncAll();
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['local_delivery_acknowledgments'] });
       queryClient.invalidateQueries({ queryKey: ['local_delivery_items'] });
     },
