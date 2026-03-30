@@ -18,7 +18,8 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { User, Mail, Shield, Calendar, Loader2, Save } from 'lucide-react';
+import { User, Mail, Shield, Calendar, Loader2, Save, Download } from 'lucide-react';
+import { exportAllLocalData, getLocalDataCounts, downloadBackupJson } from '@/lib/backupExport';
 import { format } from 'date-fns';
 
 const profileSchema = z.object({
