@@ -1,6 +1,7 @@
 import { getLocalDb } from './localDb';
 import { supabase } from '@/integrations/supabase/client';
 
+// Migration order: parent tables first, then child tables with foreign keys
 const TABLES = [
   'orders', 'cut_plans', 'marker_plans', 'requirements', 'requests',
   'request_items', 'bundles', 'bundle_guides', 'lay_sheets',
@@ -8,20 +9,42 @@ const TABLES = [
   'fabric_calculations', 'fabric_rolls', 'lay_records', 'material_catalog',
 ] as const;
 
-// Generated columns that must be stripped before upsert
-const GENERATED_COLUMNS: Record<string, string[]> = {
+// Columns that must be stripped before upsert (generated or not in cloud schema)
+const STRIP_COLUMNS: Record<string, string[]> = {
+  orders: ['sort_order'],
   requirements: ['balance_qty'],
   request_items: ['balance_qty'],
-  delivery_items: ['balance_qty'],
+  delivery_items: ['balance_qty', 'sort_order'],
+  delivery_acknowledgments: ['sort_order'],
+  cut_plans: ['sort_order'],
+  marker_plans: ['sort_order'],
+  bundles: ['sort_order'],
+  bundle_guides: ['sort_order'],
+  lay_sheets: ['sort_order'],
+  requests: ['sort_order'],
+  ratios: ['sort_order'],
+  fabric_calculations: ['sort_order'],
+  fabric_rolls: ['sort_order'],
+  lay_records: ['sort_order'],
+  material_catalog: ['sort_order'],
 };
 
 function stripForCloud(table: string, row: any) {
-  const { _synced, _deleted, ...rest } = row;
-  const cols = GENERATED_COLUMNS[table];
-  if (cols) {
-    for (const col of cols) delete rest[col];
+  const { _synced, _deleted, fabric_type, ...rest } = row;
+  // Re-add fabric_type only if it's not undefined/null for tables that need it
+  const result: any = { ...rest };
+  if (fabric_type !== undefined && fabric_type !== null) {
+    result.fabric_type = fabric_type;
   }
-  return rest;
+  // Strip columns not in cloud schema
+  const cols = STRIP_COLUMNS[table];
+  if (cols) {
+    for (const col of cols) delete result[col];
+  }
+  // Remove any other local-only fields
+  delete result._synced;
+  delete result._deleted;
+  return result;
 }
 
 export async function exportAllLocalData(): Promise<Record<string, any[]>> {
