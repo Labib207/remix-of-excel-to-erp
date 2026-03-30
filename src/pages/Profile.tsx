@@ -45,6 +45,9 @@ export default function Profile() {
   const [isSaving, setIsSaving] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [dataCounts, setDataCounts] = useState<Record<string, number> | null>(null);
+  const [isMigrating, setIsMigrating] = useState(false);
+  const [migrationProgress, setMigrationProgress] = useState<MigrationProgress[] | null>(null);
+  const [migrationDone, setMigrationDone] = useState(false);
 
   const form = useForm<ProfileFormData>({
     resolver: zodResolver(profileSchema),
