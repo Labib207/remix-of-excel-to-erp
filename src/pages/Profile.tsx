@@ -18,7 +18,8 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { User, Mail, Shield, Calendar, Loader2, Save } from 'lucide-react';
+import { User, Mail, Shield, Calendar, Loader2, Save, Download } from 'lucide-react';
+import { exportAllLocalData, getLocalDataCounts, downloadBackupJson } from '@/lib/backupExport';
 import { format } from 'date-fns';
 
 const profileSchema = z.object({
@@ -41,6 +42,8 @@ export default function Profile() {
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const [dataCounts, setDataCounts] = useState<Record<string, number> | null>(null);
 
   const form = useForm<ProfileFormData>({
     resolver: zodResolver(profileSchema),
@@ -206,6 +209,61 @@ export default function Profile() {
                 </Button>
               </form>
             </Form>
+          </CardContent>
+        </Card>
+        {/* Backup Section */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Download className="h-5 w-5" />
+              Backup Local Data
+            </CardTitle>
+            <CardDescription>
+              Download all your local IndexedDB data as a JSON file for safekeeping.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {dataCounts && (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
+                {Object.entries(dataCounts).map(([table, count]) => (
+                  <div key={table} className="bg-muted rounded-lg p-2 text-center">
+                    <div className="font-bold">{count}</div>
+                    <div className="text-muted-foreground text-xs">{table.replace(/_/g, ' ')}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                disabled={isExporting}
+                onClick={async () => {
+                  const counts = await getLocalDataCounts();
+                  setDataCounts(counts);
+                  toast({ title: 'Data Counts', description: `Found records in ${Object.keys(counts).filter(k => counts[k] > 0).length} tables` });
+                }}
+              >
+                Show Record Counts
+              </Button>
+              <Button
+                disabled={isExporting}
+                onClick={async () => {
+                  setIsExporting(true);
+                  try {
+                    const data = await exportAllLocalData();
+                    downloadBackupJson(data);
+                    toast({ title: 'Backup Downloaded', description: 'All local data exported as JSON' });
+                  } catch (e: any) {
+                    toast({ variant: 'destructive', title: 'Export Failed', description: e.message });
+                  } finally {
+                    setIsExporting(false);
+                  }
+                }}
+              >
+                {isExporting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Download className="h-4 w-4 mr-2" />}
+                Download Backup JSON
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>
