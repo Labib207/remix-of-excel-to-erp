@@ -114,6 +114,13 @@ export async function migrateLocalToCloud(
   }
   onProgress([...progress]);
 
+  // Collect valid order IDs from cloud after orders are migrated
+  let validOrderIds: Set<string> | null = null;
+
+  // Tables that have order_id foreign key
+  const FK_ORDER_TABLES = ['requirements', 'requests', 'request_items', 'cut_plans',
+    'marker_plans', 'bundles', 'lay_sheets', 'ratios', 'fabric_calculations', 'delivery_acknowledgments'];
+
   // Second pass: upsert in batches
   for (let i = 0; i < TABLES.length; i++) {
     const table = TABLES[i];
@@ -123,12 +130,28 @@ export async function migrateLocalToCloud(
       continue;
     }
 
+    // After orders table is done, fetch valid order IDs
+    if (table !== 'orders' && !validOrderIds) {
+      const { data: orders } = await (supabase.from('orders').select('id') as any);
+      validOrderIds = new Set((orders || []).map((o: any) => o.id));
+    }
+
     progress[i].status = 'migrating';
     onProgress([...progress]);
 
     const all = await db.getAll(table as any);
     const active = all.filter((r: any) => r._deleted !== 1);
-    const cleanRows = active.map(r => stripForCloud(table, r));
+    let cleanRows = active.map(r => stripForCloud(table, r));
+
+    // Null out invalid order_id references to avoid FK violations
+    if (validOrderIds && FK_ORDER_TABLES.includes(table)) {
+      cleanRows = cleanRows.map(row => {
+        if (row.order_id && !validOrderIds!.has(row.order_id)) {
+          return { ...row, order_id: null };
+        }
+        return row;
+      });
+    }
 
     // Upsert in batches of 50
     const BATCH = 50;
