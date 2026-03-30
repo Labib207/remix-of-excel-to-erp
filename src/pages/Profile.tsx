@@ -18,8 +18,9 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { User, Mail, Shield, Calendar, Loader2, Save, Download } from 'lucide-react';
-import { exportAllLocalData, getLocalDataCounts, downloadBackupJson } from '@/lib/backupExport';
+import { User, Mail, Shield, Calendar, Loader2, Save, Download, CloudUpload, CheckCircle2, AlertCircle } from 'lucide-react';
+import { exportAllLocalData, getLocalDataCounts, getCloudDataCounts, downloadBackupJson, migrateLocalToCloud, type MigrationProgress } from '@/lib/backupExport';
+import { Progress } from '@/components/ui/progress';
 import { format } from 'date-fns';
 
 const profileSchema = z.object({
