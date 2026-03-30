@@ -270,6 +270,72 @@ export default function Profile() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Migration Section */}
+        <Card className="border-2 border-primary/20">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <CloudUpload className="h-5 w-5" />
+              Migrate Data to Cloud
+            </CardTitle>
+            <CardDescription>
+              Push all your local data to the cloud database using upsert (no duplicates). Your local data will NOT be deleted.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {migrationProgress && (
+              <div className="space-y-2">
+                {migrationProgress.filter(p => p.total > 0).map((p) => (
+                  <div key={p.table} className="space-y-1">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="flex items-center gap-2">
+                        {p.status === 'done' && <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />}
+                        {p.status === 'error' && <AlertCircle className="h-3.5 w-3.5 text-destructive" />}
+                        {p.status === 'migrating' && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                        {p.table.replace(/_/g, ' ')}
+                      </span>
+                      <span className="text-muted-foreground">{p.done}/{p.total}</span>
+                    </div>
+                    <Progress value={p.total > 0 ? (p.done / p.total) * 100 : 0} className="h-1.5" />
+                    {p.error && <p className="text-xs text-destructive">{p.error}</p>}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {migrationDone && (
+              <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-3 text-sm text-green-700 dark:text-green-400 flex items-center gap-2">
+                <CheckCircle2 className="h-4 w-4" />
+                Migration complete! All data is now in the cloud. Please confirm so I can proceed to Step 3.
+              </div>
+            )}
+
+            <Button
+              disabled={isMigrating || migrationDone}
+              onClick={async () => {
+                setIsMigrating(true);
+                setMigrationDone(false);
+                try {
+                  const { success, summary } = await migrateLocalToCloud(setMigrationProgress);
+                  if (success) {
+                    setMigrationDone(true);
+                    const totalRecords = Object.values(summary).reduce((a, b) => a + b, 0);
+                    toast({ title: '✅ Migration Complete', description: `${totalRecords} records migrated to cloud` });
+                  } else {
+                    toast({ variant: 'destructive', title: 'Migration had errors', description: 'Some tables failed. Check the progress above.' });
+                  }
+                } catch (e: any) {
+                  toast({ variant: 'destructive', title: 'Migration Failed', description: e.message });
+                } finally {
+                  setIsMigrating(false);
+                }
+              }}
+            >
+              {isMigrating ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CloudUpload className="h-4 w-4 mr-2" />}
+              {migrationDone ? 'Migration Complete' : 'Start Migration to Cloud'}
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     </MainLayout>
   );
