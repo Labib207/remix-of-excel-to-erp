@@ -1,4 +1,5 @@
 import { getLocalDb } from './localDb';
+import { supabase } from '@/integrations/supabase/client';
 
 const TABLES = [
   'orders', 'cut_plans', 'marker_plans', 'requirements', 'requests',
@@ -6,6 +7,22 @@ const TABLES = [
   'delivery_acknowledgments', 'delivery_items', 'ratios',
   'fabric_calculations', 'fabric_rolls', 'lay_records', 'material_catalog',
 ] as const;
+
+// Generated columns that must be stripped before upsert
+const GENERATED_COLUMNS: Record<string, string[]> = {
+  requirements: ['balance_qty'],
+  request_items: ['balance_qty'],
+  delivery_items: ['balance_qty'],
+};
+
+function stripForCloud(table: string, row: any) {
+  const { _synced, _deleted, ...rest } = row;
+  const cols = GENERATED_COLUMNS[table];
+  if (cols) {
+    for (const col of cols) delete rest[col];
+  }
+  return rest;
+}
 
 export async function exportAllLocalData(): Promise<Record<string, any[]>> {
   const db = await getLocalDb();
@@ -29,6 +46,96 @@ export async function getLocalDataCounts(): Promise<Record<string, number>> {
   }
 
   return counts;
+}
+
+export async function getCloudDataCounts(): Promise<Record<string, number>> {
+  const counts: Record<string, number> = {};
+
+  for (const table of TABLES) {
+    const { count, error } = await (supabase
+      .from(table)
+      .select('*', { count: 'exact', head: true }) as any);
+    counts[table] = error ? -1 : (count ?? 0);
+  }
+
+  return counts;
+}
+
+export type MigrationProgress = {
+  table: string;
+  total: number;
+  done: number;
+  status: 'pending' | 'migrating' | 'done' | 'error';
+  error?: string;
+};
+
+/**
+ * Migrate all local IndexedDB data to cloud using upsert.
+ * Reports progress via callback. Does NOT delete local data.
+ */
+export async function migrateLocalToCloud(
+  onProgress: (progress: MigrationProgress[]) => void
+): Promise<{ success: boolean; summary: Record<string, number> }> {
+  const db = await getLocalDb();
+  const summary: Record<string, number> = {};
+  const progress: MigrationProgress[] = TABLES.map(t => ({
+    table: t, total: 0, done: 0, status: 'pending',
+  }));
+
+  // First pass: count records
+  for (let i = 0; i < TABLES.length; i++) {
+    const table = TABLES[i];
+    const all = await db.getAll(table as any);
+    const active = all.filter((r: any) => r._deleted !== 1);
+    progress[i].total = active.length;
+  }
+  onProgress([...progress]);
+
+  // Second pass: upsert in batches
+  for (let i = 0; i < TABLES.length; i++) {
+    const table = TABLES[i];
+    if (progress[i].total === 0) {
+      progress[i].status = 'done';
+      onProgress([...progress]);
+      continue;
+    }
+
+    progress[i].status = 'migrating';
+    onProgress([...progress]);
+
+    const all = await db.getAll(table as any);
+    const active = all.filter((r: any) => r._deleted !== 1);
+    const cleanRows = active.map(r => stripForCloud(table, r));
+
+    // Upsert in batches of 50
+    const BATCH = 50;
+    let migrated = 0;
+    try {
+      for (let j = 0; j < cleanRows.length; j += BATCH) {
+        const batch = cleanRows.slice(j, j + BATCH);
+        const { error } = await (supabase
+          .from(table)
+          .upsert(batch, { onConflict: 'id' }) as any);
+
+        if (error) {
+          throw new Error(`${table}: ${error.message}`);
+        }
+        migrated += batch.length;
+        progress[i].done = migrated;
+        onProgress([...progress]);
+      }
+      progress[i].status = 'done';
+      summary[table] = migrated;
+    } catch (e: any) {
+      progress[i].status = 'error';
+      progress[i].error = e.message;
+      summary[table] = migrated;
+    }
+    onProgress([...progress]);
+  }
+
+  const hasErrors = progress.some(p => p.status === 'error');
+  return { success: !hasErrors, summary };
 }
 
 export function downloadBackupJson(data: Record<string, any[]>) {
