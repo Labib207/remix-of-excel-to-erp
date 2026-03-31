@@ -184,7 +184,102 @@ export async function migrateLocalToCloud(
   return { success: !hasErrors, summary };
 }
 
+/**
+ * Import a backup JSON file directly into the cloud database using upsert.
+ */
+export async function importBackupToCloud(
+  backupData: Record<string, any[]>,
+  onProgress: (progress: MigrationProgress[]) => void
+): Promise<{ success: boolean; summary: Record<string, number> }> {
+  const summary: Record<string, number> = {};
+  const progress: MigrationProgress[] = TABLES.map(t => ({
+    table: t, total: 0, done: 0, status: 'pending',
+  }));
+
+  // Count records per table from the backup
+  for (let i = 0; i < TABLES.length; i++) {
+    const table = TABLES[i];
+    const rows = backupData[table];
+    if (Array.isArray(rows)) {
+      progress[i].total = rows.filter((r: any) => r._deleted !== 1).length;
+    }
+  }
+  onProgress([...progress]);
+
+  // Collect valid order IDs after orders are migrated
+  let validOrderIds: Set<string> | null = null;
+  const FK_ORDER_TABLES = ['requirements', 'requests', 'request_items', 'cut_plans',
+    'marker_plans', 'bundles', 'lay_sheets', 'ratios', 'fabric_calculations', 'delivery_acknowledgments'];
+
+  for (let i = 0; i < TABLES.length; i++) {
+    const table = TABLES[i];
+    const rows = backupData[table];
+    if (!Array.isArray(rows) || progress[i].total === 0) {
+      progress[i].status = 'done';
+      onProgress([...progress]);
+      continue;
+    }
+
+    // After orders, fetch valid IDs
+    if (table !== 'orders' && !validOrderIds) {
+      const { data: orders } = await (supabase.from('orders').select('id') as any);
+      validOrderIds = new Set((orders || []).map((o: any) => o.id));
+    }
+
+    progress[i].status = 'migrating';
+    onProgress([...progress]);
+
+    const active = rows.filter((r: any) => r._deleted !== 1);
+    let cleanRows = active.map(r => stripForCloud(table, r));
+
+    if (validOrderIds && FK_ORDER_TABLES.includes(table)) {
+      cleanRows = cleanRows.map(row => {
+        if (row.order_id && !validOrderIds!.has(row.order_id)) {
+          return { ...row, order_id: null };
+        }
+        return row;
+      });
+    }
+
+    const BATCH = 50;
+    let migrated = 0;
+    try {
+      for (let j = 0; j < cleanRows.length; j += BATCH) {
+        const batch = cleanRows.slice(j, j + BATCH);
+        const { error } = await (supabase
+          .from(table)
+          .upsert(batch, { onConflict: 'id' }) as any);
+        if (error) throw new Error(`${table}: ${error.message}`);
+        migrated += batch.length;
+        progress[i].done = migrated;
+        onProgress([...progress]);
+      }
+      progress[i].status = 'done';
+      summary[table] = migrated;
+    } catch (e: any) {
+      progress[i].status = 'error';
+      progress[i].error = e.message;
+      summary[table] = migrated;
+    }
+    onProgress([...progress]);
+  }
+
+  const hasErrors = progress.some(p => p.status === 'error');
+  return { success: !hasErrors, summary };
+}
+
 export function downloadBackupJson(data: Record<string, any[]>) {
+  const json = JSON.stringify(data, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `ghoush-backup-${new Date().toISOString().split('T')[0]}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
   const json = JSON.stringify(data, null, 2);
   const blob = new Blob([json], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
