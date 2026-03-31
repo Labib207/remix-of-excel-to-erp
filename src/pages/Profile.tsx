@@ -338,6 +338,86 @@ export default function Profile() {
               {migrationDone ? 'Migration Complete' : 'Start Migration to Cloud'}
             </Button>
           </CardContent>
+        {/* Restore from Backup JSON */}
+        <Card className="border-2 border-orange-500/30">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Upload className="h-5 w-5" />
+              Restore from Backup JSON
+            </CardTitle>
+            <CardDescription>
+              Upload your backup JSON file to restore all data into the cloud database. Uses upsert — no duplicates, no data loss.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {restoreProgress && (
+              <div className="space-y-2">
+                {restoreProgress.filter(p => p.total > 0).map((p) => (
+                  <div key={p.table} className="space-y-1">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="flex items-center gap-2">
+                        {p.status === 'done' && <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />}
+                        {p.status === 'error' && <AlertCircle className="h-3.5 w-3.5 text-destructive" />}
+                        {p.status === 'migrating' && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                        {p.table.replace(/_/g, ' ')}
+                      </span>
+                      <span className="text-muted-foreground">{p.done}/{p.total}</span>
+                    </div>
+                    <Progress value={p.total > 0 ? (p.done / p.total) * 100 : 0} className="h-1.5" />
+                    {p.error && <p className="text-xs text-destructive">{p.error}</p>}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {restoreDone && (
+              <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-3 text-sm text-green-700 dark:text-green-400 flex items-center gap-2">
+                <CheckCircle2 className="h-4 w-4" />
+                Restore complete! All backup data has been imported to the cloud.
+              </div>
+            )}
+
+            <div>
+              <input
+                type="file"
+                accept=".json"
+                id="restore-backup-input"
+                className="hidden"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  setIsRestoring(true);
+                  setRestoreDone(false);
+                  setRestoreProgress(null);
+                  try {
+                    const text = await file.text();
+                    const data = JSON.parse(text);
+                    const { success, summary } = await importBackupToCloud(data, setRestoreProgress);
+                    if (success) {
+                      setRestoreDone(true);
+                      const totalRecords = Object.values(summary).reduce((a, b) => a + b, 0);
+                      toast({ title: '✅ Restore Complete', description: `${totalRecords} records restored to cloud` });
+                    } else {
+                      toast({ variant: 'destructive', title: 'Restore had errors', description: 'Some tables failed. Check the progress above.' });
+                    }
+                  } catch (err: any) {
+                    toast({ variant: 'destructive', title: 'Restore Failed', description: err.message });
+                  } finally {
+                    setIsRestoring(false);
+                    e.target.value = '';
+                  }
+                }}
+              />
+              <Button
+                disabled={isRestoring}
+                onClick={() => document.getElementById('restore-backup-input')?.click()}
+                className="gap-2"
+              >
+                {isRestoring ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                {restoreDone ? 'Restore Complete' : 'Upload Backup JSON & Restore'}
+              </Button>
+            </div>
+          </CardContent>
         </Card>
       </div>
     </MainLayout>
