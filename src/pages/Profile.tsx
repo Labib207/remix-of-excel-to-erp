@@ -338,6 +338,8 @@ export default function Profile() {
               {migrationDone ? 'Migration Complete' : 'Start Migration to Cloud'}
             </Button>
           </CardContent>
+        </Card>
+
         {/* Restore from Backup JSON */}
         <Card className="border-2 border-orange-500/30">
           <CardHeader>
