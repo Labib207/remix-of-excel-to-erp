@@ -48,6 +48,9 @@ export default function Profile() {
   const [isMigrating, setIsMigrating] = useState(false);
   const [migrationProgress, setMigrationProgress] = useState<MigrationProgress[] | null>(null);
   const [migrationDone, setMigrationDone] = useState(false);
+  const [isRestoring, setIsRestoring] = useState(false);
+  const [restoreProgress, setRestoreProgress] = useState<MigrationProgress[] | null>(null);
+  const [restoreDone, setRestoreDone] = useState(false);
 
   const form = useForm<ProfileFormData>({
     resolver: zodResolver(profileSchema),
