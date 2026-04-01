@@ -1,6 +1,5 @@
-import { useRequirementStore } from '@/store/requirementStore';
-import { useRequestStore } from '@/store/requestStore';
-import { useCuttingStore } from '@/store/cuttingStore';
+import { useLocalOrders } from '@/hooks/useLocalOrders';
+import { useLocalRequirements } from '@/hooks/useLocalRequirements';
 import {
   Table,
   TableBody,
@@ -15,14 +14,12 @@ import { Progress } from '@/components/ui/progress';
 import { Package, AlertCircle } from 'lucide-react';
 
 export function MaterialDeliveryTable() {
-  const { requirements } = useRequirementStore();
-  const { submittedRequests } = useRequestStore();
-  const { orders } = useCuttingStore();
+  const { data: requirements = [] } = useLocalRequirements();
+  const { data: orders = [] } = useLocalOrders();
 
   // Group requirements by order
   const orderSummary = orders.map(order => {
     const orderReqs = requirements.filter(r => r.orderId === order.id);
-    const orderRequests = submittedRequests.filter(r => r.form.department);
     
     const totalRequired = orderReqs.reduce((sum, r) => sum + r.requiredQty, 0);
     const totalRequested = orderReqs.reduce((sum, r) => sum + r.requestedQty, 0);
@@ -37,7 +34,6 @@ export function MaterialDeliveryTable() {
       totalPending,
       progress,
       itemCount: orderReqs.length,
-      requestCount: orderRequests.length,
     };
   }).filter(os => os.itemCount > 0);
 
