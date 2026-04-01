@@ -1,4 +1,3 @@
-import { getLocalDb } from './localDb';
 import { supabase } from '@/integrations/supabase/client';
 
 // Migration order: parent tables first, then child tables with foreign keys
@@ -31,44 +30,17 @@ const STRIP_COLUMNS: Record<string, string[]> = {
 
 function stripForCloud(table: string, row: any) {
   const { _synced, _deleted, fabric_type, ...rest } = row;
-  // Re-add fabric_type only if it's not undefined/null for tables that need it
   const result: any = { ...rest };
   if (fabric_type !== undefined && fabric_type !== null) {
     result.fabric_type = fabric_type;
   }
-  // Strip columns not in cloud schema
   const cols = STRIP_COLUMNS[table];
   if (cols) {
     for (const col of cols) delete result[col];
   }
-  // Remove any other local-only fields
   delete result._synced;
   delete result._deleted;
   return result;
-}
-
-export async function exportAllLocalData(): Promise<Record<string, any[]>> {
-  const db = await getLocalDb();
-  const backup: Record<string, any[]> = {};
-
-  for (const table of TABLES) {
-    const all = await db.getAll(table as any);
-    backup[table] = all.filter((r: any) => r._deleted !== 1);
-  }
-
-  return backup;
-}
-
-export async function getLocalDataCounts(): Promise<Record<string, number>> {
-  const db = await getLocalDb();
-  const counts: Record<string, number> = {};
-
-  for (const table of TABLES) {
-    const all = await db.getAll(table as any);
-    counts[table] = all.filter((r: any) => r._deleted !== 1).length;
-  }
-
-  return counts;
 }
 
 export async function getCloudDataCounts(): Promise<Record<string, number>> {
@@ -93,98 +65,6 @@ export type MigrationProgress = {
 };
 
 /**
- * Migrate all local IndexedDB data to cloud using upsert.
- * Reports progress via callback. Does NOT delete local data.
- */
-export async function migrateLocalToCloud(
-  onProgress: (progress: MigrationProgress[]) => void
-): Promise<{ success: boolean; summary: Record<string, number> }> {
-  const db = await getLocalDb();
-  const summary: Record<string, number> = {};
-  const progress: MigrationProgress[] = TABLES.map(t => ({
-    table: t, total: 0, done: 0, status: 'pending',
-  }));
-
-  // First pass: count records
-  for (let i = 0; i < TABLES.length; i++) {
-    const table = TABLES[i];
-    const all = await db.getAll(table as any);
-    const active = all.filter((r: any) => r._deleted !== 1);
-    progress[i].total = active.length;
-  }
-  onProgress([...progress]);
-
-  // Collect valid order IDs from cloud after orders are migrated
-  let validOrderIds: Set<string> | null = null;
-
-  // Tables that have order_id foreign key
-  const FK_ORDER_TABLES = ['requirements', 'requests', 'request_items', 'cut_plans',
-    'marker_plans', 'bundles', 'lay_sheets', 'ratios', 'fabric_calculations', 'delivery_acknowledgments'];
-
-  // Second pass: upsert in batches
-  for (let i = 0; i < TABLES.length; i++) {
-    const table = TABLES[i];
-    if (progress[i].total === 0) {
-      progress[i].status = 'done';
-      onProgress([...progress]);
-      continue;
-    }
-
-    // After orders table is done, fetch valid order IDs
-    if (table !== 'orders' && !validOrderIds) {
-      const { data: orders } = await (supabase.from('orders').select('id') as any);
-      validOrderIds = new Set((orders || []).map((o: any) => o.id));
-    }
-
-    progress[i].status = 'migrating';
-    onProgress([...progress]);
-
-    const all = await db.getAll(table as any);
-    const active = all.filter((r: any) => r._deleted !== 1);
-    let cleanRows = active.map(r => stripForCloud(table, r));
-
-    // Null out invalid order_id references to avoid FK violations
-    if (validOrderIds && FK_ORDER_TABLES.includes(table)) {
-      cleanRows = cleanRows.map(row => {
-        if (row.order_id && !validOrderIds!.has(row.order_id)) {
-          return { ...row, order_id: null };
-        }
-        return row;
-      });
-    }
-
-    // Upsert in batches of 50
-    const BATCH = 50;
-    let migrated = 0;
-    try {
-      for (let j = 0; j < cleanRows.length; j += BATCH) {
-        const batch = cleanRows.slice(j, j + BATCH);
-        const { error } = await (supabase
-          .from(table)
-          .upsert(batch, { onConflict: 'id' }) as any);
-
-        if (error) {
-          throw new Error(`${table}: ${error.message}`);
-        }
-        migrated += batch.length;
-        progress[i].done = migrated;
-        onProgress([...progress]);
-      }
-      progress[i].status = 'done';
-      summary[table] = migrated;
-    } catch (e: any) {
-      progress[i].status = 'error';
-      progress[i].error = e.message;
-      summary[table] = migrated;
-    }
-    onProgress([...progress]);
-  }
-
-  const hasErrors = progress.some(p => p.status === 'error');
-  return { success: !hasErrors, summary };
-}
-
-/**
  * Import a backup JSON file directly into the cloud database using upsert.
  */
 export async function importBackupToCloud(
@@ -196,7 +76,6 @@ export async function importBackupToCloud(
     table: t, total: 0, done: 0, status: 'pending',
   }));
 
-  // Count records per table from the backup
   for (let i = 0; i < TABLES.length; i++) {
     const table = TABLES[i];
     const rows = backupData[table];
@@ -206,7 +85,6 @@ export async function importBackupToCloud(
   }
   onProgress([...progress]);
 
-  // Collect valid order IDs after orders are migrated
   let validOrderIds: Set<string> | null = null;
   const FK_ORDER_TABLES = ['requirements', 'requests', 'request_items', 'cut_plans',
     'marker_plans', 'bundles', 'lay_sheets', 'ratios', 'fabric_calculations', 'delivery_acknowledgments'];
@@ -220,7 +98,6 @@ export async function importBackupToCloud(
       continue;
     }
 
-    // After orders, fetch valid IDs
     if (table !== 'orders' && !validOrderIds) {
       const { data: orders } = await (supabase.from('orders').select('id') as any);
       validOrderIds = new Set((orders || []).map((o: any) => o.id));
