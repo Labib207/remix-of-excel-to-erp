@@ -245,7 +245,7 @@ export default function Profile() {
                 variant="outline"
                 disabled={isExporting}
                 onClick={async () => {
-                  const counts = await getLocalDataCounts();
+                  const counts = await getCloudDataCounts();
                   setDataCounts(counts);
                   toast({ title: 'Data Counts', description: `Found records in ${Object.keys(counts).filter(k => counts[k] > 0).length} tables` });
                 }}
