@@ -313,30 +313,10 @@ export default function Profile() {
               </div>
             )}
 
-            <Button
-              disabled={isMigrating || migrationDone}
-              onClick={async () => {
-                setIsMigrating(true);
-                setMigrationDone(false);
-                try {
-                  const { success, summary } = await migrateLocalToCloud(setMigrationProgress);
-                  if (success) {
-                    setMigrationDone(true);
-                    const totalRecords = Object.values(summary).reduce((a, b) => a + b, 0);
-                    toast({ title: '✅ Migration Complete', description: `${totalRecords} records migrated to cloud` });
-                  } else {
-                    toast({ variant: 'destructive', title: 'Migration had errors', description: 'Some tables failed. Check the progress above.' });
-                  }
-                } catch (e: any) {
-                  toast({ variant: 'destructive', title: 'Migration Failed', description: e.message });
-                } finally {
-                  setIsMigrating(false);
-                }
-              }}
-            >
-              {isMigrating ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CloudUpload className="h-4 w-4 mr-2" />}
-              {migrationDone ? 'Migration Complete' : 'Start Migration to Cloud'}
-            </Button>
+            <div className="bg-muted/50 rounded-lg p-3 text-sm text-muted-foreground flex items-center gap-2">
+              <CheckCircle2 className="h-4 w-4" />
+              Your app is now cloud-only. All data is stored and read directly from the cloud database.
+            </div>
           </CardContent>
         </Card>
 

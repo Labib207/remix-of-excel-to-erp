@@ -277,8 +277,8 @@ export function RequirementsTab() {
   const handleSaveAllChanges = useCallback(async () => {
     setIsSaving(true);
     try {
-      await syncEngine.syncAll();
-      toast.success('All changes saved and synced');
+      // Cloud-only: data is already saved, just confirm
+      toast.success('All changes are saved in the cloud');
     } catch (error: any) {
       toast.error('Save failed: ' + error.message);
     } finally {
