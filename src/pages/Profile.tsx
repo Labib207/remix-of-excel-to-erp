@@ -19,7 +19,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { User, Mail, Shield, Calendar, Loader2, Save, Download, CloudUpload, Upload, CheckCircle2, AlertCircle } from 'lucide-react';
-import { exportAllLocalData, getLocalDataCounts, getCloudDataCounts, downloadBackupJson, migrateLocalToCloud, importBackupToCloud, type MigrationProgress } from '@/lib/backupExport';
+import { exportAllCloudData, getCloudDataCounts, downloadBackupJson, importBackupToCloud, type MigrationProgress } from '@/lib/backupExport';
 import { Progress } from '@/components/ui/progress';
 import { format } from 'date-fns';
 

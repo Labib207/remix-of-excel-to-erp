@@ -43,6 +43,20 @@ function stripForCloud(table: string, row: any) {
   return result;
 }
 
+/**
+ * Export all cloud data as a backup (replaces the old local export).
+ */
+export async function exportAllCloudData(): Promise<Record<string, any[]>> {
+  const backup: Record<string, any[]> = {};
+
+  for (const table of TABLES) {
+    const { data, error } = await (supabase.from(table).select('*') as any);
+    backup[table] = error ? [] : (data || []);
+  }
+
+  return backup;
+}
+
 export async function getCloudDataCounts(): Promise<Record<string, number>> {
   const counts: Record<string, number> = {};
 

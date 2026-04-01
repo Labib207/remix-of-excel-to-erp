@@ -153,7 +153,7 @@ export default function Admin() {
             onClick={async () => {
               setIsExporting(true);
               try {
-                const data = await exportAllLocalData();
+                const data = await exportAllCloudData();
                 downloadBackupJson(data);
                 toast({ title: 'Backup Downloaded', description: 'All local data exported as JSON' });
               } catch (e: any) {
