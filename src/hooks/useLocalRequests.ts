@@ -1,7 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { generateLocalId, nowISO } from '@/lib/localDb';
-import { cloudFetch, cloudInsert, cloudUpdate, cloudDelete } from '@/lib/cloudDb';
-import { syncEngine } from '@/lib/syncEngine';
+import { generateId, nowISO, cloudFetch, cloudInsert, cloudUpdate, cloudDelete } from '@/lib/cloudDb';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -69,7 +67,7 @@ export function useCreateLocalRequest() {
   return useMutation({
     mutationFn: async (request: { order_id?: string; request_no: string; request_date?: string; department?: string; requested_by?: string; status?: string; notes?: string }) => {
       const row = {
-        id: generateLocalId(),
+        id: generateId(),
         order_id: request.order_id || null,
         request_no: request.request_no,
         request_date: request.request_date || new Date().toISOString().split('T')[0],
@@ -103,7 +101,7 @@ export function useCreateLocalRequestItems() {
       for (let idx = 0; idx < items.length; idx++) {
         const item = items[idx];
         const row = {
-          id: generateLocalId(),
+          id: generateId(),
           request_id: item.request_id,
           requirement_id: item.requirement_id || null,
           item_code: item.item_code || null,
@@ -155,11 +153,9 @@ export function useDeleteLocalRequest() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      syncEngine.trackDeletedId(id);
       // Delete related items first
       const items = await cloudFetch('request_items', { request_id: id });
       for (const item of items) {
-        syncEngine.trackDeletedId(item.id);
         await cloudDelete('request_items', item.id);
       }
       await cloudDelete('requests', id);

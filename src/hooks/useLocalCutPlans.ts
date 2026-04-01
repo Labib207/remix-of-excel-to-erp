@@ -1,7 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { generateLocalId, nowISO } from '@/lib/localDb';
-import { cloudFetch, cloudInsert, cloudUpdate, cloudDelete } from '@/lib/cloudDb';
-import { syncEngine } from '@/lib/syncEngine';
+import { generateId, nowISO, cloudFetch, cloudInsert, cloudUpdate, cloudDelete } from '@/lib/cloudDb';
 import { toast } from 'sonner';
 import { CutPlan } from '@/types/cutting';
 import { dbCutPlanToApp } from '@/lib/dbMappers';
@@ -31,7 +29,7 @@ export function useCreateLocalCutPlan() {
   return useMutation({
     mutationFn: async (cutPlan: CutPlan) => {
       const row = {
-        id: generateLocalId(),
+        id: generateId(),
         order_id: cutPlan.orderId || null,
         marker_id: cutPlan.markerId || null,
         plan_no: `CP-${cutPlan.cutNo}`,
@@ -102,7 +100,6 @@ export function useDeleteLocalCutPlan() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      syncEngine.trackDeletedId(id);
       await cloudDelete('cut_plans', id);
       return id;
     },

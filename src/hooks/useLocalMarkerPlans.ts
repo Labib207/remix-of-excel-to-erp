@@ -1,7 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { generateLocalId, nowISO } from '@/lib/localDb';
-import { cloudFetch, cloudInsert, cloudDelete } from '@/lib/cloudDb';
-import { syncEngine } from '@/lib/syncEngine';
+import { generateId, nowISO, cloudFetch, cloudInsert, cloudDelete } from '@/lib/cloudDb';
 import { toast } from 'sonner';
 import { MarkerPlan } from '@/types/cutting';
 import { dbMarkerPlanToApp } from '@/lib/dbMappers';
@@ -31,7 +29,7 @@ export function useCreateLocalMarkerPlan() {
   return useMutation({
     mutationFn: async (marker: MarkerPlan) => {
       const row = {
-        id: generateLocalId(),
+        id: generateId(),
         order_id: marker.orderId || null,
         marker_no: String(marker.markerNo),
         marker_length: marker.markerLength,
@@ -62,7 +60,6 @@ export function useDeleteLocalMarkerPlan() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      syncEngine.trackDeletedId(id);
       await cloudDelete('marker_plans', id);
       return id;
     },
