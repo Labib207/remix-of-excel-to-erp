@@ -12,21 +12,18 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { useRequirementStore } from '@/store/requirementStore';
-import { useRequestStore } from '@/store/requestStore';
-import { useCuttingStore } from '@/store/cuttingStore';
+import { useLocalOrders } from '@/hooks/useLocalOrders';
+import { useLocalRequirements } from '@/hooks/useLocalRequirements';
 import { MaterialDeliveryTable } from '@/components/dashboard/MaterialDeliveryTable';
 import { RequestHistorySummary } from '@/components/dashboard/RequestHistorySummary';
 
 const Dashboard = () => {
-  const { requirements } = useRequirementStore();
-  const { submittedRequests } = useRequestStore();
-  const { orders } = useCuttingStore();
+  const { data: orders = [] } = useLocalOrders();
+  const { data: requirements = [] } = useLocalRequirements();
   
   // Calculate summary stats
   const totalOrders = orders.length;
   const totalRequirements = requirements.length;
-  const totalRequests = submittedRequests.length;
   const totalPending = requirements.reduce((sum, r) => sum + r.pendingQty, 0);
   const totalRequested = requirements.reduce((sum, r) => sum + r.requestedQty, 0);
   const totalRequired = requirements.reduce((sum, r) => sum + r.requiredQty, 0);
@@ -87,8 +84,8 @@ const Dashboard = () => {
                   <FileBox className="h-6 w-6 text-success" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">Requests Submitted</p>
-                  <p className="text-2xl font-bold font-mono text-foreground">{totalRequests}</p>
+                  <p className="text-sm font-medium text-muted-foreground">Delivery Notes</p>
+                  <p className="text-2xl font-bold font-mono text-foreground">—</p>
                 </div>
               </div>
             </CardContent>
@@ -159,7 +156,7 @@ const Dashboard = () => {
         <div className="grid gap-6 lg:grid-cols-2">
           <div className="space-y-4">
             <div className="flex items-center gap-3">
-              <h2 className="text-lg font-semibold text-foreground">Recent Request History</h2>
+              <h2 className="text-lg font-semibold text-foreground">Recent Delivery Notes</h2>
               <Separator className="flex-1" />
             </div>
             <RequestHistorySummary />
