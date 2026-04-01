@@ -19,7 +19,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { User, Mail, Shield, Calendar, Loader2, Save, Download, CloudUpload, Upload, CheckCircle2, AlertCircle } from 'lucide-react';
-import { exportAllLocalData, getLocalDataCounts, getCloudDataCounts, downloadBackupJson, migrateLocalToCloud, importBackupToCloud, type MigrationProgress } from '@/lib/backupExport';
+import { exportAllCloudData, getCloudDataCounts, downloadBackupJson, importBackupToCloud, type MigrationProgress } from '@/lib/backupExport';
 import { Progress } from '@/components/ui/progress';
 import { format } from 'date-fns';
 
@@ -245,7 +245,7 @@ export default function Profile() {
                 variant="outline"
                 disabled={isExporting}
                 onClick={async () => {
-                  const counts = await getLocalDataCounts();
+                  const counts = await getCloudDataCounts();
                   setDataCounts(counts);
                   toast({ title: 'Data Counts', description: `Found records in ${Object.keys(counts).filter(k => counts[k] > 0).length} tables` });
                 }}
@@ -257,7 +257,7 @@ export default function Profile() {
                 onClick={async () => {
                   setIsExporting(true);
                   try {
-                    const data = await exportAllLocalData();
+                    const data = await exportAllCloudData();
                     downloadBackupJson(data);
                     toast({ title: 'Backup Downloaded', description: 'All local data exported as JSON' });
                   } catch (e: any) {
@@ -313,30 +313,10 @@ export default function Profile() {
               </div>
             )}
 
-            <Button
-              disabled={isMigrating || migrationDone}
-              onClick={async () => {
-                setIsMigrating(true);
-                setMigrationDone(false);
-                try {
-                  const { success, summary } = await migrateLocalToCloud(setMigrationProgress);
-                  if (success) {
-                    setMigrationDone(true);
-                    const totalRecords = Object.values(summary).reduce((a, b) => a + b, 0);
-                    toast({ title: '✅ Migration Complete', description: `${totalRecords} records migrated to cloud` });
-                  } else {
-                    toast({ variant: 'destructive', title: 'Migration had errors', description: 'Some tables failed. Check the progress above.' });
-                  }
-                } catch (e: any) {
-                  toast({ variant: 'destructive', title: 'Migration Failed', description: e.message });
-                } finally {
-                  setIsMigrating(false);
-                }
-              }}
-            >
-              {isMigrating ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CloudUpload className="h-4 w-4 mr-2" />}
-              {migrationDone ? 'Migration Complete' : 'Start Migration to Cloud'}
-            </Button>
+            <div className="bg-muted/50 rounded-lg p-3 text-sm text-muted-foreground flex items-center gap-2">
+              <CheckCircle2 className="h-4 w-4" />
+              Your app is now cloud-only. All data is stored and read directly from the cloud database.
+            </div>
           </CardContent>
         </Card>
 

@@ -26,7 +26,6 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { Plus, Trash2, ClipboardList, Package, PlusCircle, Pencil, Loader2, Filter, Save } from 'lucide-react';
-import { syncEngine } from '@/lib/syncEngine';
 import { toast } from 'sonner';
 import { MaterialRequirement } from '@/store/requirementStore';
 import { useDbOrders, useCreateDbOrder, useDeleteDbOrder, useUpdateDbOrder } from '@/hooks/useDbOrders';
@@ -278,8 +277,8 @@ export function RequirementsTab() {
   const handleSaveAllChanges = useCallback(async () => {
     setIsSaving(true);
     try {
-      await syncEngine.syncAll();
-      toast.success('All changes saved and synced');
+      // Cloud-only: data is already saved, just confirm
+      toast.success('All changes are saved in the cloud');
     } catch (error: any) {
       toast.error('Save failed: ' + error.message);
     } finally {

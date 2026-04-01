@@ -1,7 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { generateLocalId, nowISO } from '@/lib/localDb';
-import { cloudFetch, cloudInsert, cloudUpdate, cloudDelete } from '@/lib/cloudDb';
-import { syncEngine } from '@/lib/syncEngine';
+import { generateId, nowISO, cloudFetch, cloudInsert, cloudUpdate, cloudDelete } from '@/lib/cloudDb';
 import { toast } from 'sonner';
 import { MaterialRequirement } from '@/store/requirementStore';
 import { useAuth } from '@/contexts/AuthContext';
@@ -52,7 +50,7 @@ export function useCreateLocalRequirement() {
       }
 
       const row = {
-        id: generateLocalId(),
+        id: generateId(),
         order_id: req.orderId || null,
         item_code: req.itemCode,
         description: req.description || null,
@@ -97,7 +95,7 @@ export function useCreateLocalRequirements() {
       for (let idx = 0; idx < reqs.length; idx++) {
         const req = reqs[idx];
         const row = {
-          id: generateLocalId(),
+          id: generateId(),
           order_id: req.orderId || null,
           item_code: req.itemCode,
           description: req.description || null,
@@ -158,7 +156,6 @@ export function useDeleteLocalRequirement() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      syncEngine.trackDeletedId(id);
       await cloudDelete('requirements', id);
       return id;
     },

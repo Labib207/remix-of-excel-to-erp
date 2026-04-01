@@ -23,7 +23,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Shield, Users, Search, Loader2, Save, Download } from 'lucide-react';
 import { format } from 'date-fns';
-import { exportAllLocalData, downloadBackupJson } from '@/lib/backupExport';
+import { exportAllCloudData, downloadBackupJson } from '@/lib/backupExport';
 
 interface UserWithRole {
   id: string;
@@ -153,7 +153,7 @@ export default function Admin() {
             onClick={async () => {
               setIsExporting(true);
               try {
-                const data = await exportAllLocalData();
+                const data = await exportAllCloudData();
                 downloadBackupJson(data);
                 toast({ title: 'Backup Downloaded', description: 'All local data exported as JSON' });
               } catch (e: any) {

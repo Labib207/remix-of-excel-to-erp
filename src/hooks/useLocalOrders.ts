@@ -1,7 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { generateLocalId, nowISO } from '@/lib/localDb';
-import { cloudFetch, cloudInsert, cloudUpdate, cloudDelete } from '@/lib/cloudDb';
-import { syncEngine } from '@/lib/syncEngine';
+import { generateId, nowISO, cloudFetch, cloudInsert, cloudUpdate, cloudDelete } from '@/lib/cloudDb';
 import { toast } from 'sonner';
 import { Order } from '@/types/cutting';
 import { dbOrderToApp } from '@/lib/dbMappers';
@@ -42,7 +40,7 @@ export function useCreateLocalOrder() {
   return useMutation({
     mutationFn: async (order: Order) => {
       const row = {
-        id: order.id || generateLocalId(),
+        id: order.id || generateId(),
         order_no: order.orderNumber || '',
         customer: order.customer || '',
         style_no: order.styleNo || '',
@@ -108,7 +106,6 @@ export function useDeleteLocalOrder() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      syncEngine.trackDeletedId(id);
       await cloudDelete('orders', id);
       return id;
     },

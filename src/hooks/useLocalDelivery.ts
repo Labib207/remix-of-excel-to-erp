@@ -1,7 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { generateLocalId, nowISO } from '@/lib/localDb';
-import { cloudFetch, cloudInsert, cloudDelete } from '@/lib/cloudDb';
-import { syncEngine } from '@/lib/syncEngine';
+import { generateId, nowISO, cloudFetch, cloudInsert, cloudDelete } from '@/lib/cloudDb';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -35,7 +33,7 @@ export function useCreateLocalDeliveryAcknowledgment() {
   return useMutation({
     mutationFn: async (ack: { request_id?: string; acknowledgment_no: string; delivery_date?: string; received_by?: string; line_supervisor_signature?: string; line_recorder_signature?: string; notes?: string }) => {
       const row = {
-        id: generateLocalId(),
+        id: generateId(),
         request_id: ack.request_id || null,
         acknowledgment_no: ack.acknowledgment_no,
         delivery_date: ack.delivery_date || new Date().toISOString().split('T')[0],
@@ -67,7 +65,7 @@ export function useCreateLocalDeliveryItems() {
       const results = [];
       for (const item of items) {
         const row = {
-          id: generateLocalId(),
+          id: generateId(),
           acknowledgment_id: item.acknowledgment_id || null,
           request_item_id: item.request_item_id || null,
           item_code: item.item_code || null,
@@ -98,11 +96,9 @@ export function useDeleteLocalDeliveryAcknowledgment() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      syncEngine.trackDeletedId(id);
       // Delete related items first
       const items = await cloudFetch('delivery_items', { acknowledgment_id: id });
       for (const item of items) {
-        syncEngine.trackDeletedId(item.id);
         await cloudDelete('delivery_items', item.id);
       }
       await cloudDelete('delivery_acknowledgments', id);
