@@ -255,8 +255,8 @@ export default function Auth() {
           <div className="flex justify-center">
             <img src={logo} alt="Logo" className="h-16 w-auto" />
           </div>
-          <CardTitle className="text-2xl">Cutting Room Management</CardTitle>
-          <CardDescription>Sign in to manage your cutting operations</CardDescription>
+          <CardTitle className="text-2xl">Stock Management</CardTitle>
+          <CardDescription>Sign in to manage your stock operations</CardDescription>
         </CardHeader>
         <CardContent>
           {/* Offline Warning */}
