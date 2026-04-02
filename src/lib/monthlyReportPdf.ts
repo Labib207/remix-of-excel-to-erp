@@ -12,8 +12,17 @@ interface ReportData {
   rawMaterialItems: any[];
   generalItems: any[];
   returnItems: any[];
-  deliveries: any[];
-  deliveryItems: any[];
+}
+
+// Group items by normalized description for categorization
+function groupItemsByDescription(items: any[]): Record<string, any[]> {
+  const groups: Record<string, any[]> = {};
+  for (const item of items) {
+    const key = (item.description || 'Uncategorized').trim().toLowerCase();
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(item);
+  }
+  return groups;
 }
 
 export function generateMonthlyReportPdf(data: ReportData) {
@@ -37,7 +46,6 @@ export function generateMonthlyReportPdf(data: ReportData) {
   // Summary box
   const totalReqQty = data.requirements.reduce((s, r) => s + Number(r.required_qty || 0), 0);
   const totalRecQty = data.requirements.reduce((s, r) => s + Number(r.received_qty || 0), 0);
-  const totalIssuedQty = data.deliveryItems.reduce((s, i) => s + Number(i.issued_qty || 0), 0);
 
   doc.setFontSize(10);
   doc.setFont('helvetica', 'bold');
@@ -53,7 +61,6 @@ export function generateMonthlyReportPdf(data: ReportData) {
       ['Raw Material Requests', String(data.rawMaterialRequests.length), `Items: ${data.rawMaterialItems.length}`],
       ['General Supplies Requests', String(data.generalRequests.length), `Items: ${data.generalItems.length}`],
       ['Material Return Requests', String(data.returnRequests.length), `Items: ${data.returnItems.length}`],
-      ['Delivery Notes', String(data.deliveries.length), `Total Issued: ${totalIssuedQty}`],
     ],
     theme: 'grid',
     styles: { fontSize: 8, cellPadding: 2 },
@@ -75,13 +82,7 @@ export function generateMonthlyReportPdf(data: ReportData) {
       startY: y,
       head: [['#', 'Order No', 'Customer', 'Style No', 'Quantity', 'Status', 'Date']],
       body: data.orders.map((o, i) => [
-        i + 1,
-        o.order_no,
-        o.customer,
-        o.style_no,
-        o.quantity,
-        o.status,
-        o.order_date || '',
+        i + 1, o.order_no, o.customer, o.style_no, o.quantity, o.status, o.order_date || '',
       ]),
       theme: 'grid',
       styles: { fontSize: 7.5, cellPadding: 1.5 },
@@ -103,14 +104,8 @@ export function generateMonthlyReportPdf(data: ReportData) {
       startY: y,
       head: [['#', 'Item Code', 'Description', 'Color', 'Size', 'UOM', 'Required', 'Received', 'Balance']],
       body: data.requirements.map((r, i) => [
-        i + 1,
-        r.item_code,
-        r.description || '',
-        r.color || '',
-        r.size || '',
-        r.unit || 'pcs',
-        r.required_qty,
-        r.received_qty || 0,
+        i + 1, r.item_code, r.description || '', r.color || '', r.size || '', r.unit || 'pcs',
+        r.required_qty, r.received_qty || 0,
         r.balance_qty ?? (Number(r.required_qty) - Number(r.received_qty || 0)),
       ]),
       theme: 'grid',
@@ -121,7 +116,7 @@ export function generateMonthlyReportPdf(data: ReportData) {
     y = (doc as any).lastAutoTable.finalY + 10;
   }
 
-  // ——— REQUEST SECTIONS ———
+  // ——— REQUEST SECTIONS (with item categorization) ———
   const requestSections = [
     { title: '3. RAW MATERIAL REQUESTS', requests: data.rawMaterialRequests, items: data.rawMaterialItems },
     { title: '4. GENERAL SUPPLIES REQUESTS', requests: data.generalRequests, items: data.generalItems },
@@ -136,6 +131,7 @@ export function generateMonthlyReportPdf(data: ReportData) {
       doc.text(section.title, 14, y);
       y += 2;
 
+      // Request summary table
       autoTable(doc, {
         startY: y,
         head: [['#', 'Request No', 'Date', 'Department', 'Status', 'Items', 'Total Qty']],
@@ -149,31 +145,40 @@ export function generateMonthlyReportPdf(data: ReportData) {
         headStyles: { fillColor: [41, 65, 107], fontStyle: 'bold', fontSize: 8 },
         margin: { left: 14, right: 14 },
       });
-      y = (doc as any).lastAutoTable.finalY + 10;
+      y = (doc as any).lastAutoTable.finalY + 6;
+
+      // Category-wise item breakdown
+      if (section.items.length > 0) {
+        const grouped = groupItemsByDescription(section.items);
+        const categoryRows: any[][] = [];
+        let idx = 1;
+        for (const [desc, items] of Object.entries(grouped).sort((a, b) => a[0].localeCompare(b[0]))) {
+          const totalReq = items.reduce((s, it) => s + Number(it.requested_qty || 0), 0);
+          const totalIssued = items.reduce((s, it) => s + Number(it.issued_qty || 0), 0);
+          const displayDesc = items[0].description || 'Uncategorized';
+          const colors = [...new Set(items.map(it => it.color).filter(Boolean))].join(', ');
+          const sizes = [...new Set(items.map(it => it.size).filter(Boolean))].join(', ');
+          categoryRows.push([idx++, displayDesc, colors || '-', sizes || '-', items[0].unit || 'pcs', items.length, totalReq, totalIssued]);
+        }
+
+        y = checkPage(doc, y, 20);
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'italic');
+        doc.text('Item Category Breakdown:', 14, y);
+        y += 2;
+
+        autoTable(doc, {
+          startY: y,
+          head: [['#', 'Item Description', 'Colors', 'Sizes', 'UOM', 'Lines', 'Total Req Qty', 'Total Issued']],
+          body: categoryRows,
+          theme: 'grid',
+          styles: { fontSize: 7, cellPadding: 1.5 },
+          headStyles: { fillColor: [70, 100, 140], fontStyle: 'bold', fontSize: 7.5 },
+          margin: { left: 14, right: 14 },
+        });
+        y = (doc as any).lastAutoTable.finalY + 10;
+      }
     }
-  }
-
-  // ——— DELIVERY NOTES ———
-  if (data.deliveries.length > 0) {
-    y = checkPage(doc, y, 30);
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'bold');
-    doc.text('6. DELIVERY NOTES', 14, y);
-    y += 2;
-
-    autoTable(doc, {
-      startY: y,
-      head: [['#', 'Acknowledgment No', 'Delivery Date', 'Received By', 'Items', 'Total Issued']],
-      body: data.deliveries.map((d, i) => {
-        const items = data.deliveryItems.filter(it => it.acknowledgment_id === d.id);
-        const totalIssued = items.reduce((s: number, it: any) => s + Number(it.issued_qty || 0), 0);
-        return [i + 1, d.acknowledgment_no, d.delivery_date, d.received_by || '', items.length, totalIssued];
-      }),
-      theme: 'grid',
-      styles: { fontSize: 7.5, cellPadding: 1.5 },
-      headStyles: { fillColor: [41, 65, 107], fontStyle: 'bold', fontSize: 8 },
-      margin: { left: 14, right: 14 },
-    });
   }
 
   // Footer on every page
