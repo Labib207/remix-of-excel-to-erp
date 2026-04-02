@@ -70,8 +70,6 @@ export const MonthlyReport = () => {
         rawMaterialItems: getItemsForRequests(rawMaterialRequests),
         generalItems: getItemsForRequests(generalRequests),
         returnItems: getItemsForRequests(returnRequests),
-        deliveries,
-        deliveryItems,
       });
 
       toast.success(`${MONTHS[m]} ${y} report downloaded`);
