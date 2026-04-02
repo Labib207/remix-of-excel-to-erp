@@ -8,7 +8,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { FileDown, FileSpreadsheet, Calendar, Loader2 } from 'lucide-react';
+import { FileDown, FileSpreadsheet, Calendar, Loader2, Mail } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { generateMonthlyReportExcel } from '@/lib/monthlyReportExcel';
 import { generateMonthlyReportPdf } from '@/lib/monthlyReportPdf';
