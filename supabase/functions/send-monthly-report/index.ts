@@ -1,5 +1,8 @@
-import { corsHeaders } from '@supabase/supabase-js/cors'
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.89.0'
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
+
 
 const GATEWAY_URL = 'https://connector-gateway.lovable.dev/resend'
 const RECIPIENT_EMAIL = 'rabbe7026@gmail.com'
