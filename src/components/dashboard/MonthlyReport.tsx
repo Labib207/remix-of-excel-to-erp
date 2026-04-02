@@ -8,8 +8,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { FileDown, Calendar, Loader2 } from 'lucide-react';
+import { FileDown, FileSpreadsheet, Calendar, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { generateMonthlyReportExcel } from '@/lib/monthlyReportExcel';
 import { generateMonthlyReportPdf } from '@/lib/monthlyReportPdf';
 import { toast } from 'sonner';
 
@@ -18,66 +19,73 @@ const MONTHS = [
   'July', 'August', 'September', 'October', 'November', 'December',
 ];
 
+async function fetchMonthData(m: number, y: number) {
+  const startDate = new Date(y, m, 1).toISOString();
+  const endDate = new Date(y, m + 1, 1).toISOString();
+
+  const [ordersRes, requirementsRes, requestsRes, requestItemsRes] =
+    await Promise.all([
+      supabase.from('orders').select('*').gte('created_at', startDate).lt('created_at', endDate),
+      supabase.from('requirements').select('*').gte('created_at', startDate).lt('created_at', endDate),
+      supabase.from('requests').select('*').gte('created_at', startDate).lt('created_at', endDate),
+      supabase.from('request_items').select('*').gte('created_at', startDate).lt('created_at', endDate),
+    ]);
+
+  const orders = ordersRes.data || [];
+  const requirements = requirementsRes.data || [];
+  const requests = requestsRes.data || [];
+  const requestItems = requestItemsRes.data || [];
+
+  const rawMaterialRequests = requests.filter(r => r.request_no?.startsWith('RM'));
+  const generalRequests = requests.filter(r => r.request_no?.startsWith('GS'));
+  const returnRequests = requests.filter(r => r.request_no?.startsWith('MR'));
+
+  const getItemsForRequests = (reqs: any[]) => {
+    const ids = new Set(reqs.map(r => r.id));
+    return requestItems.filter(i => ids.has(i.request_id));
+  };
+
+  return {
+    month: MONTHS[m],
+    year: y,
+    orders,
+    requirements,
+    rawMaterialRequests,
+    generalRequests,
+    returnRequests,
+    rawMaterialItems: getItemsForRequests(rawMaterialRequests),
+    generalItems: getItemsForRequests(generalRequests),
+    returnItems: getItemsForRequests(returnRequests),
+  };
+}
+
 export const MonthlyReport = () => {
   const now = new Date();
   const [month, setMonth] = useState(String(now.getMonth()));
   const [year, setYear] = useState(String(now.getFullYear()));
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState<'excel' | 'pdf' | null>(null);
 
   const years = Array.from({ length: 3 }, (_, i) => String(now.getFullYear() - i));
 
-  const handleGenerate = async () => {
-    setLoading(true);
+  const handleGenerate = async (format: 'excel' | 'pdf') => {
+    setLoading(format);
     try {
       const m = parseInt(month);
       const y = parseInt(year);
-      const startDate = new Date(y, m, 1).toISOString();
-      const endDate = new Date(y, m + 1, 1).toISOString();
+      const reportData = await fetchMonthData(m, y);
 
-      // Fetch all data for the month in parallel
-      const [ordersRes, requirementsRes, requestsRes, requestItemsRes] =
-        await Promise.all([
-          supabase.from('orders').select('*').gte('created_at', startDate).lt('created_at', endDate),
-          supabase.from('requirements').select('*').gte('created_at', startDate).lt('created_at', endDate),
-          supabase.from('requests').select('*').gte('created_at', startDate).lt('created_at', endDate),
-          supabase.from('request_items').select('*').gte('created_at', startDate).lt('created_at', endDate),
-        ]);
+      if (format === 'excel') {
+        generateMonthlyReportExcel(reportData);
+      } else {
+        generateMonthlyReportPdf(reportData);
+      }
 
-      const orders = ordersRes.data || [];
-      const requirements = requirementsRes.data || [];
-      const requests = requestsRes.data || [];
-      const requestItems = requestItemsRes.data || [];
-
-      // Categorize requests
-      const rawMaterialRequests = requests.filter(r => r.request_no?.startsWith('RM'));
-      const generalRequests = requests.filter(r => r.request_no?.startsWith('GS'));
-      const returnRequests = requests.filter(r => r.request_no?.startsWith('MR'));
-
-      // Get items per request
-      const getItemsForRequests = (reqs: any[]) => {
-        const ids = new Set(reqs.map(r => r.id));
-        return requestItems.filter(i => ids.has(i.request_id));
-      };
-
-      generateMonthlyReportPdf({
-        month: MONTHS[m],
-        year: y,
-        orders,
-        requirements,
-        rawMaterialRequests,
-        generalRequests,
-        returnRequests,
-        rawMaterialItems: getItemsForRequests(rawMaterialRequests),
-        generalItems: getItemsForRequests(generalRequests),
-        returnItems: getItemsForRequests(returnRequests),
-      });
-
-      toast.success(`${MONTHS[m]} ${y} report downloaded`);
+      toast.success(`${MONTHS[m]} ${y} ${format === 'excel' ? 'Excel' : 'PDF'} report downloaded`);
     } catch (err: any) {
       console.error(err);
       toast.error('Failed to generate report: ' + err.message);
     } finally {
-      setLoading(false);
+      setLoading(null);
     }
   };
 
@@ -91,7 +99,7 @@ export const MonthlyReport = () => {
             </div>
             <div>
               <p className="font-semibold text-foreground">Monthly Summary Report</p>
-              <p className="text-xs text-muted-foreground">Generate category-wise PDF report</p>
+              <p className="text-xs text-muted-foreground">Generate category-wise Excel or PDF report</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -115,9 +123,13 @@ export const MonthlyReport = () => {
                 ))}
               </SelectContent>
             </Select>
-            <Button onClick={handleGenerate} disabled={loading} size="sm">
-              {loading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <FileDown className="h-4 w-4 mr-1" />}
-              Generate PDF
+            <Button onClick={() => handleGenerate('excel')} disabled={!!loading} size="sm">
+              {loading === 'excel' ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <FileSpreadsheet className="h-4 w-4 mr-1" />}
+              Excel
+            </Button>
+            <Button onClick={() => handleGenerate('pdf')} disabled={!!loading} size="sm" variant="outline">
+              {loading === 'pdf' ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <FileDown className="h-4 w-4 mr-1" />}
+              PDF
             </Button>
           </div>
         </div>
