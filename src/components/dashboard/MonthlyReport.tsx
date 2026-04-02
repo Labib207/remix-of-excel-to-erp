@@ -89,6 +89,24 @@ export const MonthlyReport = () => {
     }
   };
 
+  const handleSendEmail = async () => {
+    setLoading('email');
+    try {
+      const m = parseInt(month);
+      const y = parseInt(year);
+      const { data, error } = await supabase.functions.invoke('send-monthly-report', {
+        body: { month: m, year: y },
+      });
+      if (error) throw error;
+      toast.success(`${MONTHS[m]} ${y} report sent to your email!`);
+    } catch (err: any) {
+      console.error(err);
+      toast.error('Failed to send email: ' + (err.message || 'Unknown error'));
+    } finally {
+      setLoading(null);
+    }
+  };
+
   return (
     <Card className="shadow-card border-primary/20">
       <CardContent className="py-5">
