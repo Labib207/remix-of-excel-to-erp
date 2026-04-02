@@ -35,22 +35,18 @@ export const MonthlyReport = () => {
       const endDate = new Date(y, m + 1, 1).toISOString();
 
       // Fetch all data for the month in parallel
-      const [ordersRes, requirementsRes, requestsRes, requestItemsRes, deliveryRes, deliveryItemsRes] =
+      const [ordersRes, requirementsRes, requestsRes, requestItemsRes] =
         await Promise.all([
           supabase.from('orders').select('*').gte('created_at', startDate).lt('created_at', endDate),
           supabase.from('requirements').select('*').gte('created_at', startDate).lt('created_at', endDate),
           supabase.from('requests').select('*').gte('created_at', startDate).lt('created_at', endDate),
           supabase.from('request_items').select('*').gte('created_at', startDate).lt('created_at', endDate),
-          supabase.from('delivery_acknowledgments').select('*').gte('created_at', startDate).lt('created_at', endDate),
-          supabase.from('delivery_items').select('*').gte('created_at', startDate).lt('created_at', endDate),
         ]);
 
       const orders = ordersRes.data || [];
       const requirements = requirementsRes.data || [];
       const requests = requestsRes.data || [];
       const requestItems = requestItemsRes.data || [];
-      const deliveries = deliveryRes.data || [];
-      const deliveryItems = deliveryItemsRes.data || [];
 
       // Categorize requests
       const rawMaterialRequests = requests.filter(r => r.request_no?.startsWith('RM'));
