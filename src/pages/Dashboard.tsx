@@ -16,6 +16,7 @@ import { useLocalOrders } from '@/hooks/useLocalOrders';
 import { useLocalRequirements } from '@/hooks/useLocalRequirements';
 import { MaterialDeliveryTable } from '@/components/dashboard/MaterialDeliveryTable';
 import { RequestHistorySummary } from '@/components/dashboard/RequestHistorySummary';
+import { MonthlyReport } from '@/components/dashboard/MonthlyReport';
 
 const Dashboard = () => {
   const { data: orders = [] } = useLocalOrders();
@@ -132,6 +133,9 @@ const Dashboard = () => {
             </div>
           </CardContent>
         </Card>
+
+        {/* Monthly Report Generator */}
+        <MonthlyReport />
 
         <Separator className="my-2" />
 
