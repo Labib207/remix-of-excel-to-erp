@@ -8,7 +8,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { FileDown, FileSpreadsheet, Calendar, Loader2 } from 'lucide-react';
+import { FileDown, FileSpreadsheet, Calendar, Loader2, Mail } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { generateMonthlyReportExcel } from '@/lib/monthlyReportExcel';
 import { generateMonthlyReportPdf } from '@/lib/monthlyReportPdf';
@@ -63,7 +63,7 @@ export const MonthlyReport = () => {
   const now = new Date();
   const [month, setMonth] = useState(String(now.getMonth()));
   const [year, setYear] = useState(String(now.getFullYear()));
-  const [loading, setLoading] = useState<'excel' | 'pdf' | null>(null);
+  const [loading, setLoading] = useState<'excel' | 'pdf' | 'email' | null>(null);
 
   const years = Array.from({ length: 3 }, (_, i) => String(now.getFullYear() - i));
 
@@ -84,6 +84,24 @@ export const MonthlyReport = () => {
     } catch (err: any) {
       console.error(err);
       toast.error('Failed to generate report: ' + err.message);
+    } finally {
+      setLoading(null);
+    }
+  };
+
+  const handleSendEmail = async () => {
+    setLoading('email');
+    try {
+      const m = parseInt(month);
+      const y = parseInt(year);
+      const { data, error } = await supabase.functions.invoke('send-monthly-report', {
+        body: { month: m, year: y },
+      });
+      if (error) throw error;
+      toast.success(`${MONTHS[m]} ${y} report sent to your email!`);
+    } catch (err: any) {
+      console.error(err);
+      toast.error('Failed to send email: ' + (err.message || 'Unknown error'));
     } finally {
       setLoading(null);
     }
@@ -130,6 +148,10 @@ export const MonthlyReport = () => {
             <Button onClick={() => handleGenerate('pdf')} disabled={!!loading} size="sm" variant="outline">
               {loading === 'pdf' ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <FileDown className="h-4 w-4 mr-1" />}
               PDF
+            </Button>
+            <Button onClick={handleSendEmail} disabled={!!loading} size="sm" variant="secondary">
+              {loading === 'email' ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Mail className="h-4 w-4 mr-1" />}
+              Email
             </Button>
           </div>
         </div>
