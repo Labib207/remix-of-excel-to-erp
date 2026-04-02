@@ -134,6 +134,9 @@ const Dashboard = () => {
           </CardContent>
         </Card>
 
+        {/* Monthly Report Generator */}
+        <MonthlyReport />
+
         <Separator className="my-2" />
 
         {/* Order-wise Material Status */}
