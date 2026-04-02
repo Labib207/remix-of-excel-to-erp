@@ -149,6 +149,10 @@ export const MonthlyReport = () => {
               {loading === 'pdf' ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <FileDown className="h-4 w-4 mr-1" />}
               PDF
             </Button>
+            <Button onClick={handleSendEmail} disabled={!!loading} size="sm" variant="secondary">
+              {loading === 'email' ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Mail className="h-4 w-4 mr-1" />}
+              Email
+            </Button>
           </div>
         </div>
       </CardContent>
