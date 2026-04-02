@@ -63,7 +63,7 @@ export const MonthlyReport = () => {
   const now = new Date();
   const [month, setMonth] = useState(String(now.getMonth()));
   const [year, setYear] = useState(String(now.getFullYear()));
-  const [loading, setLoading] = useState<'excel' | 'pdf' | null>(null);
+  const [loading, setLoading] = useState<'excel' | 'pdf' | 'email' | null>(null);
 
   const years = Array.from({ length: 3 }, (_, i) => String(now.getFullYear() - i));
 
