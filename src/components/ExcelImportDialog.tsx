@@ -112,7 +112,7 @@ export const ExcelImportDialog = () => {
     }
   };
 
-  const importLayRecords = () => {
+  const importLayRecords = async () => {
     if (!selectedCutPlan || !workbook || !selectedSheet) {
       toast({
         title: 'Please select a cut plan',
