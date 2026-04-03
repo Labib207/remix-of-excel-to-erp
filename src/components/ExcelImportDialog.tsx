@@ -130,7 +130,8 @@ export const ExcelImportDialog = () => {
 
     let importedCount = 0;
 
-    allData.forEach((row, index) => {
+    for (let index = 0; index < allData.length; index++) {
+      const row = allData[index];
       // Try to map common column names to our fields
       const rollNo = String(row['Roll No'] || row['ROLL NO'] || row['RollNo'] || row['roll_no'] || `R${index + 1}`);
       const systemRollLength = Number(row['System Length'] || row['Sys Length'] || row['System Roll Length'] || row['system_length'] || 0);
@@ -150,29 +151,6 @@ export const ExcelImportDialog = () => {
 
       // Only import if we have meaningful data
       if (actualLays > 0 || systemRollLength > 0) {
-        const layRecord: LayRecord = {
-          id: `lay-import-${Date.now()}-${index}`,
-          cutPlanId: selectedCutPlan,
-          cutNo: cp.cutNo,
-          shade: cp.shade,
-          rollNo,
-          systemRollLength,
-          actualLays,
-          markerLength,
-          layedMts,
-          overlapYards,
-          rollShortageIncrease,
-          rollEndNextPly1st: 0,
-          damage,
-          rollEndNextPly2nd: 0,
-          recutReturn: 0,
-          unusableRollEnd,
-          totalUsage,
-          rollEnd,
-          bigEnd,
-          remarks,
-        };
-
         await cloudInsert('lay_records', {
           id: generateId(),
           cut_plan_id: selectedCutPlan,
@@ -197,7 +175,7 @@ export const ExcelImportDialog = () => {
         });
         importedCount++;
       }
-    });
+    }
 
     toast({
       title: 'Import successful!',
