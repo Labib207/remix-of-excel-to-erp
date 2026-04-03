@@ -85,7 +85,7 @@ export const ImportDataDialog = ({ open, onOpenChange }: ImportDataDialogProps) 
     }
   };
 
-  const handleImportJson = () => {
+  const handleImportJson = async () => {
     try {
       setImportStatus('idle');
       setErrorMessage('');
@@ -96,7 +96,7 @@ export const ImportDataDialog = ({ open, onOpenChange }: ImportDataDialogProps) 
       const sizesQty = data.order.sizes_qty;
       const totalQty = Object.values(sizesQty).reduce((sum: number, val) => sum + (val as number), 0);
 
-      // Create order
+      // Create order via cloud
       const newOrder: Order = {
         id: `order-${Date.now()}`,
         orderNumber: `ORD-${Date.now().toString().slice(-6)}`,
@@ -112,39 +112,39 @@ export const ImportDataDialog = ({ open, onOpenChange }: ImportDataDialogProps) 
         status: 'pending',
       };
 
-      addOrder(newOrder);
+      await createOrder.mutateAsync(newOrder);
 
       // If fabric data is provided, create fabric calculations
       if (data.fabric) {
         const METERS_TO_YARDS = 1.0936133;
 
         if (data.fabric.top_total_m) {
-          addFabricCalculation({
-            id: `fc-top-${Date.now()}`,
-            orderId: newOrder.id,
-            fabricType: 'TOP',
-            totalMeters: data.fabric.top_total_m,
-            totalYards: data.fabric.top_total_m * METERS_TO_YARDS,
-            wastagePercent: 1,
-            requestWithAllowance: data.fabric.top_request_m || data.fabric.top_total_m * 1.01,
-            receivedMeters: 0,
-            usedMeters: 0,
+          await cloudInsert('fabric_calculations', {
+            id: generateId(),
+            order_id: newOrder.id,
+            fabric_type: 'TOP',
+            total_meters: data.fabric.top_total_m,
+            total_yards: data.fabric.top_total_m * METERS_TO_YARDS,
+            wastage_percent: 1,
+            request_with_allowance: data.fabric.top_request_m || data.fabric.top_total_m * 1.01,
+            received_meters: 0,
+            used_meters: 0,
             balance: 0,
             remarks: 'Imported from JSON',
           });
         }
 
         if (data.fabric.fusing_total_m) {
-          addFabricCalculation({
-            id: `fc-fusing-${Date.now()}`,
-            orderId: newOrder.id,
-            fabricType: 'FUSING',
-            totalMeters: data.fabric.fusing_total_m,
-            totalYards: data.fabric.fusing_total_m * METERS_TO_YARDS,
-            wastagePercent: 1,
-            requestWithAllowance: data.fabric.fusing_total_m * 1.01,
-            receivedMeters: 0,
-            usedMeters: 0,
+          await cloudInsert('fabric_calculations', {
+            id: generateId(),
+            order_id: newOrder.id,
+            fabric_type: 'FUSING',
+            total_meters: data.fabric.fusing_total_m,
+            total_yards: data.fabric.fusing_total_m * METERS_TO_YARDS,
+            wastage_percent: 1,
+            request_with_allowance: data.fabric.fusing_total_m * 1.01,
+            received_meters: 0,
+            used_meters: 0,
             balance: 0,
             remarks: 'Imported from JSON',
           });
