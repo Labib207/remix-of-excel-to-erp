@@ -27,7 +27,9 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Upload, FileSpreadsheet, Check, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { useCuttingStore } from '@/store/cuttingStore';
+import { useDbOrders } from '@/hooks/useDbOrders';
+import { useDbCutPlans } from '@/hooks/useDbCutPlans';
+import { cloudInsert, generateId } from '@/lib/cloudDb';
 import { LayRecord } from '@/types/cutting';
 
 interface ExcelRow {
@@ -37,7 +39,8 @@ interface ExcelRow {
 const METERS_TO_YARDS = 1.0936133;
 
 export const ExcelImportDialog = () => {
-  const { orders, cutPlans, addLayRecord } = useCuttingStore();
+  const { data: orders = [] } = useDbOrders();
+  const { data: cutPlans = [] } = useDbCutPlans();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
