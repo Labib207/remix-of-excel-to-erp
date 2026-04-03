@@ -39,7 +39,7 @@ import { format, isWithinInterval, startOfDay, endOfDay, startOfMonth, endOfMont
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { useRequestStore } from '@/store/requestStore';
-import { useCuttingStore } from '@/store/cuttingStore';
+import { useDbOrders } from '@/hooks/useDbOrders';
 import {
   Dialog,
   DialogContent,
@@ -134,7 +134,7 @@ const getMaterialCategory = (itemCode: string): string => {
 
 export function RecordsAnalytics() {
   const { submittedRequests, addExternalRequest, deleteRequest } = useRequestStore();
-  const { orders } = useCuttingStore();
+  const { data: orders = [] } = useDbOrders();
   
   // Cast requests to extended type (orderId is added at runtime in Requests.tsx)
   const extendedRequests = submittedRequests as unknown as SubmittedRequestExtended[];

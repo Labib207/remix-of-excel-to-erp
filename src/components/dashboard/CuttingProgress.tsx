@@ -1,8 +1,10 @@
-import { useCuttingStore } from '@/store/cuttingStore';
+import { useDbOrders } from '@/hooks/useDbOrders';
+import { useDbCutPlans } from '@/hooks/useDbCutPlans';
 import { Progress } from '@/components/ui/progress';
 
 export function CuttingProgress() {
-  const { orders, cutPlans } = useCuttingStore();
+  const { data: orders = [] } = useDbOrders();
+  const { data: cutPlans = [] } = useDbCutPlans();
   
   if (orders.length === 0) {
     return (
@@ -13,7 +15,6 @@ export function CuttingProgress() {
     );
   }
 
-  // Calculate totals across ALL orders
   const totalOrderQty = orders.reduce((sum, o) => sum + o.totalQty, 0);
   const totalCutQty = cutPlans.reduce((sum, cp) => sum + cp.totalQty, 0);
   const progress = totalOrderQty > 0 ? (totalCutQty / totalOrderQty) * 100 : 0;

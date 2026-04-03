@@ -1,8 +1,10 @@
-import { useCuttingStore } from '@/store/cuttingStore';
+import { useDbOrders } from '@/hooks/useDbOrders';
+import { useDbCutPlans } from '@/hooks/useDbCutPlans';
 import { SIZES } from '@/types/cutting';
 
 export function SizeBreakdown() {
-  const { orders, cutPlans } = useCuttingStore();
+  const { data: orders = [] } = useDbOrders();
+  const { data: cutPlans = [] } = useDbCutPlans();
   
   if (orders.length === 0) {
     return (
@@ -13,7 +15,6 @@ export function SizeBreakdown() {
     );
   }
 
-  // Calculate ordered quantities per size across ALL orders
   const orderedBySize: Record<string, number> = {};
   orders.forEach(order => {
     Object.entries(order.sizeQuantities).forEach(([size, qty]) => {
@@ -21,7 +22,6 @@ export function SizeBreakdown() {
     });
   });
 
-  // Calculate cut quantities per size across ALL cut plans
   const cutBySize: Record<string, number> = {};
   cutPlans.forEach(cp => {
     Object.entries(cp.sizes).forEach(([size, qty]) => {
@@ -29,7 +29,6 @@ export function SizeBreakdown() {
     });
   });
 
-  // Get all unique sizes
   const allSizes = [...new Set([...Object.keys(orderedBySize), ...SIZES.map(s => s.code)])];
 
   return (

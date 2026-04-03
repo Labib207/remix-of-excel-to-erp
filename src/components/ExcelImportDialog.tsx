@@ -27,7 +27,9 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Upload, FileSpreadsheet, Check, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { useCuttingStore } from '@/store/cuttingStore';
+import { useDbOrders } from '@/hooks/useDbOrders';
+import { useDbCutPlans } from '@/hooks/useDbCutPlans';
+import { cloudInsert, generateId } from '@/lib/cloudDb';
 import { LayRecord } from '@/types/cutting';
 
 interface ExcelRow {
@@ -37,7 +39,8 @@ interface ExcelRow {
 const METERS_TO_YARDS = 1.0936133;
 
 export const ExcelImportDialog = () => {
-  const { orders, cutPlans, addLayRecord } = useCuttingStore();
+  const { data: orders = [] } = useDbOrders();
+  const { data: cutPlans = [] } = useDbCutPlans();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -109,7 +112,7 @@ export const ExcelImportDialog = () => {
     }
   };
 
-  const importLayRecords = () => {
+  const importLayRecords = async () => {
     if (!selectedCutPlan || !workbook || !selectedSheet) {
       toast({
         title: 'Please select a cut plan',
@@ -127,7 +130,8 @@ export const ExcelImportDialog = () => {
 
     let importedCount = 0;
 
-    allData.forEach((row, index) => {
+    for (let index = 0; index < allData.length; index++) {
+      const row = allData[index];
       // Try to map common column names to our fields
       const rollNo = String(row['Roll No'] || row['ROLL NO'] || row['RollNo'] || row['roll_no'] || `R${index + 1}`);
       const systemRollLength = Number(row['System Length'] || row['Sys Length'] || row['System Roll Length'] || row['system_length'] || 0);
@@ -147,33 +151,31 @@ export const ExcelImportDialog = () => {
 
       // Only import if we have meaningful data
       if (actualLays > 0 || systemRollLength > 0) {
-        const layRecord: LayRecord = {
-          id: `lay-import-${Date.now()}-${index}`,
-          cutPlanId: selectedCutPlan,
-          cutNo: cp.cutNo,
+        await cloudInsert('lay_records', {
+          id: generateId(),
+          cut_plan_id: selectedCutPlan,
+          cut_no: cp.cutNo,
           shade: cp.shade,
-          rollNo,
-          systemRollLength,
-          actualLays,
-          markerLength,
-          layedMts,
-          overlapYards,
-          rollShortageIncrease,
-          rollEndNextPly1st: 0,
+          roll_no: rollNo,
+          system_roll_length: systemRollLength,
+          actual_lays: actualLays,
+          marker_length: markerLength,
+          layed_mts: layedMts,
+          overlap_yards: overlapYards,
+          roll_shortage_increase: rollShortageIncrease,
+          roll_end_next_ply_1st: 0,
           damage,
-          rollEndNextPly2nd: 0,
-          recutReturn: 0,
-          unusableRollEnd,
-          totalUsage,
-          rollEnd,
-          bigEnd,
+          roll_end_next_ply_2nd: 0,
+          recut_return: 0,
+          unusable_roll_end: unusableRollEnd,
+          total_usage: totalUsage,
+          roll_end: rollEnd,
+          big_end: bigEnd,
           remarks,
-        };
-
-        addLayRecord(layRecord);
+        });
         importedCount++;
       }
-    });
+    }
 
     toast({
       title: 'Import successful!',
