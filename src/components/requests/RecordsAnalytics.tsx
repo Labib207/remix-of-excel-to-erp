@@ -134,7 +134,7 @@ const getMaterialCategory = (itemCode: string): string => {
 
 export function RecordsAnalytics() {
   const { submittedRequests, addExternalRequest, deleteRequest } = useRequestStore();
-  const { orders } = useCuttingStore();
+  const { data: orders = [] } = useDbOrders();
   
   // Cast requests to extended type (orderId is added at runtime in Requests.tsx)
   const extendedRequests = submittedRequests as unknown as SubmittedRequestExtended[];
