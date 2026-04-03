@@ -1,11 +1,12 @@
-import { useCuttingStore } from '@/store/cuttingStore';
+import { useDbOrders } from '@/hooks/useDbOrders';
+import { useDbCutPlans } from '@/hooks/useDbCutPlans';
 
 export function FabricUsage() {
-  const { orders, cutPlans } = useCuttingStore();
+  const { data: orders = [] } = useDbOrders();
+  const { data: cutPlans = [] } = useDbCutPlans();
   
   const totalFabricUsed = cutPlans.reduce((sum, cp) => sum + cp.fabricUsed, 0);
   
-  // Calculate estimated fabric requirement based on orders (estimate ~2.2m per piece)
   const totalOrderQty = orders.reduce((sum, o) => sum + o.totalQty, 0);
   const estimatedFabricRequired = totalOrderQty > 0 ? totalOrderQty * 2.19 : 0;
   
@@ -26,7 +27,6 @@ export function FabricUsage() {
       <h3 className="text-lg font-semibold text-foreground mb-4">Shell Fabric Usage</h3>
       
       <div className="space-y-4">
-        {/* Visual usage bar */}
         <div className="relative h-8 rounded-lg bg-muted overflow-hidden">
           <div 
             className="absolute inset-y-0 left-0 gradient-primary transition-all duration-500"

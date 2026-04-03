@@ -1,4 +1,4 @@
-import { useCuttingStore } from '@/store/cuttingStore';
+import { useDbOrders } from '@/hooks/useDbOrders';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Eye, Edit } from 'lucide-react';
@@ -17,7 +17,17 @@ const statusLabels = {
 };
 
 export function OrdersTable() {
-  const { orders } = useCuttingStore();
+  const { data: orders = [], isLoading } = useDbOrders();
+
+  if (isLoading) {
+    return (
+      <div className="rounded-xl border border-border bg-card shadow-card">
+        <div className="p-8 text-center">
+          <p className="text-muted-foreground">Loading orders...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (orders.length === 0) {
     return (
