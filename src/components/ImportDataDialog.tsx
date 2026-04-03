@@ -20,7 +20,8 @@ import {
 } from '@/components/ui/tabs';
 import { Upload, FileJson, FileSpreadsheet, AlertCircle, CheckCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { useCuttingStore } from '@/store/cuttingStore';
+import { useCreateDbOrder } from '@/hooks/useDbOrders';
+import { cloudInsert, generateId } from '@/lib/cloudDb';
 import { Order, SIZES } from '@/types/cutting';
 
 interface ImportDataDialogProps {
@@ -52,7 +53,7 @@ const exampleJson = `{
 
 export const ImportDataDialog = ({ open, onOpenChange }: ImportDataDialogProps) => {
   const { toast } = useToast();
-  const { addOrder, addFabricCalculation } = useCuttingStore();
+  const createOrder = useCreateDbOrder();
   const [jsonInput, setJsonInput] = useState('');
   const [importStatus, setImportStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState('');

@@ -173,7 +173,28 @@ export const ExcelImportDialog = () => {
           remarks,
         };
 
-        addLayRecord(layRecord);
+        await cloudInsert('lay_records', {
+          id: generateId(),
+          cut_plan_id: selectedCutPlan,
+          cut_no: cp.cutNo,
+          shade: cp.shade,
+          roll_no: rollNo,
+          system_roll_length: systemRollLength,
+          actual_lays: actualLays,
+          marker_length: markerLength,
+          layed_mts: layedMts,
+          overlap_yards: overlapYards,
+          roll_shortage_increase: rollShortageIncrease,
+          roll_end_next_ply_1st: 0,
+          damage,
+          roll_end_next_ply_2nd: 0,
+          recut_return: 0,
+          unusable_roll_end: unusableRollEnd,
+          total_usage: totalUsage,
+          roll_end: rollEnd,
+          big_end: bigEnd,
+          remarks,
+        });
         importedCount++;
       }
     });
