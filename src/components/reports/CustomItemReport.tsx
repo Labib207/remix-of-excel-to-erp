@@ -10,11 +10,13 @@ import { format } from 'date-fns';
 
 interface ItemRow {
   date: string;
+  source: string;
   requestNo: string;
   orderNo: string;
   type: string;
   color: string;
   size: string;
+  unit: string;
   requestedQty: number;
   issuedQty: number;
 }
@@ -29,6 +31,7 @@ function getRequestType(requestNo: string) {
 function getTypeBadgeVariant(type: string) {
   if (type === 'Raw Material') return 'default';
   if (type === 'Material Return') return 'destructive';
+  if (type === 'Requirement') return 'outline';
   return 'secondary';
 }
 
@@ -43,56 +46,85 @@ export function CustomItemReport() {
     setLoading(true);
     setSearched(true);
     try {
-      // Fetch matching request_items
-      const { data: items, error: itemsErr } = await supabase
-        .from('request_items')
-        .select('*')
-        .ilike('description', `%${search.trim()}%`);
+      const searchTerm = `%${search.trim()}%`;
 
-      if (itemsErr) throw itemsErr;
-      if (!items || items.length === 0) {
-        setResults([]);
-        return;
+      // Fetch from request_items AND requirements in parallel
+      const [itemsRes, reqmtsRes] = await Promise.all([
+        supabase.from('request_items').select('*').ilike('description', searchTerm),
+        supabase.from('requirements').select('*').ilike('description', searchTerm),
+      ]);
+
+      const items = itemsRes.data || [];
+      const reqmts = reqmtsRes.data || [];
+
+      // Collect all order_ids and request_ids we need
+      const requestIds = [...new Set(items.map(i => i.request_id).filter(Boolean))];
+      const orderIdsFromReqmts = [...new Set(reqmts.map(r => r.order_id).filter(Boolean))];
+
+      // Fetch requests (for request_items)
+      let requestMap = new Map<string, any>();
+      if (requestIds.length > 0) {
+        const { data: requests } = await supabase
+          .from('requests')
+          .select('id, request_no, request_date, order_id')
+          .in('id', requestIds);
+        (requests || []).forEach(r => requestMap.set(r.id, r));
       }
 
-      // Get unique request_ids
-      const requestIds = [...new Set(items.map(i => i.request_id).filter(Boolean))];
-      
-      // Fetch requests
-      const { data: requests } = await supabase
-        .from('requests')
-        .select('id, request_no, request_date, order_id')
-        .in('id', requestIds);
+      // Collect all order_ids
+      const allOrderIds = [
+        ...new Set([
+          ...(Array.from(requestMap.values()).map(r => r.order_id).filter(Boolean)),
+          ...orderIdsFromReqmts,
+        ])
+      ];
 
-      // Fetch orders for order numbers
-      const orderIds = [...new Set((requests || []).map(r => r.order_id).filter(Boolean))];
+      // Fetch orders
       let ordersMap: Record<string, string> = {};
-      if (orderIds.length > 0) {
+      if (allOrderIds.length > 0) {
         const { data: orders } = await supabase
           .from('orders')
           .select('id, order_no')
-          .in('id', orderIds);
+          .in('id', allOrderIds);
         (orders || []).forEach(o => { ordersMap[o.id] = o.order_no; });
       }
 
-      const requestMap = new Map((requests || []).map(r => [r.id, r]));
+      const rows: ItemRow[] = [];
 
-      const rows: ItemRow[] = items.map(item => {
+      // Rows from request_items
+      items.forEach(item => {
         const req = requestMap.get(item.request_id || '');
         const requestNo = req?.request_no || '—';
-        return {
+        rows.push({
           date: req?.request_date || item.created_at?.split('T')[0] || '',
+          source: 'Request',
           requestNo,
           orderNo: req?.order_id ? (ordersMap[req.order_id] || '—') : '—',
           type: getRequestType(requestNo),
           color: item.color || '—',
           size: item.size || '—',
+          unit: item.unit || 'pcs',
           requestedQty: Number(item.requested_qty) || 0,
           issuedQty: Number(item.issued_qty) || 0,
-        };
+        });
       });
 
-      // Sort by date
+      // Rows from requirements
+      reqmts.forEach(req => {
+        rows.push({
+          date: req.created_at?.split('T')[0] || '',
+          source: 'Requirement',
+          requestNo: '—',
+          orderNo: req.order_id ? (ordersMap[req.order_id] || '—') : '—',
+          type: 'Requirement',
+          color: req.color || '—',
+          size: req.size || '—',
+          unit: req.unit || 'pcs',
+          requestedQty: Number(req.required_qty) || 0,
+          issuedQty: Number(req.received_qty) || 0,
+        });
+      });
+
       rows.sort((a, b) => a.date.localeCompare(b.date));
       setResults(rows);
     } catch (err) {
@@ -105,7 +137,6 @@ export function CustomItemReport() {
   const totalRequested = results.reduce((s, r) => s + r.requestedQty, 0);
   const totalIssued = results.reduce((s, r) => s + r.issuedQty, 0);
 
-  // Category totals
   const categoryTotals = results.reduce((acc, r) => {
     if (!acc[r.type]) acc[r.type] = { requested: 0, issued: 0 };
     acc[r.type].requested += r.requestedQty;
@@ -122,13 +153,13 @@ export function CustomItemReport() {
           </div>
           <div>
             <p className="font-semibold text-foreground">Custom Item Report</p>
-            <p className="text-xs text-muted-foreground">Search any item to see all request & issue history</p>
+            <p className="text-xs text-muted-foreground">Search any item to see all request, requirement & issue history</p>
           </div>
         </div>
 
         <div className="flex gap-2">
           <Input
-            placeholder="Search item description (e.g. Zipper, Button)..."
+            placeholder="Search item description (e.g. Zipper, Fabric, Button)..."
             value={search}
             onChange={e => setSearch(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && handleSearch()}
@@ -151,19 +182,22 @@ export function CustomItemReport() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Date</TableHead>
+                    <TableHead>Source</TableHead>
                     <TableHead>Request #</TableHead>
                     <TableHead>Order #</TableHead>
                     <TableHead>Type</TableHead>
                     <TableHead>Color</TableHead>
                     <TableHead>Size</TableHead>
+                    <TableHead>Unit</TableHead>
                     <TableHead className="text-right">Requested</TableHead>
-                    <TableHead className="text-right">Issued</TableHead>
+                    <TableHead className="text-right">Issued/Received</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {results.map((row, i) => (
                     <TableRow key={i}>
                       <TableCell className="text-xs">{row.date ? format(new Date(row.date), 'dd/MM/yyyy') : '—'}</TableCell>
+                      <TableCell className="text-xs">{row.source}</TableCell>
                       <TableCell className="font-mono text-xs">{row.requestNo}</TableCell>
                       <TableCell className="font-mono text-xs">{row.orderNo}</TableCell>
                       <TableCell>
@@ -173,6 +207,7 @@ export function CustomItemReport() {
                       </TableCell>
                       <TableCell className="text-xs">{row.color}</TableCell>
                       <TableCell className="text-xs">{row.size}</TableCell>
+                      <TableCell className="text-xs">{row.unit}</TableCell>
                       <TableCell className="text-right font-mono">{row.requestedQty}</TableCell>
                       <TableCell className="text-right font-mono">{row.issuedQty}</TableCell>
                     </TableRow>
@@ -181,7 +216,6 @@ export function CustomItemReport() {
               </Table>
             </div>
 
-            {/* Summary */}
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               {Object.entries(categoryTotals).map(([type, totals]) => (
                 <div key={type} className="rounded-lg border p-3 bg-muted/30">
