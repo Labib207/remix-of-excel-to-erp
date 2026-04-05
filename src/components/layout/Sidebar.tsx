@@ -9,6 +9,7 @@ import {
   FileBox,
   ChevronRight,
   Truck,
+  BarChart3,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import logo from '@/assets/logo.png';
@@ -22,6 +23,7 @@ const navigation = [
   { name: 'Trim Chart', href: '/requirements', icon: ClipboardList },
   { name: 'Requests', href: '/requests', icon: FileBox },
   { name: 'Delivery Notes', href: '/delivery-notes', icon: Truck },
+  { name: 'Reports', href: '/reports', icon: BarChart3 },
 ];
 
 export function Sidebar() {
