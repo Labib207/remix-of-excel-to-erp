@@ -1,44 +1,56 @@
+# Add Reports Page
 
+## What Changes
 
-# Monthly Summary Report — Manual Generate & Download
+1. **New "Reports" page** (`/reports`) added to the sidebar navigation between Delivery Notes and Account section
+2. **Monthly Report section moves** from Dashboard to the new Reports page (email + Excel + PDF buttons)
+3. **Custom Item Search Report** added — search for any item by description and see total quantities requested, issued, and returned across all requests
 
-## What You Get
+## Report Page Layout
 
-A **"Monthly Report"** section on the Dashboard page with:
-- A **month/year picker** to select any month
-- A **"Generate Report"** button that creates a downloadable PDF
-- The PDF contains a **category-wise breakdown** of all transactions for that month
+```text
+┌──────────────────────────────────────────┐
+│  Reports                                 │
+│                                          │
+│  ┌─ Monthly Summary Report ────────────┐ │
+│  │  [Month] [Year] [Excel] [PDF] [Email]│ │
+│  └─────────────────────────────────────┘ │
+│                                          │
+│  ┌─ Custom Item Report ────────────────┐ │
+│  │  Search: [_______________] [Search] │ │
+│  │                                      │ │
+│  │  Item: "Zipper"                      │ │
+│  │  ┌──────────────────────────────────┐│ │
+│  │  │ Date  │ Req# │ Type │ Qty │ Iss ││ │
+│  │  │ 01/03 │ RM-5 │ Raw  │ 100 │  80 ││ │
+│  │  │ 15/03 │ MR-2 │ Ret  │  20 │  20 ││ │
+│  │  ├──────────────────────────────────┤│ │
+│  │  │ TOTAL:  Requested: 120  Issued: 100│
+│  │  └──────────────────────────────────┘│ │
+│  └─────────────────────────────────────┘ │
+└──────────────────────────────────────────┘
+```
 
-## Report Contents (Category-wise)
+## Custom Item Report Details
 
-1. **Orders** — Total orders created that month, listed with Order No, Customer, Style, Quantity, Status
-2. **Requirements (Trim Chart)** — Total material items added, with Required Qty, Received Qty, Balance
-3. **Raw Material Requests** — All requests with request number, date, item count, total quantities
-4. **General Supplies Requests** — Same breakdown for general category
-5. **Material Return Requests** — Same breakdown for returns
-6. **Delivery Notes** — All delivery acknowledgments with issued quantities
-7. **Summary Totals** — Grand totals for each category at the top of the report
+- Search box with autocomplete from `request_items.description`
+- Query all `request_items` matching that description (case-insensitive)
+- Join with `requests` table to get request number, date, and type (RM/GS/MR)
+- Show each transaction row with: date, request number, type (Raw Material / General / Return), color, size, requested qty, issued qty
+- Summary totals at the bottom showing total requested and total issued per category
 
 ## Implementation Steps
 
-1. **Create `MonthlyReport` component** on the Dashboard page
-   - Month/year selector (dropdown or date picker)
-   - "Generate PDF" button
-   - Queries cloud database for the selected month's data across all tables (orders, requirements, requests, request_items, delivery_acknowledgments, delivery_items)
-   - Categorizes requests by type (Raw Material / General / Return) based on request_no prefix
+1. **Create `src/pages/Reports.tsx**` — new page with MainLayout, containing the MonthlyReport component and a new CustomItemReport component
+2. **Create `src/components/reports/CustomItemReport.tsx**` — search input, query `request_items` joined with `requests`, display results table with totals
+3. **Update Sidebar** — add Reports nav item with a report icon
+4. **Update App.tsx** — add `/reports` route
+5. **Update Dashboard** — remove the MonthlyReport component from Dashboard
 
-2. **Create `monthlyReportPdf.ts`** utility
-   - Uses `jspdf` + `jspdf-autotable` (already in project for other PDFs)
-   - Landscape A4 format matching existing PDF standards
-   - Sections for each category with tables and totals
-   - Company header with Adeem Uniform branding
+## Technical Details 
 
-3. **Add to Dashboard page** — Place the Monthly Report card below the existing stats, before the Order-wise Material Status section
+- Custom item search queries `request_items` with `ilike` filter on `description`, then fetches related `requests` by `request_id`
+- Request type derived from `request_no` prefix: RM = Raw Material, GS = General Supplies, MR = Material Return
+- No new database tables needed — reads existing `request_items` and `requests` tables
 
-## Technical Details
-
-- Data filtering by month uses `created_at` timestamps with date range queries
-- Request categorization: `request_no` starting with "RM" = Raw Material, "GS" = General, "MR" = Return
-- No new database tables needed — reads existing data only
-- No new navigation items — lives on the Dashboard
-
+**with order number  also**
