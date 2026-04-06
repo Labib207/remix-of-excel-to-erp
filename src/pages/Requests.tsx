@@ -31,6 +31,7 @@ import {
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { useRequestStore } from '@/store/requestStore';
+import { useSubmitCloudRequest } from '@/hooks/useCloudRequests';
 import { useRequirementStore } from '@/store/requirementStore';
 import { useDbOrders, useUpdateDbOrder } from '@/hooks/useDbOrders';
 import { useDbRequirements } from '@/hooks/useDbRequirements';
@@ -99,6 +100,7 @@ const emptyRequestForm = (): RequestForm => ({
 export default function Requests() {
   const [activeTab, setActiveTab] = useState('raw-material');
   const { addRequest, updateRequest, exportMonthlyExcel, submittedRequests } = useRequestStore();
+  const submitCloudRequest = useSubmitCloudRequest();
   const { updateRequestedQty, materialCatalog } = useRequirementStore();
   const { data: requirements = [] } = useDbRequirements();
   const { data: orders = [] } = useDbOrders();
@@ -432,6 +434,19 @@ export default function Requests() {
       }
     };
 
+    // Helper to save to cloud
+    const saveToCloud = (formData: RequestForm, cloudItems: { item_code?: string; description?: string; color?: string; size?: string; unit?: string; requested_qty: number; issued_qty?: number; notes?: string; sort_order?: number; requirement_id?: string }[]) => {
+      submitCloudRequest.mutate({
+        requestNo: docNumber,
+        requestDate: formData.date,
+        orderId: formData.orderId || undefined,
+        department: formData.department || undefined,
+        requestedBy: formData.requestedBy || undefined,
+        notes: formData.approvedBy ? `Approved: ${formData.approvedBy}, Issued: ${formData.issuedBy}, ASWAQ: ${formData.aswaqNumber}` : undefined,
+        items: cloudItems,
+      });
+    };
+
     if (type === 'raw') {
       if (rawMaterialItems.length === 0) {
         toast.error('Please add at least one item before submitting');
@@ -463,6 +478,17 @@ export default function Requests() {
         form: { ...rawMaterialForm, orderName },
         items: itemsToSubmit,
       });
+      // Save to cloud
+      saveToCloud(rawMaterialForm, itemsToSubmit.map((item, idx) => ({
+        item_code: item.itemCode,
+        description: item.description,
+        unit: item.uom,
+        requested_qty: item.requestedQty,
+        issued_qty: item.issuedQty,
+        notes: item.remarks || undefined,
+        sort_order: idx + 1,
+        requirement_id: item.requirementId,
+      })));
       setRawMaterialForm(emptyRequestForm());
       setRawMaterialItems([]);
     } else if (type === 'general') {
@@ -478,6 +504,16 @@ export default function Requests() {
         form: { ...generalSuppliesForm },
         items: itemsToSubmit,
       });
+      // Save to cloud
+      saveToCloud(generalSuppliesForm, itemsToSubmit.map((item, idx) => ({
+        item_code: item.itemCode,
+        description: item.description,
+        unit: item.uom,
+        requested_qty: item.requestedQty,
+        issued_qty: item.issuedQty,
+        notes: item.remarks || undefined,
+        sort_order: idx + 1,
+      })));
       setGeneralSuppliesForm(emptyRequestForm());
       setGeneralSuppliesItems([]);
     } else {
@@ -495,6 +531,16 @@ export default function Requests() {
         form: { ...materialReturnForm, orderName: orderNameReturn },
         items: materialReturnItems,
       });
+      // Save to cloud
+      saveToCloud(materialReturnForm, materialReturnItems.map((item, idx) => ({
+        item_code: item.itemCode,
+        description: item.description,
+        unit: item.uom,
+        requested_qty: item.qtyReturned,
+        issued_qty: item.qtyReceived,
+        notes: item.remarks || undefined,
+        sort_order: idx + 1,
+      })));
       setMaterialReturnForm(emptyRequestForm());
       setMaterialReturnItems([]);
     }
