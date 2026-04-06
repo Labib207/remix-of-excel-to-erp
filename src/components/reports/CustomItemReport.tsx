@@ -321,14 +321,14 @@ export function CustomItemReport() {
               {Object.entries(categoryTotals).map(([type, totals]) => (
                 <div key={type} className="rounded-lg border p-3 bg-muted/30">
                   <p className="text-xs font-medium text-muted-foreground">{type}</p>
-                  <p className="text-sm">Requested: <span className="font-mono font-bold">{totals.requested}</span></p>
-                  <p className="text-sm">Issued: <span className="font-mono font-bold">{totals.issued}</span></p>
+                <p className="text-sm">Requested: <span className="font-mono font-bold">{parseFloat(totals.requested.toFixed(4))}</span></p>
+                  <p className="text-sm">Issued: <span className="font-mono font-bold">{parseFloat(totals.issued.toFixed(4))}</span></p>
                 </div>
               ))}
               <div className="rounded-lg border p-3 bg-primary/5 border-primary/20">
                 <p className="text-xs font-medium text-primary">Grand Total</p>
-                <p className="text-sm">Requested: <span className="font-mono font-bold">{totalRequested}</span></p>
-                <p className="text-sm">Issued: <span className="font-mono font-bold">{totalIssued}</span></p>
+                <p className="text-sm">Requested: <span className="font-mono font-bold">{parseFloat(totalRequested.toFixed(4))}</span></p>
+                <p className="text-sm">Issued: <span className="font-mono font-bold">{parseFloat(totalIssued.toFixed(4))}</span></p>
               </div>
             </div>
           </>
