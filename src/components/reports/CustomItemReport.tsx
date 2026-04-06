@@ -4,9 +4,11 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Search, Loader2, PackageSearch } from 'lucide-react';
+import { Search, Loader2, PackageSearch, Download } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import * as XLSX from 'xlsx';
 
 interface ItemRow {
   date: string;
@@ -40,6 +42,17 @@ export function CustomItemReport() {
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<ItemRow[]>([]);
   const [searched, setSearched] = useState(false);
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [orderFilter, setOrderFilter] = useState('all');
+  const [orders, setOrders] = useState<{ id: string; order_no: string }[]>([]);
+
+  // Fetch orders for filter dropdown
+  const loadOrders = async () => {
+    if (orders.length > 0) return;
+    const { data } = await supabase.from('orders').select('id, order_no').order('order_no');
+    setOrders(data || []);
+  };
 
   const handleSearch = async () => {
     if (!search.trim()) return;
@@ -48,30 +61,32 @@ export function CustomItemReport() {
     try {
       const searchTerm = `%${search.trim()}%`;
 
-      // Fetch from request_items AND requirements in parallel
-      const [itemsRes, reqmtsRes] = await Promise.all([
-        supabase.from('request_items').select('*').ilike('description', searchTerm),
-        supabase.from('requirements').select('*').ilike('description', searchTerm),
-      ]);
+      // Build queries with optional date/order filters
+      let itemsQuery = supabase.from('request_items').select('*').ilike('description', searchTerm);
+      let reqmtsQuery = supabase.from('requirements').select('*').ilike('description', searchTerm);
+
+      if (orderFilter !== 'all') {
+        reqmtsQuery = reqmtsQuery.eq('order_id', orderFilter);
+      }
+
+      const [itemsRes, reqmtsRes] = await Promise.all([itemsQuery, reqmtsQuery]);
 
       const items = itemsRes.data || [];
       const reqmts = reqmtsRes.data || [];
 
-      // Collect all order_ids and request_ids we need
       const requestIds = [...new Set(items.map(i => i.request_id).filter(Boolean))];
       const orderIdsFromReqmts = [...new Set(reqmts.map(r => r.order_id).filter(Boolean))];
 
-      // Fetch requests (for request_items)
       let requestMap = new Map<string, any>();
       if (requestIds.length > 0) {
-        const { data: requests } = await supabase
-          .from('requests')
-          .select('id, request_no, request_date, order_id')
-          .in('id', requestIds);
+        let reqQuery = supabase.from('requests').select('id, request_no, request_date, order_id').in('id', requestIds);
+        if (orderFilter !== 'all') {
+          reqQuery = reqQuery.eq('order_id', orderFilter);
+        }
+        const { data: requests } = await reqQuery;
         (requests || []).forEach(r => requestMap.set(r.id, r));
       }
 
-      // Collect all order_ids
       const allOrderIds = [
         ...new Set([
           ...(Array.from(requestMap.values()).map(r => r.order_id).filter(Boolean)),
@@ -79,24 +94,21 @@ export function CustomItemReport() {
         ])
       ];
 
-      // Fetch orders
       let ordersMap: Record<string, string> = {};
       if (allOrderIds.length > 0) {
-        const { data: orders } = await supabase
-          .from('orders')
-          .select('id, order_no')
-          .in('id', allOrderIds);
-        (orders || []).forEach(o => { ordersMap[o.id] = o.order_no; });
+        const { data: ordersData } = await supabase.from('orders').select('id, order_no').in('id', allOrderIds);
+        (ordersData || []).forEach(o => { ordersMap[o.id] = o.order_no; });
       }
 
       const rows: ItemRow[] = [];
 
-      // Rows from request_items
       items.forEach(item => {
         const req = requestMap.get(item.request_id || '');
+        if (!req && orderFilter !== 'all') return; // filtered out by order
         const requestNo = req?.request_no || '—';
+        const rowDate = req?.request_date || item.created_at?.split('T')[0] || '';
         rows.push({
-          date: req?.request_date || item.created_at?.split('T')[0] || '',
+          date: rowDate,
           source: 'Request',
           requestNo,
           orderNo: req?.order_id ? (ordersMap[req.order_id] || '—') : '—',
@@ -109,7 +121,6 @@ export function CustomItemReport() {
         });
       });
 
-      // Rows from requirements
       reqmts.forEach(req => {
         rows.push({
           date: req.created_at?.split('T')[0] || '',
@@ -125,8 +136,15 @@ export function CustomItemReport() {
         });
       });
 
-      rows.sort((a, b) => a.date.localeCompare(b.date));
-      setResults(rows);
+      // Apply date filters client-side
+      const filtered = rows.filter(r => {
+        if (dateFrom && r.date < dateFrom) return false;
+        if (dateTo && r.date > dateTo) return false;
+        return true;
+      });
+
+      filtered.sort((a, b) => a.date.localeCompare(b.date));
+      setResults(filtered);
     } catch (err) {
       console.error(err);
     } finally {
@@ -144,6 +162,44 @@ export function CustomItemReport() {
     return acc;
   }, {} as Record<string, { requested: number; issued: number }>);
 
+  const handleExportExcel = () => {
+    const exportData = results.map(row => ({
+      'Date': row.date ? format(new Date(row.date), 'dd/MM/yyyy') : '—',
+      'Source': row.source,
+      'Request #': row.requestNo,
+      'Order #': row.orderNo,
+      'Type': row.type,
+      'Color': row.color,
+      'Size': row.size,
+      'Unit': row.unit,
+      'Requested Qty': row.requestedQty,
+      'Issued/Received Qty': row.issuedQty,
+    }));
+
+    // Add totals row
+    exportData.push({
+      'Date': '',
+      'Source': '',
+      'Request #': '',
+      'Order #': '',
+      'Type': 'GRAND TOTAL',
+      'Color': '',
+      'Size': '',
+      'Unit': '',
+      'Requested Qty': totalRequested,
+      'Issued/Received Qty': totalIssued,
+    });
+
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Item Report');
+
+    const dateRange = dateFrom || dateTo
+      ? `_${dateFrom || 'start'}_to_${dateTo || 'end'}`
+      : '';
+    XLSX.writeFile(wb, `Item_Report_${search.trim().replace(/\s+/g, '_')}${dateRange}.xlsx`);
+  };
+
   return (
     <Card className="shadow-card border-primary/20">
       <CardContent className="py-5 space-y-4">
@@ -157,18 +213,56 @@ export function CustomItemReport() {
           </div>
         </div>
 
-        <div className="flex gap-2">
-          <Input
-            placeholder="Search item description (e.g. Zipper, Fabric, Button)..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && handleSearch()}
-            className="max-w-md"
-          />
-          <Button onClick={handleSearch} disabled={loading || !search.trim()} size="sm">
-            {loading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Search className="h-4 w-4 mr-1" />}
-            Search
-          </Button>
+        {/* Search + Filters */}
+        <div className="flex flex-col gap-3">
+          <div className="flex gap-2">
+            <Input
+              placeholder="Search item description (e.g. Zipper, Fabric, Button)..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleSearch()}
+              className="max-w-md"
+            />
+            <Button onClick={handleSearch} disabled={loading || !search.trim()} size="sm">
+              {loading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Search className="h-4 w-4 mr-1" />}
+              Search
+            </Button>
+          </div>
+
+          <div className="flex flex-wrap gap-3 items-end">
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">From Date (optional)</label>
+              <Input
+                type="date"
+                value={dateFrom}
+                onChange={e => setDateFrom(e.target.value)}
+                className="w-40"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">To Date (optional)</label>
+              <Input
+                type="date"
+                value={dateTo}
+                onChange={e => setDateTo(e.target.value)}
+                className="w-40"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">Order (optional)</label>
+              <Select value={orderFilter} onValueChange={setOrderFilter} onOpenChange={() => loadOrders()}>
+                <SelectTrigger className="w-52">
+                  <SelectValue placeholder="All Orders" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Orders</SelectItem>
+                  {orders.map(o => (
+                    <SelectItem key={o.id} value={o.id}>{o.order_no}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
         </div>
 
         {searched && results.length === 0 && !loading && (
@@ -177,6 +271,13 @@ export function CustomItemReport() {
 
         {results.length > 0 && (
           <>
+            <div className="flex justify-end">
+              <Button onClick={handleExportExcel} variant="outline" size="sm">
+                <Download className="h-4 w-4 mr-1" />
+                Export Excel
+              </Button>
+            </div>
+
             <div className="rounded-md border overflow-x-auto">
               <Table>
                 <TableHeader>
