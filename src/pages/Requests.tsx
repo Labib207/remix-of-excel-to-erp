@@ -434,6 +434,19 @@ export default function Requests() {
       }
     };
 
+    // Helper to save to cloud
+    const saveToCloud = (formData: RequestForm, cloudItems: { item_code?: string; description?: string; color?: string; size?: string; unit?: string; requested_qty: number; issued_qty?: number; notes?: string; sort_order?: number; requirement_id?: string }[]) => {
+      submitCloudRequest.mutate({
+        requestNo: docNumber,
+        requestDate: formData.date,
+        orderId: formData.orderId || undefined,
+        department: formData.department || undefined,
+        requestedBy: formData.requestedBy || undefined,
+        notes: formData.approvedBy ? `Approved: ${formData.approvedBy}, Issued: ${formData.issuedBy}, ASWAQ: ${formData.aswaqNumber}` : undefined,
+        items: cloudItems,
+      });
+    };
+
     if (type === 'raw') {
       if (rawMaterialItems.length === 0) {
         toast.error('Please add at least one item before submitting');
