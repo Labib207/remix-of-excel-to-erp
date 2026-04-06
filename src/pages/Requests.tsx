@@ -504,6 +504,16 @@ export default function Requests() {
         form: { ...generalSuppliesForm },
         items: itemsToSubmit,
       });
+      // Save to cloud
+      saveToCloud(generalSuppliesForm, itemsToSubmit.map((item, idx) => ({
+        item_code: item.itemCode,
+        description: item.description,
+        unit: item.uom,
+        requested_qty: item.requestedQty,
+        issued_qty: item.issuedQty,
+        notes: item.remarks || undefined,
+        sort_order: idx + 1,
+      })));
       setGeneralSuppliesForm(emptyRequestForm());
       setGeneralSuppliesItems([]);
     } else {
