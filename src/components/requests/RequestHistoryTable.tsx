@@ -4,31 +4,18 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
-import { Search, Download, FileText, Package, Undo2, Eye, FileSpreadsheet, CalendarIcon, Truck, Trash2, Edit } from 'lucide-react';
-import { format, isWithinInterval, startOfDay, endOfDay, parseISO } from 'date-fns';
+import { Search, Download, FileText, Package, Undo2, Eye, FileSpreadsheet, CalendarIcon, Truck, Trash2, Edit, Loader2 } from 'lucide-react';
+import { format, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { useRequestStore } from '@/store/requestStore';
 import { toast } from 'sonner';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
+  Dialog, DialogContent, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
 import {
   exportRawMaterialRequestPDF,
@@ -37,49 +24,7 @@ import {
   exportDeliveryNotePDF,
 } from '@/lib/requestPdfExport';
 import * as XLSX from 'xlsx';
-
-interface RequestItem {
-  id: string;
-  slNo: number;
-  itemCode: string;
-  description: string;
-  uom: string;
-  requirementQty?: number;
-  requestedQty: number;
-  issuedQty: number;
-  remainingQty: number;
-  remarks: string;
-}
-
-interface ReturnItem {
-  id: string;
-  slNo: number;
-  itemCode: string;
-  description: string;
-  uom: string;
-  qtyReturned: number;
-  qtyReceived: number;
-  remarks: string;
-}
-
-interface RequestForm {
-  date: string;
-  department: string;
-  orderName?: string;
-  requestedBy: string;
-  approvedBy: string;
-  issuedBy: string;
-  aswaqNumber: string;
-}
-
-interface SubmittedRequest {
-  id: string;
-  type: 'raw-material' | 'general-supplies' | 'material-return';
-  docNumber: string;
-  form: RequestForm;
-  items: (RequestItem | ReturnItem)[];
-  submittedAt: string;
-}
+import { useCloudRequests, useDeleteCloudRequest, getRequestType, type CloudRequest } from '@/hooks/useCloudRequests';
 
 const typeLabels: Record<string, string> = {
   'raw-material': 'Raw Material',
@@ -99,112 +44,121 @@ const typeBadgeVariant: Record<string, 'default' | 'secondary' | 'outline'> = {
   'material-return': 'outline',
 };
 
-export function RequestHistoryTable({ onEdit }: { onEdit?: (request: SubmittedRequest) => void }) {
-  const { submittedRequests, deleteRequest } = useRequestStore();
+export function RequestHistoryTable({ onEdit }: { onEdit?: (request: any) => void }) {
+  const { data: cloudRequests = [], isLoading } = useCloudRequests();
+  const deleteCloudRequest = useDeleteCloudRequest();
   const [searchQuery, setSearchQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
   const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
-  const [selectedRequest, setSelectedRequest] = useState<SubmittedRequest | null>(null);
+  const [selectedRequest, setSelectedRequest] = useState<CloudRequest | null>(null);
 
   const filteredRequests = useMemo(() => {
-    return submittedRequests
+    return cloudRequests
       .filter((request) => {
-        // Type filter
-        if (typeFilter !== 'all' && request.type !== typeFilter) {
-          return false;
-        }
+        const reqType = getRequestType(request.request_no);
+        if (typeFilter !== 'all' && reqType !== typeFilter) return false;
 
-        // Date range filter
         if (dateFrom || dateTo) {
-          const requestDate = new Date(request.form.date);
+          const requestDate = new Date(request.request_date);
           if (dateFrom && dateTo) {
-            if (!isWithinInterval(requestDate, { start: startOfDay(dateFrom), end: endOfDay(dateTo) })) {
-              return false;
-            }
+            if (!isWithinInterval(requestDate, { start: startOfDay(dateFrom), end: endOfDay(dateTo) })) return false;
           } else if (dateFrom) {
-            if (requestDate < startOfDay(dateFrom)) {
-              return false;
-            }
+            if (requestDate < startOfDay(dateFrom)) return false;
           } else if (dateTo) {
-            if (requestDate > endOfDay(dateTo)) {
-              return false;
-            }
+            if (requestDate > endOfDay(dateTo)) return false;
           }
         }
 
-        // Search filter
         if (searchQuery) {
           const query = searchQuery.toLowerCase();
-          const matchesDocNumber = request.docNumber.toLowerCase().includes(query);
-          const matchesDepartment = request.form.department.toLowerCase().includes(query);
-          const matchesRequestedBy = request.form.requestedBy.toLowerCase().includes(query);
-          const matchesItems = request.items.some(
-            (item) =>
-              item.itemCode.toLowerCase().includes(query) ||
-              item.description.toLowerCase().includes(query)
+          const matchesDoc = request.request_no.toLowerCase().includes(query);
+          const matchesDept = (request.department || '').toLowerCase().includes(query);
+          const matchesBy = (request.requested_by || '').toLowerCase().includes(query);
+          const matchesOrder = (request.order_no || '').toLowerCase().includes(query);
+          const matchesItems = (request.items || []).some(
+            item => (item.description || '').toLowerCase().includes(query) ||
+                    (item.item_code || '').toLowerCase().includes(query)
           );
-          return matchesDocNumber || matchesDepartment || matchesRequestedBy || matchesItems;
+          return matchesDoc || matchesDept || matchesBy || matchesOrder || matchesItems;
         }
 
         return true;
       })
-      .sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime());
-  }, [submittedRequests, searchQuery, typeFilter, dateFrom, dateTo]);
+      .sort((a, b) => new Date(b.submitted_at || b.created_at).getTime() - new Date(a.submitted_at || a.created_at).getTime());
+  }, [cloudRequests, searchQuery, typeFilter, dateFrom, dateTo]);
 
-  const handleDownloadPDF = (request: SubmittedRequest) => {
-    if (request.type === 'raw-material') {
-      exportRawMaterialRequestPDF(request.form, request.items as RequestItem[], request.docNumber);
-    } else if (request.type === 'general-supplies') {
-      exportGeneralSuppliesRequestPDF(request.form, request.items as RequestItem[], request.docNumber);
+  const handleDownloadPDF = (request: CloudRequest) => {
+    const reqType = getRequestType(request.request_no);
+    const items = (request.items || []).map((item, idx) => ({
+      id: item.id,
+      slNo: idx + 1,
+      itemCode: item.item_code || '',
+      description: item.description || '',
+      uom: item.unit || 'pcs',
+      requirementQty: item.requested_qty,
+      requestedQty: item.requested_qty,
+      issuedQty: item.issued_qty || 0,
+      remainingQty: item.requested_qty - (item.issued_qty || 0),
+      remarks: item.notes || '',
+      qtyReturned: item.requested_qty,
+      qtyReceived: item.issued_qty || 0,
+    }));
+
+    const form = {
+      date: request.request_date,
+      department: request.department || '',
+      orderName: request.order_no || '',
+      requestedBy: request.requested_by || '',
+      approvedBy: '',
+      issuedBy: '',
+      aswaqNumber: '',
+    };
+
+    if (reqType === 'raw-material') {
+      exportRawMaterialRequestPDF(form, items, request.request_no);
+    } else if (reqType === 'general-supplies') {
+      exportGeneralSuppliesRequestPDF(form, items, request.request_no);
     } else {
-      exportMaterialReturnSlipPDF(request.form, request.items as ReturnItem[], request.docNumber);
+      exportMaterialReturnSlipPDF(form, items, request.request_no);
     }
   };
 
-  // Download Delivery Note PDF - for line supervisor acknowledgment
-  const handleDownloadDeliveryNote = (request: SubmittedRequest) => {
-    if (request.type === 'material-return') return; // Not applicable for returns
-    
-    const items = request.items as RequestItem[];
-    const deliveryItems = items.map(item => ({
-      slNo: item.slNo,
-      description: item.description,
-      requirementQty: item.requirementQty || item.requestedQty, // Fallback to requestedQty if no requirementQty
-      issuedQty: item.issuedQty,
-      balance: (item.requirementQty || item.requestedQty) - item.issuedQty,
-      remarks: item.remarks,
+  const handleDownloadDeliveryNote = (request: CloudRequest) => {
+    const reqType = getRequestType(request.request_no);
+    if (reqType === 'material-return') return;
+
+    const deliveryItems = (request.items || []).map((item, idx) => ({
+      slNo: idx + 1,
+      description: item.description || '',
+      requirementQty: item.requested_qty,
+      issuedQty: item.issued_qty || 0,
+      balance: item.requested_qty - (item.issued_qty || 0),
+      remarks: item.notes || '',
     }));
 
     exportDeliveryNotePDF(
       {
-        orderName: request.form.orderName || request.docNumber,
-        date: request.form.date,
+        orderName: request.order_no || request.request_no,
+        date: request.request_date,
         trNo: '',
-        line: request.form.department,
+        line: request.department || '',
       },
       deliveryItems,
-      request.docNumber
+      request.request_no
     );
   };
 
-  const getFilteredRequestsForExport = () => {
-    return submittedRequests.filter((request) => {
-      // Date range filter
+  const getFilteredForExport = () => {
+    return cloudRequests.filter((request) => {
       if (dateFrom || dateTo) {
-        const requestDate = new Date(request.form.date);
+        const requestDate = new Date(request.request_date);
         if (dateFrom && dateTo) {
-          if (!isWithinInterval(requestDate, { start: startOfDay(dateFrom), end: endOfDay(dateTo) })) {
-            return false;
-          }
+          if (!isWithinInterval(requestDate, { start: startOfDay(dateFrom), end: endOfDay(dateTo) })) return false;
         } else if (dateFrom) {
-          if (requestDate < startOfDay(dateFrom)) {
-            return false;
-          }
+          if (requestDate < startOfDay(dateFrom)) return false;
         } else if (dateTo) {
-          if (requestDate > endOfDay(dateTo)) {
-            return false;
-          }
+          if (requestDate > endOfDay(dateTo)) return false;
         }
       }
       return true;
@@ -212,153 +166,90 @@ export function RequestHistoryTable({ onEdit }: { onEdit?: (request: SubmittedRe
   };
 
   const exportToExcel = (type: 'raw-material' | 'general-supplies' | 'material-return' | 'all') => {
-    const allFilteredRequests = getFilteredRequestsForExport();
-    const requests = type === 'all' 
-      ? allFilteredRequests 
-      : allFilteredRequests.filter(r => r.type === type);
-    
-    if (requests.length === 0) {
-      return;
-    }
+    const allFiltered = getFilteredForExport();
+    const requests = type === 'all' ? allFiltered : allFiltered.filter(r => getRequestType(r.request_no) === type);
+
+    if (requests.length === 0) return;
 
     const wb = XLSX.utils.book_new();
-    const dateRangeText = dateFrom && dateTo 
+    const dateRangeText = dateFrom && dateTo
       ? `${format(dateFrom, 'dd-MM-yyyy')}_to_${format(dateTo, 'dd-MM-yyyy')}`
-      : dateFrom 
-        ? `from_${format(dateFrom, 'dd-MM-yyyy')}`
-        : dateTo 
-          ? `to_${format(dateTo, 'dd-MM-yyyy')}`
-          : format(new Date(), 'yyyy-MM-dd');
-    
+      : dateFrom ? `from_${format(dateFrom, 'dd-MM-yyyy')}` : dateTo ? `to_${format(dateTo, 'dd-MM-yyyy')}` : format(new Date(), 'yyyy-MM-dd');
+
+    const addSheet = (sheetRequests: CloudRequest[], sheetName: string, isReturn: boolean) => {
+      if (sheetRequests.length === 0) return;
+      const sorted = [...sheetRequests].sort((a, b) => new Date(a.request_date).getTime() - new Date(b.request_date).getTime());
+
+      const data = sorted.flatMap(request =>
+        (request.items || []).map((item, idx) => isReturn ? {
+          'Doc Number': request.request_no,
+          'Order': request.order_no || '-',
+          'Date': format(new Date(request.request_date), 'dd/MM/yyyy'),
+          'Department': request.department || '-',
+          'Returned By': request.requested_by || '-',
+          'SL No': idx + 1,
+          'Item Code': item.item_code || '-',
+          'Description': item.description || '-',
+          'UOM': item.unit || 'pcs',
+          'Qty Returned': item.requested_qty,
+          'Qty Received': item.issued_qty || 0,
+          'Remarks': item.notes || '-',
+          'Submitted At': request.submitted_at ? format(new Date(request.submitted_at), 'dd/MM/yyyy HH:mm') : '-',
+        } : {
+          'Doc Number': request.request_no,
+          'Order': request.order_no || '-',
+          'Date': format(new Date(request.request_date), 'dd/MM/yyyy'),
+          'Department': request.department || '-',
+          'Requested By': request.requested_by || '-',
+          'SL No': idx + 1,
+          'Item Code': item.item_code || '-',
+          'Description': item.description || '-',
+          'UOM': item.unit || 'pcs',
+          'Requested Qty': item.requested_qty,
+          'Issued Qty': item.issued_qty || 0,
+          'Remaining Qty': item.requested_qty - (item.issued_qty || 0),
+          'Remarks': item.notes || '-',
+          'Submitted At': request.submitted_at ? format(new Date(request.submitted_at), 'dd/MM/yyyy HH:mm') : '-',
+        })
+      );
+
+      const ws = XLSX.utils.json_to_sheet(data);
+      XLSX.utils.book_append_sheet(wb, ws, sheetName);
+    };
+
     if (type === 'all' || type === 'raw-material') {
-      const rawMaterialRequests = (type === 'all' ? allFilteredRequests : requests)
-        .filter(r => r.type === 'raw-material')
-        .sort((a, b) => new Date(a.form.date).getTime() - new Date(b.form.date).getTime());
-      
-      if (rawMaterialRequests.length > 0) {
-        const data = rawMaterialRequests.flatMap(request => 
-          (request.items as RequestItem[])
-            .sort((a, b) => a.slNo - b.slNo)
-            .map(item => ({
-              'Doc Number': request.docNumber,
-              'Order': request.form.orderName || '-',
-              'Date': format(new Date(request.form.date), 'dd/MM/yyyy'),
-              'Department': request.form.department,
-              'Requested By': request.form.requestedBy,
-              'SL No': item.slNo,
-              'Item Code': item.itemCode,
-              'Description': item.description,
-              'UOM': item.uom,
-              'Requested Qty': item.requestedQty,
-              'Issued Qty': item.issuedQty,
-              'Remaining Qty': item.remainingQty,
-              'Remarks': item.remarks,
-              'Submitted At': format(new Date(request.submittedAt), 'dd/MM/yyyy HH:mm'),
-            }))
-        );
-        const ws = XLSX.utils.json_to_sheet(data);
-        ws['!cols'] = [
-          { wch: 15 }, { wch: 30 }, { wch: 12 }, { wch: 15 }, { wch: 15 }, { wch: 8 },
-          { wch: 15 }, { wch: 30 }, { wch: 8 }, { wch: 12 }, { wch: 12 },
-          { wch: 12 }, { wch: 20 }, { wch: 18 }
-        ];
-        XLSX.utils.book_append_sheet(wb, ws, 'Raw Material');
-      }
+      addSheet(allFiltered.filter(r => getRequestType(r.request_no) === 'raw-material'), 'Raw Material', false);
     }
-    
     if (type === 'all' || type === 'general-supplies') {
-      const generalSuppliesRequests = (type === 'all' ? allFilteredRequests : requests)
-        .filter(r => r.type === 'general-supplies')
-        .sort((a, b) => new Date(a.form.date).getTime() - new Date(b.form.date).getTime());
-      
-      if (generalSuppliesRequests.length > 0) {
-        const data = generalSuppliesRequests.flatMap(request => 
-          (request.items as RequestItem[])
-            .sort((a, b) => a.slNo - b.slNo)
-            .map(item => ({
-              'Doc Number': request.docNumber,
-              'Order': request.form.orderName || '-',
-              'Date': format(new Date(request.form.date), 'dd/MM/yyyy'),
-              'Department': request.form.department,
-              'Requested By': request.form.requestedBy,
-              'SL No': item.slNo,
-              'Item Code': item.itemCode,
-              'Description': item.description,
-              'UOM': item.uom,
-              'Requested Qty': item.requestedQty,
-              'Issued Qty': item.issuedQty,
-              'Remaining Qty': item.remainingQty,
-              'Remarks': item.remarks,
-              'Submitted At': format(new Date(request.submittedAt), 'dd/MM/yyyy HH:mm'),
-            }))
-        );
-        const ws = XLSX.utils.json_to_sheet(data);
-        ws['!cols'] = [
-          { wch: 15 }, { wch: 30 }, { wch: 12 }, { wch: 15 }, { wch: 15 }, { wch: 8 },
-          { wch: 15 }, { wch: 30 }, { wch: 8 }, { wch: 12 }, { wch: 12 },
-          { wch: 12 }, { wch: 20 }, { wch: 18 }
-        ];
-        XLSX.utils.book_append_sheet(wb, ws, 'General Supplies');
-      }
+      addSheet(allFiltered.filter(r => getRequestType(r.request_no) === 'general-supplies'), 'General Supplies', false);
     }
-    
     if (type === 'all' || type === 'material-return') {
-      const materialReturnRequests = (type === 'all' ? allFilteredRequests : requests)
-        .filter(r => r.type === 'material-return')
-        .sort((a, b) => new Date(a.form.date).getTime() - new Date(b.form.date).getTime());
-      
-      if (materialReturnRequests.length > 0) {
-        const data = materialReturnRequests.flatMap(request => 
-          (request.items as ReturnItem[])
-            .sort((a, b) => a.slNo - b.slNo)
-            .map(item => ({
-              'Doc Number': request.docNumber,
-              'Order': request.form.orderName || '-',
-              'Date': format(new Date(request.form.date), 'dd/MM/yyyy'),
-              'Department': request.form.department,
-              'Returned By': request.form.requestedBy,
-              'SL No': item.slNo,
-              'Item Code': item.itemCode,
-              'Description': item.description,
-              'UOM': item.uom,
-              'Qty Returned': item.qtyReturned,
-              'Qty Received': item.qtyReceived,
-              'Remarks': item.remarks,
-              'Submitted At': format(new Date(request.submittedAt), 'dd/MM/yyyy HH:mm'),
-            }))
-        );
-        const ws = XLSX.utils.json_to_sheet(data);
-        ws['!cols'] = [
-          { wch: 15 }, { wch: 12 }, { wch: 15 }, { wch: 15 }, { wch: 8 },
-          { wch: 15 }, { wch: 30 }, { wch: 8 }, { wch: 12 }, { wch: 12 },
-          { wch: 20 }, { wch: 18 }
-        ];
-        XLSX.utils.book_append_sheet(wb, ws, 'Material Return');
-      }
+      addSheet(allFiltered.filter(r => getRequestType(r.request_no) === 'material-return'), 'Material Return', true);
     }
 
-    const fileName = type === 'all' 
+    const fileName = type === 'all'
       ? `All_Requests_${dateRangeText}.xlsx`
       : `${typeLabels[type].replace(' ', '_')}_${dateRangeText}.xlsx`;
-    
     XLSX.writeFile(wb, fileName);
   };
 
   const getExportCounts = () => {
-    const filtered = getFilteredRequestsForExport();
+    const filtered = getFilteredForExport();
     return {
-      rawMaterial: filtered.filter(r => r.type === 'raw-material').length,
-      generalSupplies: filtered.filter(r => r.type === 'general-supplies').length,
-      materialReturn: filtered.filter(r => r.type === 'material-return').length,
+      rawMaterial: filtered.filter(r => getRequestType(r.request_no) === 'raw-material').length,
+      generalSupplies: filtered.filter(r => getRequestType(r.request_no) === 'general-supplies').length,
+      materialReturn: filtered.filter(r => getRequestType(r.request_no) === 'material-return').length,
       total: filtered.length,
     };
   };
 
   const exportCounts = getExportCounts();
 
-  const renderItemsTable = (request: SubmittedRequest) => {
-    if (request.type === 'material-return') {
-      const items = request.items as ReturnItem[];
+  const renderItemsTable = (request: CloudRequest) => {
+    const reqType = getRequestType(request.request_no);
+    const items = request.items || [];
+
+    if (reqType === 'material-return') {
       return (
         <Table>
           <TableHeader>
@@ -373,15 +264,15 @@ export function RequestHistoryTable({ onEdit }: { onEdit?: (request: SubmittedRe
             </TableRow>
           </TableHeader>
           <TableBody>
-            {items.map((item) => (
+            {items.map((item, idx) => (
               <TableRow key={item.id}>
-                <TableCell>{item.slNo}</TableCell>
-                <TableCell>{item.itemCode}</TableCell>
-                <TableCell>{item.description}</TableCell>
-                <TableCell>{item.uom}</TableCell>
-                <TableCell>{item.qtyReturned}</TableCell>
-                <TableCell>{item.qtyReceived}</TableCell>
-                <TableCell>{item.remarks}</TableCell>
+                <TableCell>{idx + 1}</TableCell>
+                <TableCell>{item.item_code || '-'}</TableCell>
+                <TableCell>{item.description || '-'}</TableCell>
+                <TableCell>{item.unit || 'pcs'}</TableCell>
+                <TableCell>{item.requested_qty}</TableCell>
+                <TableCell>{item.issued_qty || 0}</TableCell>
+                <TableCell>{item.notes || '-'}</TableCell>
               </TableRow>
             ))}
           </TableBody>
@@ -389,7 +280,6 @@ export function RequestHistoryTable({ onEdit }: { onEdit?: (request: SubmittedRe
       );
     }
 
-    const items = request.items as RequestItem[];
     return (
       <Table>
         <TableHeader>
@@ -405,16 +295,16 @@ export function RequestHistoryTable({ onEdit }: { onEdit?: (request: SubmittedRe
           </TableRow>
         </TableHeader>
         <TableBody>
-          {items.map((item) => (
+          {items.map((item, idx) => (
             <TableRow key={item.id}>
-              <TableCell>{item.slNo}</TableCell>
-              <TableCell>{item.itemCode}</TableCell>
-              <TableCell>{item.description}</TableCell>
-              <TableCell>{item.uom}</TableCell>
-              <TableCell>{item.requestedQty}</TableCell>
-              <TableCell>{item.issuedQty}</TableCell>
-              <TableCell>{item.remainingQty}</TableCell>
-              <TableCell>{item.remarks}</TableCell>
+              <TableCell>{idx + 1}</TableCell>
+              <TableCell>{item.item_code || '-'}</TableCell>
+              <TableCell>{item.description || '-'}</TableCell>
+              <TableCell>{item.unit || 'pcs'}</TableCell>
+              <TableCell>{item.requested_qty}</TableCell>
+              <TableCell>{item.issued_qty || 0}</TableCell>
+              <TableCell>{item.requested_qty - (item.issued_qty || 0)}</TableCell>
+              <TableCell>{item.notes || '-'}</TableCell>
             </TableRow>
           ))}
         </TableBody>
@@ -468,12 +358,7 @@ export function RequestHistoryTable({ onEdit }: { onEdit?: (request: SubmittedRe
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={dateFrom}
-                    onSelect={setDateFrom}
-                    initialFocus
-                  />
+                  <Calendar mode="single" selected={dateFrom} onSelect={setDateFrom} initialFocus />
                 </PopoverContent>
               </Popover>
             </div>
@@ -487,21 +372,12 @@ export function RequestHistoryTable({ onEdit }: { onEdit?: (request: SubmittedRe
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={dateTo}
-                    onSelect={setDateTo}
-                    initialFocus
-                  />
+                  <Calendar mode="single" selected={dateTo} onSelect={setDateTo} initialFocus />
                 </PopoverContent>
               </Popover>
             </div>
             {(dateFrom || dateTo) && (
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={() => { setDateFrom(undefined); setDateTo(undefined); }}
-              >
+              <Button variant="ghost" size="sm" onClick={() => { setDateFrom(undefined); setDateTo(undefined); }}>
                 Clear Dates
               </Button>
             )}
@@ -524,91 +400,74 @@ export function RequestHistoryTable({ onEdit }: { onEdit?: (request: SubmittedRe
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredRequests.length === 0 ? (
+                {isLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={9} className="text-center py-8">
+                      <Loader2 className="h-5 w-5 animate-spin mx-auto text-muted-foreground" />
+                    </TableCell>
+                  </TableRow>
+                ) : filteredRequests.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
-                      {submittedRequests.length === 0
-                        ? 'No requests submitted yet'
-                        : 'No requests match your filters'}
+                      {cloudRequests.length === 0 ? 'No requests submitted yet' : 'No requests match your filters'}
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredRequests.map((request) => (
-                    <TableRow key={request.id}>
-                      <TableCell className="font-mono text-sm">{request.docNumber}</TableCell>
-                      <TableCell>
-                        <Badge variant={typeBadgeVariant[request.type]} className="gap-1">
-                          {typeIcons[request.type]}
-                          {typeLabels[request.type]}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-xs max-w-[200px] truncate" title={request.form.orderName || '-'}>
-                        {request.form.orderName || '-'}
-                      </TableCell>
-                      <TableCell>{format(new Date(request.form.date), 'dd/MM/yyyy')}</TableCell>
-                      <TableCell>{request.form.department || '-'}</TableCell>
-                      <TableCell>{request.form.requestedBy || '-'}</TableCell>
-                      <TableCell>{request.items.length} items</TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {format(new Date(request.submittedAt), 'dd/MM/yyyy HH:mm')}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => setSelectedRequest(request)}
-                            title="View Details"
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          {onEdit && (
+                  filteredRequests.map((request) => {
+                    const reqType = getRequestType(request.request_no);
+                    return (
+                      <TableRow key={request.id}>
+                        <TableCell className="font-mono text-sm">{request.request_no}</TableCell>
+                        <TableCell>
+                          <Badge variant={typeBadgeVariant[reqType]} className="gap-1">
+                            {typeIcons[reqType]}
+                            {typeLabels[reqType]}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-xs max-w-[200px] truncate" title={request.order_no || '-'}>
+                          {request.order_no || '-'}
+                        </TableCell>
+                        <TableCell>{format(new Date(request.request_date), 'dd/MM/yyyy')}</TableCell>
+                        <TableCell>{request.department || '-'}</TableCell>
+                        <TableCell>{request.requested_by || '-'}</TableCell>
+                        <TableCell>{(request.items || []).length} items</TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {request.submitted_at ? format(new Date(request.submitted_at), 'dd/MM/yyyy HH:mm') : '-'}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-1">
+                            <Button variant="ghost" size="icon" onClick={() => setSelectedRequest(request)} title="View Details">
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" onClick={() => handleDownloadPDF(request)} title="Download Request PDF">
+                              <Download className="h-4 w-4" />
+                            </Button>
+                            {reqType !== 'material-return' && (
+                              <Button variant="ghost" size="icon" onClick={() => handleDownloadDeliveryNote(request)} title="Download Delivery Note" className="text-primary hover:text-primary">
+                                <Truck className="h-4 w-4" />
+                              </Button>
+                            )}
                             <Button
                               variant="ghost"
                               size="icon"
-                              onClick={() => onEdit(request)}
-                              title="Edit Request"
+                              onClick={() => {
+                                if (confirm('Are you sure you want to delete this request?')) {
+                                  deleteCloudRequest.mutate(request.id, {
+                                    onSuccess: () => toast.success(`Request ${request.request_no} deleted`),
+                                    onError: () => toast.error('Failed to delete request'),
+                                  });
+                                }
+                              }}
+                              title="Delete Request"
+                              className="text-destructive hover:text-destructive"
                             >
-                              <Edit className="h-4 w-4" />
+                              <Trash2 className="h-4 w-4" />
                             </Button>
-                          )}
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleDownloadPDF(request)}
-                            title="Download Request PDF"
-                          >
-                            <Download className="h-4 w-4" />
-                          </Button>
-                          {request.type !== 'material-return' && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleDownloadDeliveryNote(request)}
-                              title="Download Delivery Note"
-                              className="text-primary hover:text-primary"
-                            >
-                              <Truck className="h-4 w-4" />
-                            </Button>
-                          )}
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => {
-                              if (confirm('Are you sure you want to delete this request?')) {
-                                deleteRequest(request.id);
-                                toast.success(`Request ${request.docNumber} deleted`);
-                              }
-                            }}
-                            title="Delete Request"
-                            className="text-destructive hover:text-destructive"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
                 )}
               </TableBody>
             </Table>
@@ -620,51 +479,21 @@ export function RequestHistoryTable({ onEdit }: { onEdit?: (request: SubmittedRe
               <FileSpreadsheet className="h-4 w-4" />
               Export Records to Excel
               {(dateFrom || dateTo) && (
-                <span className="text-xs text-muted-foreground ml-2">
-                  (Filtered by date range)
-                </span>
+                <span className="text-xs text-muted-foreground ml-2">(Filtered by date range)</span>
               )}
             </h4>
             <div className="flex flex-wrap gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => exportToExcel('raw-material')}
-                disabled={exportCounts.rawMaterial === 0}
-                className="gap-2"
-              >
-                <Package className="h-4 w-4" />
-                Raw Material ({exportCounts.rawMaterial})
+              <Button variant="outline" size="sm" onClick={() => exportToExcel('raw-material')} disabled={exportCounts.rawMaterial === 0} className="gap-2">
+                <Package className="h-4 w-4" /> Raw Material ({exportCounts.rawMaterial})
               </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => exportToExcel('general-supplies')}
-                disabled={exportCounts.generalSupplies === 0}
-                className="gap-2"
-              >
-                <FileText className="h-4 w-4" />
-                General Supplies ({exportCounts.generalSupplies})
+              <Button variant="outline" size="sm" onClick={() => exportToExcel('general-supplies')} disabled={exportCounts.generalSupplies === 0} className="gap-2">
+                <FileText className="h-4 w-4" /> General Supplies ({exportCounts.generalSupplies})
               </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => exportToExcel('material-return')}
-                disabled={exportCounts.materialReturn === 0}
-                className="gap-2"
-              >
-                <Undo2 className="h-4 w-4" />
-                Material Return ({exportCounts.materialReturn})
+              <Button variant="outline" size="sm" onClick={() => exportToExcel('material-return')} disabled={exportCounts.materialReturn === 0} className="gap-2">
+                <Undo2 className="h-4 w-4" /> Material Return ({exportCounts.materialReturn})
               </Button>
-              <Button
-                variant="default"
-                size="sm"
-                onClick={() => exportToExcel('all')}
-                disabled={exportCounts.total === 0}
-                className="gap-2"
-              >
-                <FileSpreadsheet className="h-4 w-4" />
-                Export All ({exportCounts.total})
+              <Button variant="default" size="sm" onClick={() => exportToExcel('all')} disabled={exportCounts.total === 0} className="gap-2">
+                <FileSpreadsheet className="h-4 w-4" /> Export All ({exportCounts.total})
               </Button>
             </div>
           </div>
@@ -673,17 +502,11 @@ export function RequestHistoryTable({ onEdit }: { onEdit?: (request: SubmittedRe
           <div className="flex gap-4 text-sm text-muted-foreground">
             <span>Total: {filteredRequests.length} requests</span>
             <span>•</span>
-            <span>
-              Raw Material: {filteredRequests.filter((r) => r.type === 'raw-material').length}
-            </span>
+            <span>Raw Material: {filteredRequests.filter(r => getRequestType(r.request_no) === 'raw-material').length}</span>
             <span>•</span>
-            <span>
-              General Supplies: {filteredRequests.filter((r) => r.type === 'general-supplies').length}
-            </span>
+            <span>General Supplies: {filteredRequests.filter(r => getRequestType(r.request_no) === 'general-supplies').length}</span>
             <span>•</span>
-            <span>
-              Material Return: {filteredRequests.filter((r) => r.type === 'material-return').length}
-            </span>
+            <span>Material Return: {filteredRequests.filter(r => getRequestType(r.request_no) === 'material-return').length}</span>
           </div>
         </CardContent>
       </Card>
@@ -695,57 +518,32 @@ export function RequestHistoryTable({ onEdit }: { onEdit?: (request: SubmittedRe
             <>
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-2">
-                  <Badge variant={typeBadgeVariant[selectedRequest.type]} className="gap-1">
-                    {typeIcons[selectedRequest.type]}
-                    {typeLabels[selectedRequest.type]}
+                  <Badge variant={typeBadgeVariant[getRequestType(selectedRequest.request_no)]} className="gap-1">
+                    {typeIcons[getRequestType(selectedRequest.request_no)]}
+                    {typeLabels[getRequestType(selectedRequest.request_no)]}
                   </Badge>
-                  <span className="font-mono">{selectedRequest.docNumber}</span>
+                  <span className="font-mono">{selectedRequest.request_no}</span>
                 </DialogTitle>
               </DialogHeader>
 
               <div className="space-y-4">
-                {/* Form Details */}
                 <div className="grid grid-cols-3 gap-4 text-sm">
-                  <div>
-                    <span className="text-muted-foreground">Date:</span>{' '}
-                    {format(new Date(selectedRequest.form.date), 'dd/MM/yyyy')}
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Department:</span>{' '}
-                    {selectedRequest.form.department || '-'}
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Order:</span>{' '}
-                    <span className="font-semibold">{selectedRequest.form.orderName || '-'}</span>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">ASWAQ Number:</span>{' '}
-                    {selectedRequest.form.aswaqNumber || '-'}
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Requested By:</span>{' '}
-                    {selectedRequest.form.requestedBy || '-'}
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Approved By:</span>{' '}
-                    {selectedRequest.form.approvedBy || '-'}
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Issued By:</span>{' '}
-                    {selectedRequest.form.issuedBy || '-'}
-                  </div>
+                  <div><span className="text-muted-foreground">Date:</span> {format(new Date(selectedRequest.request_date), 'dd/MM/yyyy')}</div>
+                  <div><span className="text-muted-foreground">Department:</span> {selectedRequest.department || '-'}</div>
+                  <div><span className="text-muted-foreground">Order:</span> <span className="font-semibold">{selectedRequest.order_no || '-'}</span></div>
+                  <div><span className="text-muted-foreground">Requested By:</span> {selectedRequest.requested_by || '-'}</div>
+                  {selectedRequest.notes && (
+                    <div className="col-span-2"><span className="text-muted-foreground">Notes:</span> {selectedRequest.notes}</div>
+                  )}
                 </div>
 
-                {/* Items Table */}
                 <div className="border rounded-lg overflow-hidden">
                   {renderItemsTable(selectedRequest)}
                 </div>
 
-                {/* Actions */}
                 <div className="flex justify-end">
                   <Button onClick={() => handleDownloadPDF(selectedRequest)} className="gap-2">
-                    <Download className="h-4 w-4" />
-                    Download PDF
+                    <Download className="h-4 w-4" /> Download PDF
                   </Button>
                 </div>
               </div>
