@@ -531,6 +531,16 @@ export default function Requests() {
         form: { ...materialReturnForm, orderName: orderNameReturn },
         items: materialReturnItems,
       });
+      // Save to cloud
+      saveToCloud(materialReturnForm, materialReturnItems.map((item, idx) => ({
+        item_code: item.itemCode,
+        description: item.description,
+        unit: item.uom,
+        requested_qty: item.qtyReturned,
+        issued_qty: item.qtyReceived,
+        notes: item.remarks || undefined,
+        sort_order: idx + 1,
+      })));
       setMaterialReturnForm(emptyRequestForm());
       setMaterialReturnItems([]);
     }
