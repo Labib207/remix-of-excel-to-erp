@@ -399,8 +399,8 @@ export const exportGeneralSuppliesRequestPDF = async (form: RequestForm, items: 
       ])
     : [];
   
-  // Pad to fill page but not overflow (max 10 rows to stay on one page)
-  while (tableRows.length < 10) {
+  // Pad to fill page but not overflow (16 rows fit on one page)
+  while (tableRows.length < 16) {
     tableRows.push(['', '', '', '', '', '', '', '']);
   }
 
@@ -412,10 +412,10 @@ export const exportGeneralSuppliesRequestPDF = async (form: RequestForm, items: 
     styles: { 
       fontSize: 8, 
       fontStyle: 'bold',
-      cellPadding: 1.2,
+      cellPadding: 0.8,
       lineColor: [0, 0, 0],
       lineWidth: 0.2,
-      minCellHeight: 5.5,
+      minCellHeight: 5,
       valign: 'middle'
     },
     headStyles: { 
@@ -424,7 +424,7 @@ export const exportGeneralSuppliesRequestPDF = async (form: RequestForm, items: 
       fontStyle: 'bold',
       halign: 'center',
       valign: 'middle',
-      minCellHeight: 9
+      minCellHeight: 8
     },
     columnStyles: {
       0: { cellWidth: 15, halign: 'center' },
@@ -436,7 +436,7 @@ export const exportGeneralSuppliesRequestPDF = async (form: RequestForm, items: 
       6: { cellWidth: 30, halign: 'center' },
       7: { cellWidth: 49 }
     },
-    margin: { left: marginLeft, right: marginLeft, top: 76, bottom: sigBoxHeight + 15 },
+    margin: { left: marginLeft, right: marginLeft, top: 51, bottom: sigBoxHeight + 15 },
     tableWidth: contentWidth,
     didDrawPage: (data) => {
       // Draw header and signature on each new page
