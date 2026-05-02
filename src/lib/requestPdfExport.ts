@@ -486,8 +486,8 @@ export const exportMaterialReturnSlipPDF = async (form: RequestForm, items: Retu
       ])
     : [];
   
-  // Pad to fill page but not overflow (max 10 rows to stay on one page)
-  while (tableRows.length < 10) {
+  // Pad to fill page but not overflow (16 rows fit on one page)
+  while (tableRows.length < 16) {
     tableRows.push(['', '', '', '', '', '', '']);
   }
 
@@ -499,10 +499,10 @@ export const exportMaterialReturnSlipPDF = async (form: RequestForm, items: Retu
     styles: { 
       fontSize: 8, 
       fontStyle: 'bold',
-      cellPadding: 1.2,
+      cellPadding: 0.8,
       lineColor: [0, 0, 0],
       lineWidth: 0.2,
-      minCellHeight: 5.5,
+      minCellHeight: 5,
       valign: 'middle'
     },
     headStyles: { 
@@ -511,7 +511,7 @@ export const exportMaterialReturnSlipPDF = async (form: RequestForm, items: Retu
       fontStyle: 'bold',
       halign: 'center',
       valign: 'middle',
-      minCellHeight: 9
+      minCellHeight: 8
     },
     columnStyles: {
       0: { cellWidth: 18, halign: 'center' },
@@ -522,7 +522,7 @@ export const exportMaterialReturnSlipPDF = async (form: RequestForm, items: Retu
       5: { cellWidth: 35, halign: 'center' },
       6: { cellWidth: 34 }
     },
-    margin: { left: marginLeft, right: marginLeft, top: 76, bottom: sigBoxHeight + 15 },
+    margin: { left: marginLeft, right: marginLeft, top: 57, bottom: sigBoxHeight + 15 },
     tableWidth: contentWidth,
     didDrawPage: (data) => {
       // Draw header and signature on each new page
