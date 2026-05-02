@@ -105,20 +105,20 @@ const drawPageHeader = (
   
   // Add logo on left
   if (logoBase64) {
-    doc.addImage(logoBase64, 'PNG', marginLeft + 5, headerTop + 5, 45, 22);
+    doc.addImage(logoBase64, 'PNG', marginLeft + 5, headerTop + 2, 36, 18);
   } else {
-    doc.setFontSize(16);
+    doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
-    doc.text('GHOUSH', marginLeft + 10, headerTop + 18);
+    doc.text('GHOUSH', marginLeft + 8, headerTop + 12);
     doc.setFontSize(6);
     doc.setFont('helvetica', 'normal');
-    doc.text('MILITARY & SAFETY UNIFORMS', marginLeft + 10, headerTop + 24);
+    doc.text('MILITARY & SAFETY UNIFORMS', marginLeft + 8, headerTop + 17);
   }
 
   // Title
-  doc.setFontSize(20);
+  doc.setFontSize(17);
   doc.setFont('helvetica', 'bold');
-  doc.text(title, marginLeft + 60, headerTop + 20);
+  doc.text(title, marginLeft + 55, headerTop + 14);
 
   // Header bottom line
   const headerBottom = headerTop + headerHeight;
