@@ -127,7 +127,7 @@ const drawPageHeader = (
 
   // Document ID and Issue Number row
   const docIdRowY = headerBottom;
-  const docIdRowHeight = 10;
+  const docIdRowHeight = 7;
   const halfWidth = contentWidth / 2;
   
   doc.setLineWidth(0.3);
@@ -135,41 +135,41 @@ const drawPageHeader = (
   doc.line(marginLeft + 35, docIdRowY, marginLeft + 35, docIdRowY + docIdRowHeight);
   doc.line(marginLeft + halfWidth + 35, docIdRowY, marginLeft + halfWidth + 35, docIdRowY + docIdRowHeight);
   
-  doc.setFontSize(10);
+  doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
-  doc.text('Document ID', marginLeft + 3, docIdRowY + 7);
+  doc.text('Document ID', marginLeft + 3, docIdRowY + 5);
   doc.setFont('helvetica', 'bold');
-  doc.text(docNumber, marginLeft + 38, docIdRowY + 7);
+  doc.text(docNumber, marginLeft + 38, docIdRowY + 5);
   
   doc.setFont('helvetica', 'normal');
-  doc.text('Issue Number', marginLeft + halfWidth + 3, docIdRowY + 7);
+  doc.text('Issue Number', marginLeft + halfWidth + 3, docIdRowY + 5);
   doc.setFont('helvetica', 'bold');
-  doc.text(issueNumber, marginLeft + halfWidth + 38, docIdRowY + 7);
+  doc.text(issueNumber, marginLeft + halfWidth + 38, docIdRowY + 5);
   
   doc.line(marginLeft, docIdRowY + docIdRowHeight, pageWidth - marginLeft, docIdRowY + docIdRowHeight);
 
   // Date row
   const dateRowY = docIdRowY + docIdRowHeight;
-  const dateRowHeight = 8;
+  const dateRowHeight = 6;
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(10);
-  doc.text('Date:', marginLeft + 3, dateRowY + 5.5);
-  doc.text(formatDate(form.date), marginLeft + 20, dateRowY + 5.5);
+  doc.setFontSize(9);
+  doc.text('Date:', marginLeft + 3, dateRowY + 4.2);
+  doc.text(formatDate(form.date), marginLeft + 20, dateRowY + 4.2);
   doc.line(marginLeft, dateRowY + dateRowHeight, pageWidth - marginLeft, dateRowY + dateRowHeight);
 
   // Department row
   const deptRowY = dateRowY + dateRowHeight;
-  const deptRowHeight = 8;
-  doc.text('Department:', marginLeft + 3, deptRowY + 5.5);
-  doc.text(form.department || '', marginLeft + 35, deptRowY + 5.5);
+  const deptRowHeight = 6;
+  doc.text('Department:', marginLeft + 3, deptRowY + 4.2);
+  doc.text(form.department || '', marginLeft + 35, deptRowY + 4.2);
   doc.line(marginLeft, deptRowY + deptRowHeight, pageWidth - marginLeft, deptRowY + deptRowHeight);
 
   // Order / PO row (skip for General Supplies)
   if (!options?.hideOrder) {
     const orderRowY = deptRowY + deptRowHeight;
-    const orderRowHeight = 8;
-    doc.text('Order / PO:', marginLeft + 3, orderRowY + 5.5);
-    doc.text(form.orderName || '', marginLeft + 32, orderRowY + 5.5);
+    const orderRowHeight = 6;
+    doc.text('Order / PO:', marginLeft + 3, orderRowY + 4.2);
+    doc.text(form.orderName || '', marginLeft + 32, orderRowY + 4.2);
     doc.line(marginLeft, orderRowY + orderRowHeight, pageWidth - marginLeft, orderRowY + orderRowHeight);
     return orderRowY + orderRowHeight;
   }
