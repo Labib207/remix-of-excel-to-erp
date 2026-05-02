@@ -95,7 +95,7 @@ const drawPageHeader = (
   options?: { hideOrder?: boolean }
 ): number => {
   const headerTop = 10;
-  const headerHeight = 30;
+  const headerHeight = 22;
   
   // Outer border for this page
   const pageHeight = doc.internal.pageSize.getHeight();
@@ -105,20 +105,20 @@ const drawPageHeader = (
   
   // Add logo on left
   if (logoBase64) {
-    doc.addImage(logoBase64, 'PNG', marginLeft + 5, headerTop + 5, 45, 22);
+    doc.addImage(logoBase64, 'PNG', marginLeft + 5, headerTop + 2, 36, 18);
   } else {
-    doc.setFontSize(16);
+    doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
-    doc.text('GHOUSH', marginLeft + 10, headerTop + 18);
+    doc.text('GHOUSH', marginLeft + 8, headerTop + 12);
     doc.setFontSize(6);
     doc.setFont('helvetica', 'normal');
-    doc.text('MILITARY & SAFETY UNIFORMS', marginLeft + 10, headerTop + 24);
+    doc.text('MILITARY & SAFETY UNIFORMS', marginLeft + 8, headerTop + 17);
   }
 
   // Title
-  doc.setFontSize(20);
+  doc.setFontSize(17);
   doc.setFont('helvetica', 'bold');
-  doc.text(title, marginLeft + 60, headerTop + 20);
+  doc.text(title, marginLeft + 55, headerTop + 14);
 
   // Header bottom line
   const headerBottom = headerTop + headerHeight;
@@ -127,7 +127,7 @@ const drawPageHeader = (
 
   // Document ID and Issue Number row
   const docIdRowY = headerBottom;
-  const docIdRowHeight = 10;
+  const docIdRowHeight = 7;
   const halfWidth = contentWidth / 2;
   
   doc.setLineWidth(0.3);
@@ -135,41 +135,41 @@ const drawPageHeader = (
   doc.line(marginLeft + 35, docIdRowY, marginLeft + 35, docIdRowY + docIdRowHeight);
   doc.line(marginLeft + halfWidth + 35, docIdRowY, marginLeft + halfWidth + 35, docIdRowY + docIdRowHeight);
   
-  doc.setFontSize(10);
+  doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
-  doc.text('Document ID', marginLeft + 3, docIdRowY + 7);
+  doc.text('Document ID', marginLeft + 3, docIdRowY + 5);
   doc.setFont('helvetica', 'bold');
-  doc.text(docNumber, marginLeft + 38, docIdRowY + 7);
+  doc.text(docNumber, marginLeft + 38, docIdRowY + 5);
   
   doc.setFont('helvetica', 'normal');
-  doc.text('Issue Number', marginLeft + halfWidth + 3, docIdRowY + 7);
+  doc.text('Issue Number', marginLeft + halfWidth + 3, docIdRowY + 5);
   doc.setFont('helvetica', 'bold');
-  doc.text(issueNumber, marginLeft + halfWidth + 38, docIdRowY + 7);
+  doc.text(issueNumber, marginLeft + halfWidth + 38, docIdRowY + 5);
   
   doc.line(marginLeft, docIdRowY + docIdRowHeight, pageWidth - marginLeft, docIdRowY + docIdRowHeight);
 
   // Date row
   const dateRowY = docIdRowY + docIdRowHeight;
-  const dateRowHeight = 8;
+  const dateRowHeight = 6;
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(10);
-  doc.text('Date:', marginLeft + 3, dateRowY + 5.5);
-  doc.text(formatDate(form.date), marginLeft + 20, dateRowY + 5.5);
+  doc.setFontSize(9);
+  doc.text('Date:', marginLeft + 3, dateRowY + 4.2);
+  doc.text(formatDate(form.date), marginLeft + 20, dateRowY + 4.2);
   doc.line(marginLeft, dateRowY + dateRowHeight, pageWidth - marginLeft, dateRowY + dateRowHeight);
 
   // Department row
   const deptRowY = dateRowY + dateRowHeight;
-  const deptRowHeight = 8;
-  doc.text('Department:', marginLeft + 3, deptRowY + 5.5);
-  doc.text(form.department || '', marginLeft + 35, deptRowY + 5.5);
+  const deptRowHeight = 6;
+  doc.text('Department:', marginLeft + 3, deptRowY + 4.2);
+  doc.text(form.department || '', marginLeft + 35, deptRowY + 4.2);
   doc.line(marginLeft, deptRowY + deptRowHeight, pageWidth - marginLeft, deptRowY + deptRowHeight);
 
   // Order / PO row (skip for General Supplies)
   if (!options?.hideOrder) {
     const orderRowY = deptRowY + deptRowHeight;
-    const orderRowHeight = 8;
-    doc.text('Order / PO:', marginLeft + 3, orderRowY + 5.5);
-    doc.text(form.orderName || '', marginLeft + 32, orderRowY + 5.5);
+    const orderRowHeight = 6;
+    doc.text('Order / PO:', marginLeft + 3, orderRowY + 4.2);
+    doc.text(form.orderName || '', marginLeft + 32, orderRowY + 4.2);
     doc.line(marginLeft, orderRowY + orderRowHeight, pageWidth - marginLeft, orderRowY + orderRowHeight);
     return orderRowY + orderRowHeight;
   }
@@ -311,8 +311,8 @@ export const exportRawMaterialRequestPDF = async (form: RequestForm, items: Requ
       ])
     : [];
   
-  // Pad to fill page but not overflow (max 10 rows to stay on one page)
-  while (tableRows.length < 10) {
+  // Pad to fill page but not overflow (16 rows fit on one page)
+  while (tableRows.length < 16) {
     tableRows.push(['', '', '', '', '', '', '', '']);
   }
 
@@ -324,10 +324,10 @@ export const exportRawMaterialRequestPDF = async (form: RequestForm, items: Requ
     styles: { 
       fontSize: 8, 
       fontStyle: 'bold',
-      cellPadding: 1.2,
+      cellPadding: 0.8,
       lineColor: [0, 0, 0],
       lineWidth: 0.3,
-      minCellHeight: 5.5,
+      minCellHeight: 5,
       valign: 'middle'
     },
     headStyles: { 
@@ -336,7 +336,7 @@ export const exportRawMaterialRequestPDF = async (form: RequestForm, items: Requ
       fontStyle: 'bold',
       halign: 'center',
       valign: 'middle',
-      minCellHeight: 9
+      minCellHeight: 8
     },
     columnStyles: {
       0: { cellWidth: 15, halign: 'center' },
@@ -348,7 +348,7 @@ export const exportRawMaterialRequestPDF = async (form: RequestForm, items: Requ
       6: { cellWidth: 30, halign: 'center' },
       7: { cellWidth: 49 }
     },
-    margin: { left: marginLeft, right: marginRight, top: 76, bottom: sigBoxHeight + 15 },
+    margin: { left: marginLeft, right: marginRight, top: 57, bottom: sigBoxHeight + 15 },
     tableWidth: contentWidth,
     didDrawPage: (data) => {
       // Draw header and signature on each new page
@@ -399,8 +399,8 @@ export const exportGeneralSuppliesRequestPDF = async (form: RequestForm, items: 
       ])
     : [];
   
-  // Pad to fill page but not overflow (max 10 rows to stay on one page)
-  while (tableRows.length < 10) {
+  // Pad to fill page but not overflow (16 rows fit on one page)
+  while (tableRows.length < 16) {
     tableRows.push(['', '', '', '', '', '', '', '']);
   }
 
@@ -412,10 +412,10 @@ export const exportGeneralSuppliesRequestPDF = async (form: RequestForm, items: 
     styles: { 
       fontSize: 8, 
       fontStyle: 'bold',
-      cellPadding: 1.2,
+      cellPadding: 0.8,
       lineColor: [0, 0, 0],
       lineWidth: 0.2,
-      minCellHeight: 5.5,
+      minCellHeight: 5,
       valign: 'middle'
     },
     headStyles: { 
@@ -424,7 +424,7 @@ export const exportGeneralSuppliesRequestPDF = async (form: RequestForm, items: 
       fontStyle: 'bold',
       halign: 'center',
       valign: 'middle',
-      minCellHeight: 9
+      minCellHeight: 8
     },
     columnStyles: {
       0: { cellWidth: 15, halign: 'center' },
@@ -436,7 +436,7 @@ export const exportGeneralSuppliesRequestPDF = async (form: RequestForm, items: 
       6: { cellWidth: 30, halign: 'center' },
       7: { cellWidth: 49 }
     },
-    margin: { left: marginLeft, right: marginLeft, top: 76, bottom: sigBoxHeight + 15 },
+    margin: { left: marginLeft, right: marginLeft, top: 51, bottom: sigBoxHeight + 15 },
     tableWidth: contentWidth,
     didDrawPage: (data) => {
       // Draw header and signature on each new page
@@ -486,8 +486,8 @@ export const exportMaterialReturnSlipPDF = async (form: RequestForm, items: Retu
       ])
     : [];
   
-  // Pad to fill page but not overflow (max 10 rows to stay on one page)
-  while (tableRows.length < 10) {
+  // Pad to fill page but not overflow (16 rows fit on one page)
+  while (tableRows.length < 16) {
     tableRows.push(['', '', '', '', '', '', '']);
   }
 
@@ -499,10 +499,10 @@ export const exportMaterialReturnSlipPDF = async (form: RequestForm, items: Retu
     styles: { 
       fontSize: 8, 
       fontStyle: 'bold',
-      cellPadding: 1.2,
+      cellPadding: 0.8,
       lineColor: [0, 0, 0],
       lineWidth: 0.2,
-      minCellHeight: 5.5,
+      minCellHeight: 5,
       valign: 'middle'
     },
     headStyles: { 
@@ -511,7 +511,7 @@ export const exportMaterialReturnSlipPDF = async (form: RequestForm, items: Retu
       fontStyle: 'bold',
       halign: 'center',
       valign: 'middle',
-      minCellHeight: 9
+      minCellHeight: 8
     },
     columnStyles: {
       0: { cellWidth: 18, halign: 'center' },
@@ -522,7 +522,7 @@ export const exportMaterialReturnSlipPDF = async (form: RequestForm, items: Retu
       5: { cellWidth: 35, halign: 'center' },
       6: { cellWidth: 34 }
     },
-    margin: { left: marginLeft, right: marginLeft, top: 76, bottom: sigBoxHeight + 15 },
+    margin: { left: marginLeft, right: marginLeft, top: 57, bottom: sigBoxHeight + 15 },
     tableWidth: contentWidth,
     didDrawPage: (data) => {
       // Draw header and signature on each new page
