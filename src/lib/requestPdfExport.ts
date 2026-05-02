@@ -95,7 +95,7 @@ const drawPageHeader = (
   options?: { hideOrder?: boolean }
 ): number => {
   const headerTop = 10;
-  const headerHeight = 30;
+  const headerHeight = 22;
   
   // Outer border for this page
   const pageHeight = doc.internal.pageSize.getHeight();
