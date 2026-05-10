@@ -1,56 +1,32 @@
-# Add Reports Page
+## Goal
 
-## What Changes
+Update the **Custom Item Report** (Reports page) so the user can search by **Order** alone, and the results only show **actually requested items** — no requirements, no other sources.
 
-1. **New "Reports" page** (`/reports`) added to the sidebar navigation between Delivery Notes and Account section
-2. **Monthly Report section moves** from Dashboard to the new Reports page (email + Excel + PDF buttons)
-3. **Custom Item Search Report** added — search for any item by description and see total quantities requested, issued, and returned across all requests
+## Changes to `src/components/reports/CustomItemReport.tsx`
 
-## Report Page Layout
+### 1. Search by Order (without item description)
 
-```text
-┌──────────────────────────────────────────┐
-│  Reports                                 │
-│                                          │
-│  ┌─ Monthly Summary Report ────────────┐ │
-│  │  [Month] [Year] [Excel] [PDF] [Email]│ │
-│  └─────────────────────────────────────┘ │
-│                                          │
-│  ┌─ Custom Item Report ────────────────┐ │
-│  │  Search: [_______________] [Search] │ │
-│  │                                      │ │
-│  │  Item: "Zipper"                      │ │
-│  │  ┌──────────────────────────────────┐│ │
-│  │  │ Date  │ Req# │ Type │ Qty │ Iss ││ │
-│  │  │ 01/03 │ RM-5 │ Raw  │ 100 │  80 ││ │
-│  │  │ 15/03 │ MR-2 │ Ret  │  20 │  20 ││ │
-│  │  ├──────────────────────────────────┤│ │
-│  │  │ TOTAL:  Requested: 120  Issued: 100│
-│  │  └──────────────────────────────────┘│ │
-│  └─────────────────────────────────────┘ │
-└──────────────────────────────────────────┘
-```
+- Make item description **optional** when an Order is selected.
+- Add a dedicated **"Search by Order"** action: if the user picks an order from the dropdown and clicks Search (or a new "Load Order Items" button), fetch every `request_items` row belonging to that order's requests — no description filter required.
+- Current behavior (description + optional order) still works.
+- Disable the Search button only when BOTH the description is empty AND no order is selected.
 
-## Custom Item Report Details
+### 2. Show only requested items (drop requirements/garbage)
 
-- Search box with autocomplete from `request_items.description`
-- Query all `request_items` matching that description (case-insensitive)
-- Join with `requests` table to get request number, date, and type (RM/GS/MR)
-- Show each transaction row with: date, request number, type (Raw Material / General / Return), color, size, requested qty, issued qty
-- Summary totals at the bottom showing total requested and total issued per category
+- Remove the `requirements` table query entirely from `handleSearch`.
+- Only pull from `request_items` joined to `requests` → `orders`.
+- Remove the **Source** column and the **Requirement** badge type from the table and Excel export.
+- Keep columns: Date, Request #, Order #, Type (Raw Material / General Supplies / Material Return), Item Code, Description, Color, Size, Unit, **Requested Qty**, Issued Qty.
+- Add **Item Code** and **Description** columns (currently missing) so the user can see exactly which item was requested.
+- Category totals (the bottom summary cards) drop the "Requirement" category automatically since it no longer exists.
 
-## Implementation Steps
+### 3. UI tweaks
 
-1. **Create `src/pages/Reports.tsx**` — new page with MainLayout, containing the MonthlyReport component and a new CustomItemReport component
-2. **Create `src/components/reports/CustomItemReport.tsx**` — search input, query `request_items` joined with `requests`, display results table with totals
-3. **Update Sidebar** — add Reports nav item with a report icon
-4. **Update App.tsx** — add `/reports` route
-5. **Update Dashboard** — remove the MonthlyReport component from Dashboard
+- Update the helper text under the card title from "Search any item to see all request, requirement & issue history" → **"Search by item or order to see only requested quantities"**.
+- Update the empty-state message to handle both "no item searched" and "order has no requested items".
 
-## Technical Details 
+## Out of scope
 
-- Custom item search queries `request_items` with `ilike` filter on `description`, then fetches related `requests` by `request_id`
-- Request type derived from `request_no` prefix: RM = Raw Material, GS = General Supplies, MR = Material Return
-- No new database tables needed — reads existing `request_items` and `requests` tables
-
-**with order number  also**
+- No database/schema changes.
+- No changes to other reports, PDF export, or other pages.
+- Monthly Summary Report is untouched.

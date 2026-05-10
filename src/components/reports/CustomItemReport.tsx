@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -12,10 +12,11 @@ import * as XLSX from 'xlsx';
 
 interface ItemRow {
   date: string;
-  source: string;
   requestNo: string;
   orderNo: string;
   type: string;
+  itemCode: string;
+  description: string;
   color: string;
   size: string;
   unit: string;
@@ -33,7 +34,6 @@ function getRequestType(requestNo: string) {
 function getTypeBadgeVariant(type: string) {
   if (type === 'Raw Material') return 'default';
   if (type === 'Material Return') return 'destructive';
-  if (type === 'Requirement') return 'outline';
   return 'secondary';
 }
 
@@ -47,39 +47,37 @@ export function CustomItemReport() {
   const [orderFilter, setOrderFilter] = useState('all');
   const [orders, setOrders] = useState<{ id: string; order_no: string }[]>([]);
 
-  // Fetch orders for filter dropdown
-  const loadOrders = async () => {
-    if (orders.length > 0) return;
-    const { data } = await supabase.from('orders').select('id, order_no').order('order_no');
-    setOrders(data || []);
-  };
+  // Load orders up front so the order dropdown is ready
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase.from('orders').select('id, order_no').order('order_no');
+      setOrders(data || []);
+    })();
+  }, []);
+
+  const canSearch = search.trim().length > 0 || orderFilter !== 'all';
 
   const handleSearch = async () => {
-    if (!search.trim()) return;
+    if (!canSearch) return;
     setLoading(true);
     setSearched(true);
     try {
-      const searchTerm = `%${search.trim()}%`;
-
-      // Build queries with optional date/order filters
-      let itemsQuery = supabase.from('request_items').select('*').ilike('description', searchTerm);
-      let reqmtsQuery = supabase.from('requirements').select('*').ilike('description', searchTerm);
-
-      if (orderFilter !== 'all') {
-        reqmtsQuery = reqmtsQuery.eq('order_id', orderFilter);
+      let itemsQuery = supabase.from('request_items').select('*');
+      if (search.trim()) {
+        itemsQuery = itemsQuery.ilike('description', `%${search.trim()}%`);
       }
 
-      const [itemsRes, reqmtsRes] = await Promise.all([itemsQuery, reqmtsQuery]);
-
-      const items = itemsRes.data || [];
-      const reqmts = reqmtsRes.data || [];
+      const { data: itemsData } = await itemsQuery;
+      const items = itemsData || [];
 
       const requestIds = [...new Set(items.map(i => i.request_id).filter(Boolean))];
-      const orderIdsFromReqmts = [...new Set(reqmts.map(r => r.order_id).filter(Boolean))];
 
       let requestMap = new Map<string, any>();
       if (requestIds.length > 0) {
-        let reqQuery = supabase.from('requests').select('id, request_no, request_date, order_id').in('id', requestIds);
+        let reqQuery = supabase
+          .from('requests')
+          .select('id, request_no, request_date, order_id')
+          .in('id', requestIds);
         if (orderFilter !== 'all') {
           reqQuery = reqQuery.eq('order_id', orderFilter);
         }
@@ -88,15 +86,15 @@ export function CustomItemReport() {
       }
 
       const allOrderIds = [
-        ...new Set([
-          ...(Array.from(requestMap.values()).map(r => r.order_id).filter(Boolean)),
-          ...orderIdsFromReqmts,
-        ])
+        ...new Set(Array.from(requestMap.values()).map(r => r.order_id).filter(Boolean)),
       ];
 
       let ordersMap: Record<string, string> = {};
       if (allOrderIds.length > 0) {
-        const { data: ordersData } = await supabase.from('orders').select('id, order_no').in('id', allOrderIds);
+        const { data: ordersData } = await supabase
+          .from('orders')
+          .select('id, order_no')
+          .in('id', allOrderIds);
         (ordersData || []).forEach(o => { ordersMap[o.id] = o.order_no; });
       }
 
@@ -104,35 +102,22 @@ export function CustomItemReport() {
 
       items.forEach(item => {
         const req = requestMap.get(item.request_id || '');
-        if (!req && orderFilter !== 'all') return; // filtered out by order
+        // If an order filter is active, drop items whose request isn't in that order
+        if (orderFilter !== 'all' && !req) return;
         const requestNo = req?.request_no || '—';
         const rowDate = req?.request_date || item.created_at?.split('T')[0] || '';
         rows.push({
           date: rowDate,
-          source: 'Request',
           requestNo,
           orderNo: req?.order_id ? (ordersMap[req.order_id] || '—') : '—',
           type: getRequestType(requestNo),
+          itemCode: item.item_code || '—',
+          description: item.description || '—',
           color: item.color || '—',
           size: item.size || '—',
           unit: item.unit || 'pcs',
           requestedQty: Number(item.requested_qty) || 0,
           issuedQty: Number(item.issued_qty) || 0,
-        });
-      });
-
-      reqmts.forEach(req => {
-        rows.push({
-          date: req.created_at?.split('T')[0] || '',
-          source: 'Requirement',
-          requestNo: '—',
-          orderNo: req.order_id ? (ordersMap[req.order_id] || '—') : '—',
-          type: 'Requirement',
-          color: req.color || '—',
-          size: req.size || '—',
-          unit: req.unit || 'pcs',
-          requestedQty: Number(req.required_qty) || 0,
-          issuedQty: Number(req.received_qty) || 0,
         });
       });
 
@@ -162,42 +147,48 @@ export function CustomItemReport() {
     return acc;
   }, {} as Record<string, { requested: number; issued: number }>);
 
+  const selectedOrderNo = orders.find(o => o.id === orderFilter)?.order_no || '';
+
   const handleExportExcel = () => {
-    const exportData = results.map(row => ({
+    const exportData: any[] = results.map(row => ({
       'Date': row.date ? format(new Date(row.date), 'dd/MM/yyyy') : '—',
-      'Source': row.source,
       'Request #': row.requestNo,
       'Order #': row.orderNo,
       'Type': row.type,
+      'Item Code': row.itemCode,
+      'Description': row.description,
       'Color': row.color,
       'Size': row.size,
       'Unit': row.unit,
       'Requested Qty': row.requestedQty,
-      'Issued/Received Qty': row.issuedQty,
+      'Issued Qty': row.issuedQty,
     }));
 
-    // Add totals row
     exportData.push({
       'Date': '',
-      'Source': '',
       'Request #': '',
       'Order #': '',
       'Type': 'GRAND TOTAL',
+      'Item Code': '',
+      'Description': '',
       'Color': '',
       'Size': '',
       'Unit': '',
       'Requested Qty': totalRequested,
-      'Issued/Received Qty': totalIssued,
+      'Issued Qty': totalIssued,
     });
 
     const ws = XLSX.utils.json_to_sheet(exportData);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Item Report');
 
-    const dateRange = dateFrom || dateTo
-      ? `_${dateFrom || 'start'}_to_${dateTo || 'end'}`
-      : '';
-    XLSX.writeFile(wb, `Item_Report_${search.trim().replace(/\s+/g, '_')}${dateRange}.xlsx`);
+    const tag = search.trim()
+      ? search.trim().replace(/\s+/g, '_')
+      : selectedOrderNo
+        ? `Order_${selectedOrderNo.replace(/\s+/g, '_')}`
+        : 'All';
+    const dateRange = dateFrom || dateTo ? `_${dateFrom || 'start'}_to_${dateTo || 'end'}` : '';
+    XLSX.writeFile(wb, `Item_Report_${tag}${dateRange}.xlsx`);
   };
 
   return (
@@ -209,7 +200,7 @@ export function CustomItemReport() {
           </div>
           <div>
             <p className="font-semibold text-foreground">Custom Item Report</p>
-            <p className="text-xs text-muted-foreground">Search any item to see all request, requirement & issue history</p>
+            <p className="text-xs text-muted-foreground">Search by item or order to see only requested quantities</p>
           </div>
         </div>
 
@@ -223,7 +214,7 @@ export function CustomItemReport() {
               onKeyDown={e => e.key === 'Enter' && handleSearch()}
               className="max-w-md"
             />
-            <Button onClick={handleSearch} disabled={loading || !search.trim()} size="sm">
+            <Button onClick={handleSearch} disabled={loading || !canSearch} size="sm">
               {loading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Search className="h-4 w-4 mr-1" />}
               Search
             </Button>
@@ -249,9 +240,9 @@ export function CustomItemReport() {
               />
             </div>
             <div className="space-y-1">
-              <label className="text-xs text-muted-foreground">Order (optional)</label>
-              <Select value={orderFilter} onValueChange={setOrderFilter} onOpenChange={() => loadOrders()}>
-                <SelectTrigger className="w-52">
+              <label className="text-xs text-muted-foreground">Order</label>
+              <Select value={orderFilter} onValueChange={setOrderFilter}>
+                <SelectTrigger className="w-56">
                   <SelectValue placeholder="All Orders" />
                 </SelectTrigger>
                 <SelectContent>
@@ -262,11 +253,22 @@ export function CustomItemReport() {
                 </SelectContent>
               </Select>
             </div>
+            <Button
+              onClick={handleSearch}
+              disabled={loading || orderFilter === 'all'}
+              variant="secondary"
+              size="sm"
+            >
+              {loading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Search className="h-4 w-4 mr-1" />}
+              Find by Order
+            </Button>
           </div>
         </div>
 
         {searched && results.length === 0 && !loading && (
-          <p className="text-sm text-muted-foreground py-4 text-center">No records found for "{search}"</p>
+          <p className="text-sm text-muted-foreground py-4 text-center">
+            No requested items found{search.trim() ? ` for "${search}"` : selectedOrderNo ? ` for order ${selectedOrderNo}` : ''}.
+          </p>
         )}
 
         {results.length > 0 && (
@@ -283,22 +285,22 @@ export function CustomItemReport() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Date</TableHead>
-                    <TableHead>Source</TableHead>
                     <TableHead>Request #</TableHead>
                     <TableHead>Order #</TableHead>
                     <TableHead>Type</TableHead>
+                    <TableHead>Item Code</TableHead>
+                    <TableHead>Description</TableHead>
                     <TableHead>Color</TableHead>
                     <TableHead>Size</TableHead>
                     <TableHead>Unit</TableHead>
                     <TableHead className="text-right">Requested</TableHead>
-                    <TableHead className="text-right">Issued/Received</TableHead>
+                    <TableHead className="text-right">Issued</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {results.map((row, i) => (
                     <TableRow key={i}>
                       <TableCell className="text-xs">{row.date ? format(new Date(row.date), 'dd/MM/yyyy') : '—'}</TableCell>
-                      <TableCell className="text-xs">{row.source}</TableCell>
                       <TableCell className="font-mono text-xs">{row.requestNo}</TableCell>
                       <TableCell className="font-mono text-xs">{row.orderNo}</TableCell>
                       <TableCell>
@@ -306,6 +308,8 @@ export function CustomItemReport() {
                           {row.type}
                         </Badge>
                       </TableCell>
+                      <TableCell className="font-mono text-xs">{row.itemCode}</TableCell>
+                      <TableCell className="text-xs">{row.description}</TableCell>
                       <TableCell className="text-xs">{row.color}</TableCell>
                       <TableCell className="text-xs">{row.size}</TableCell>
                       <TableCell className="text-xs">{row.unit}</TableCell>
@@ -321,7 +325,7 @@ export function CustomItemReport() {
               {Object.entries(categoryTotals).map(([type, totals]) => (
                 <div key={type} className="rounded-lg border p-3 bg-muted/30">
                   <p className="text-xs font-medium text-muted-foreground">{type}</p>
-                <p className="text-sm">Requested: <span className="font-mono font-bold">{parseFloat(totals.requested.toFixed(4))}</span></p>
+                  <p className="text-sm">Requested: <span className="font-mono font-bold">{parseFloat(totals.requested.toFixed(4))}</span></p>
                   <p className="text-sm">Issued: <span className="font-mono font-bold">{parseFloat(totals.issued.toFixed(4))}</span></p>
                 </div>
               ))}
