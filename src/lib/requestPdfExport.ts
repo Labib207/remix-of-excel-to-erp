@@ -447,7 +447,7 @@ export const exportGeneralSuppliesRequestPDF = async (form: RequestForm, items: 
     }
   });
 
-  doc.save(`General_Supplies_Request_${docNumber}.pdf`);
+  if (mode === 'print') { doc.autoPrint(); window.open(doc.output('bloburl'), '_blank'); } else { doc.save(`General_Supplies_Request_${docNumber}.pdf`); }
 };
 
 export const exportMaterialReturnSlipPDF = async (form: RequestForm, items: ReturnItem[], existingDocNumber?: string): Promise<void> => {
