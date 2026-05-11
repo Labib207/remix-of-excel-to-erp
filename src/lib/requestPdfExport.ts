@@ -272,7 +272,7 @@ const drawSignatureSection = (
   }
 };
 
-export const exportRawMaterialRequestPDF = async (form: RequestForm, items: RequestItem[], existingDocNumber?: string): Promise<void> => {
+export const exportRawMaterialRequestPDF = async (form: RequestForm, items: RequestItem[], existingDocNumber?: string, mode: 'save' | 'print' = 'save'): Promise<void> => {
   const doc = new jsPDF('landscape', 'mm', 'a4');
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
@@ -359,10 +359,10 @@ export const exportRawMaterialRequestPDF = async (form: RequestForm, items: Requ
     }
   });
 
-  doc.save(`Raw_Material_Request_${docNumber}.pdf`);
+  if (mode === 'print') { doc.autoPrint(); window.open(doc.output('bloburl'), '_blank'); } else { doc.save(`Raw_Material_Request_${docNumber}.pdf`); }
 };
 
-export const exportGeneralSuppliesRequestPDF = async (form: RequestForm, items: RequestItem[], existingDocNumber?: string): Promise<void> => {
+export const exportGeneralSuppliesRequestPDF = async (form: RequestForm, items: RequestItem[], existingDocNumber?: string, mode: 'save' | 'print' = 'save'): Promise<void> => {
   const doc = new jsPDF('landscape', 'mm', 'a4');
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
@@ -447,10 +447,10 @@ export const exportGeneralSuppliesRequestPDF = async (form: RequestForm, items: 
     }
   });
 
-  doc.save(`General_Supplies_Request_${docNumber}.pdf`);
+  if (mode === 'print') { doc.autoPrint(); window.open(doc.output('bloburl'), '_blank'); } else { doc.save(`General_Supplies_Request_${docNumber}.pdf`); }
 };
 
-export const exportMaterialReturnSlipPDF = async (form: RequestForm, items: ReturnItem[], existingDocNumber?: string): Promise<void> => {
+export const exportMaterialReturnSlipPDF = async (form: RequestForm, items: ReturnItem[], existingDocNumber?: string, mode: 'save' | 'print' = 'save'): Promise<void> => {
   const doc = new jsPDF('landscape', 'mm', 'a4');
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
@@ -533,7 +533,7 @@ export const exportMaterialReturnSlipPDF = async (form: RequestForm, items: Retu
     }
   });
 
-  doc.save(`Material_Return_Slip_${docNumber}.pdf`);
+  if (mode === 'print') { doc.autoPrint(); window.open(doc.output('bloburl'), '_blank'); } else { doc.save(`Material_Return_Slip_${docNumber}.pdf`); }
 };
 
 // Delivery Note PDF - for line supervisor acknowledgment
