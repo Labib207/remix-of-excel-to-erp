@@ -563,7 +563,7 @@ export const exportMaterialReturnSlipPDF = async (form: RequestForm, items: Retu
     }
   });
 
-  if (mode === 'print') { doc.autoPrint(); window.open(doc.output('bloburl'), '_blank'); } else { doc.save(`Material_Return_Slip_${docNumber}.pdf`); }
+  if (mode === 'print') { printJsPdf(doc); } else { doc.save(`Material_Return_Slip_${docNumber}.pdf`); }
 };
 
 // Delivery Note PDF - for line supervisor acknowledgment
