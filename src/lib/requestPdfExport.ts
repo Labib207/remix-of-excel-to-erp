@@ -1,4 +1,34 @@
 import jsPDF from 'jspdf';
+
+// Print a jsPDF document via a hidden iframe (avoids popup/ad-blocker issues with new-tab blob URLs)
+const printJsPdf = (doc: jsPDF) => {
+  doc.autoPrint();
+  const blobUrl = doc.output('bloburl') as unknown as string;
+  const iframe = document.createElement('iframe');
+  iframe.style.position = 'fixed';
+  iframe.style.right = '0';
+  iframe.style.bottom = '0';
+  iframe.style.width = '0';
+  iframe.style.height = '0';
+  iframe.style.border = '0';
+  iframe.src = blobUrl;
+  iframe.onload = () => {
+    setTimeout(() => {
+      try {
+        iframe.contentWindow?.focus();
+        iframe.contentWindow?.print();
+      } catch {
+        window.open(blobUrl, '_blank');
+      }
+    }, 200);
+  };
+  document.body.appendChild(iframe);
+  // Cleanup after a while
+  setTimeout(() => {
+    try { document.body.removeChild(iframe); } catch {}
+    try { URL.revokeObjectURL(blobUrl); } catch {}
+  }, 60_000);
+};
 import autoTable from 'jspdf-autotable';
 import logoImage from '@/assets/logo.png';
 
@@ -359,7 +389,7 @@ export const exportRawMaterialRequestPDF = async (form: RequestForm, items: Requ
     }
   });
 
-  if (mode === 'print') { doc.autoPrint(); window.open(doc.output('bloburl'), '_blank'); } else { doc.save(`Raw_Material_Request_${docNumber}.pdf`); }
+  if (mode === 'print') { printJsPdf(doc); } else { doc.save(`Raw_Material_Request_${docNumber}.pdf`); }
 };
 
 export const exportGeneralSuppliesRequestPDF = async (form: RequestForm, items: RequestItem[], existingDocNumber?: string, mode: 'save' | 'print' = 'save'): Promise<void> => {
@@ -447,7 +477,7 @@ export const exportGeneralSuppliesRequestPDF = async (form: RequestForm, items: 
     }
   });
 
-  if (mode === 'print') { doc.autoPrint(); window.open(doc.output('bloburl'), '_blank'); } else { doc.save(`General_Supplies_Request_${docNumber}.pdf`); }
+  if (mode === 'print') { printJsPdf(doc); } else { doc.save(`General_Supplies_Request_${docNumber}.pdf`); }
 };
 
 export const exportMaterialReturnSlipPDF = async (form: RequestForm, items: ReturnItem[], existingDocNumber?: string, mode: 'save' | 'print' = 'save'): Promise<void> => {
@@ -533,7 +563,7 @@ export const exportMaterialReturnSlipPDF = async (form: RequestForm, items: Retu
     }
   });
 
-  if (mode === 'print') { doc.autoPrint(); window.open(doc.output('bloburl'), '_blank'); } else { doc.save(`Material_Return_Slip_${docNumber}.pdf`); }
+  if (mode === 'print') { printJsPdf(doc); } else { doc.save(`Material_Return_Slip_${docNumber}.pdf`); }
 };
 
 // Delivery Note PDF - for line supervisor acknowledgment
