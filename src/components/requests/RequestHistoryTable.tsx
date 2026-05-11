@@ -88,7 +88,7 @@ export function RequestHistoryTable({ onEdit }: { onEdit?: (request: any) => voi
       .sort((a, b) => new Date(b.submitted_at || b.created_at).getTime() - new Date(a.submitted_at || a.created_at).getTime());
   }, [cloudRequests, searchQuery, typeFilter, dateFrom, dateTo]);
 
-  const handleDownloadPDF = (request: CloudRequest) => {
+  const buildPdfArgs = (request: CloudRequest) => {
     const reqType = getRequestType(request.request_no);
     const items = (request.items || []).map((item, idx) => ({
       id: item.id,
@@ -114,7 +114,11 @@ export function RequestHistoryTable({ onEdit }: { onEdit?: (request: any) => voi
       issuedBy: '',
       aswaqNumber: '',
     };
+    return { reqType, items, form };
+  };
 
+  const handleDownloadPDF = (request: CloudRequest) => {
+    const { reqType, items, form } = buildPdfArgs(request);
     if (reqType === 'raw-material') {
       exportRawMaterialRequestPDF(form, items, request.request_no);
     } else if (reqType === 'general-supplies') {
@@ -123,6 +127,54 @@ export function RequestHistoryTable({ onEdit }: { onEdit?: (request: any) => voi
       exportMaterialReturnSlipPDF(form, items, request.request_no);
     }
   };
+
+  const handlePrintPDF = (request: CloudRequest) => {
+    const { reqType, items, form } = buildPdfArgs(request);
+    if (reqType === 'raw-material') {
+      exportRawMaterialRequestPDF(form, items, request.request_no, 'print');
+    } else if (reqType === 'general-supplies') {
+      exportGeneralSuppliesRequestPDF(form, items, request.request_no, 'print');
+    } else {
+      exportMaterialReturnSlipPDF(form, items, request.request_no, 'print');
+    }
+  };
+
+  const handleEdit = (request: CloudRequest) => {
+    if (!onEdit) return;
+    const reqType = getRequestType(request.request_no);
+    const transformed = {
+      id: request.id,
+      docNumber: request.request_no,
+      type: reqType,
+      form: {
+        date: request.request_date,
+        department: request.department || '',
+        orderId: request.order_id || '',
+        orderName: request.order_no || '',
+        requestedBy: request.requested_by || '',
+        approvedBy: '',
+        issuedBy: '',
+        aswaqNumber: '',
+      },
+      items: (request.items || []).map((item, idx) => ({
+        id: item.id,
+        slNo: idx + 1,
+        itemCode: item.item_code || '',
+        description: item.description || '',
+        uom: item.unit || 'pcs',
+        requirementQty: item.requested_qty,
+        requestedQty: item.requested_qty,
+        issuedQty: item.issued_qty || 0,
+        remainingQty: item.requested_qty - (item.issued_qty || 0),
+        remarks: item.notes || '',
+        qtyReturned: item.requested_qty,
+        qtyReceived: item.issued_qty || 0,
+        requirementId: item.requirement_id,
+      })),
+    };
+    onEdit(transformed);
+  };
+
 
   const handleDownloadDeliveryNote = (request: CloudRequest) => {
     const reqType = getRequestType(request.request_no);
