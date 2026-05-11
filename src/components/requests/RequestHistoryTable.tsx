@@ -169,7 +169,7 @@ export function RequestHistoryTable({ onEdit }: { onEdit?: (request: any) => voi
         remarks: item.notes || '',
         qtyReturned: item.requested_qty,
         qtyReceived: item.issued_qty || 0,
-        requirementId: item.requirement_id,
+        requirementId: (item as any).requirement_id,
       })),
     };
     onEdit(transformed);
