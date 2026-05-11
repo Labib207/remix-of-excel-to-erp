@@ -450,7 +450,7 @@ export const exportGeneralSuppliesRequestPDF = async (form: RequestForm, items: 
   if (mode === 'print') { doc.autoPrint(); window.open(doc.output('bloburl'), '_blank'); } else { doc.save(`General_Supplies_Request_${docNumber}.pdf`); }
 };
 
-export const exportMaterialReturnSlipPDF = async (form: RequestForm, items: ReturnItem[], existingDocNumber?: string): Promise<void> => {
+export const exportMaterialReturnSlipPDF = async (form: RequestForm, items: ReturnItem[], existingDocNumber?: string, mode: 'save' | 'print' = 'save'): Promise<void> => {
   const doc = new jsPDF('landscape', 'mm', 'a4');
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
