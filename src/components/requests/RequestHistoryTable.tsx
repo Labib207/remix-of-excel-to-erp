@@ -601,7 +601,10 @@ export function RequestHistoryTable({ onEdit }: { onEdit?: (request: any) => voi
                   {renderItemsTable(selectedRequest)}
                 </div>
 
-                <div className="flex justify-end">
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" onClick={() => handlePrintPDF(selectedRequest)} className="gap-2">
+                    <Printer className="h-4 w-4" /> Print
+                  </Button>
                   <Button onClick={() => handleDownloadPDF(selectedRequest)} className="gap-2">
                     <Download className="h-4 w-4" /> Download PDF
                   </Button>
