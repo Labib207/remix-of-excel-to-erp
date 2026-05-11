@@ -362,7 +362,7 @@ export const exportRawMaterialRequestPDF = async (form: RequestForm, items: Requ
   if (mode === 'print') { doc.autoPrint(); window.open(doc.output('bloburl'), '_blank'); } else { doc.save(`Raw_Material_Request_${docNumber}.pdf`); }
 };
 
-export const exportGeneralSuppliesRequestPDF = async (form: RequestForm, items: RequestItem[], existingDocNumber?: string): Promise<void> => {
+export const exportGeneralSuppliesRequestPDF = async (form: RequestForm, items: RequestItem[], existingDocNumber?: string, mode: 'save' | 'print' = 'save'): Promise<void> => {
   const doc = new jsPDF('landscape', 'mm', 'a4');
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
