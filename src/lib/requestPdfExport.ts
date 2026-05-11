@@ -1,4 +1,34 @@
 import jsPDF from 'jspdf';
+
+// Print a jsPDF document via a hidden iframe (avoids popup/ad-blocker issues with new-tab blob URLs)
+const printJsPdf = (doc: jsPDF) => {
+  doc.autoPrint();
+  const blobUrl = doc.output('bloburl') as unknown as string;
+  const iframe = document.createElement('iframe');
+  iframe.style.position = 'fixed';
+  iframe.style.right = '0';
+  iframe.style.bottom = '0';
+  iframe.style.width = '0';
+  iframe.style.height = '0';
+  iframe.style.border = '0';
+  iframe.src = blobUrl;
+  iframe.onload = () => {
+    setTimeout(() => {
+      try {
+        iframe.contentWindow?.focus();
+        iframe.contentWindow?.print();
+      } catch {
+        window.open(blobUrl, '_blank');
+      }
+    }, 200);
+  };
+  document.body.appendChild(iframe);
+  // Cleanup after a while
+  setTimeout(() => {
+    try { document.body.removeChild(iframe); } catch {}
+    try { URL.revokeObjectURL(blobUrl); } catch {}
+  }, 60_000);
+};
 import autoTable from 'jspdf-autotable';
 import logoImage from '@/assets/logo.png';
 
