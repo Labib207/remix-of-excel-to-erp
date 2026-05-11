@@ -359,7 +359,7 @@ export const exportRawMaterialRequestPDF = async (form: RequestForm, items: Requ
     }
   });
 
-  doc.save(`Raw_Material_Request_${docNumber}.pdf`);
+  if (mode === 'print') { doc.autoPrint(); window.open(doc.output('bloburl'), '_blank'); } else { doc.save(`Raw_Material_Request_${docNumber}.pdf`); }
 };
 
 export const exportGeneralSuppliesRequestPDF = async (form: RequestForm, items: RequestItem[], existingDocNumber?: string): Promise<void> => {
