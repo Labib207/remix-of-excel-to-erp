@@ -491,6 +491,14 @@ export function RequestHistoryTable({ onEdit }: { onEdit?: (request: any) => voi
                             <Button variant="ghost" size="icon" onClick={() => setSelectedRequest(request)} title="View Details">
                               <Eye className="h-4 w-4" />
                             </Button>
+                            {onEdit && (
+                              <Button variant="ghost" size="icon" onClick={() => handleEdit(request)} title="Edit Request">
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                            )}
+                            <Button variant="ghost" size="icon" onClick={() => handlePrintPDF(request)} title="Print Request">
+                              <Printer className="h-4 w-4" />
+                            </Button>
                             <Button variant="ghost" size="icon" onClick={() => handleDownloadPDF(request)} title="Download Request PDF">
                               <Download className="h-4 w-4" />
                             </Button>
