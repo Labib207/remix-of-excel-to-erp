@@ -108,7 +108,7 @@ export function RequirementsTab() {
   const hasPendingChanges = Object.keys(pendingEdits).length > 0 || pendingDeletes.length > 0;
   
   const selectedOrder = orders.find(o => o.id === selectedOrderId);
-  const orderRequirements = allRequirements.filter(r => r.orderId === selectedOrderId);
+  const orderRequirements = allRequirements.filter(r => r.orderId === selectedOrderId && !pendingDeletes.includes(r.id));
 
   // Group requirements by description keyword (first word or category)
   const getGroupKey = (description: string) => {
