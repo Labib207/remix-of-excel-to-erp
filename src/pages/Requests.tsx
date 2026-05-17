@@ -435,9 +435,9 @@ export default function Requests() {
       }
     };
 
-    // Helper to save to cloud
+    // Helper to save to cloud (insert new, or update existing when editing)
     const saveToCloud = (formData: RequestForm, cloudItems: { item_code?: string; description?: string; color?: string; size?: string; unit?: string; requested_qty: number; issued_qty?: number; notes?: string; sort_order?: number; requirement_id?: string }[]) => {
-      submitCloudRequest.mutate({
+      const payload = {
         requestNo: docNumber,
         requestDate: formData.date,
         orderId: formData.orderId || undefined,
@@ -445,7 +445,12 @@ export default function Requests() {
         requestedBy: formData.requestedBy || undefined,
         notes: formData.approvedBy ? `Approved: ${formData.approvedBy}, Issued: ${formData.issuedBy}, ASWAQ: ${formData.aswaqNumber}` : undefined,
         items: cloudItems,
-      });
+      };
+      if (isEditing && editingRequestId) {
+        updateCloudRequest.mutate({ requestId: editingRequestId, ...payload });
+      } else {
+        submitCloudRequest.mutate(payload);
+      }
     };
 
     if (type === 'raw') {
