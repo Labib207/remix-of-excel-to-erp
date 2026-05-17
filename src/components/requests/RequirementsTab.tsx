@@ -720,21 +720,21 @@ export function RequirementsTab() {
                             <TableRow key={req.id}>
                           <TableCell>
                             <Input
-                              value={req.itemCode}
+                              value={getReqValue(req, 'itemCode') as string}
                               onChange={(e) => handleUpdateRequirement(req.id, 'itemCode', e.target.value)}
                               className="h-8"
                             />
                           </TableCell>
                           <TableCell>
                             <Input
-                              value={req.description}
+                              value={getReqValue(req, 'description') as string}
                               onChange={(e) => handleUpdateRequirement(req.id, 'description', e.target.value)}
                               className="h-8"
                             />
                           </TableCell>
                           <TableCell>
                             <Input
-                              value={req.uom}
+                              value={getReqValue(req, 'uom') as string}
                               onChange={(e) => handleUpdateRequirement(req.id, 'uom', e.target.value)}
                               className="h-8"
                             />
@@ -742,7 +742,7 @@ export function RequirementsTab() {
                           <TableCell>
                             <Input
                               type="number"
-                              value={req.requiredQty || ''}
+                              value={(getReqValue(req, 'requiredQty') as number) || ''}
                               onChange={(e) => handleUpdateRequirement(req.id, 'requiredQty', parseFloat(e.target.value) || 0)}
                               className="h-8"
                             />
@@ -764,7 +764,7 @@ export function RequirementsTab() {
                           </TableCell>
                           <TableCell>
                             <Input
-                              value={req.remarks}
+                              value={getReqValue(req, 'remarks') as string}
                               onChange={(e) => handleUpdateRequirement(req.id, 'remarks', e.target.value)}
                               className="h-8"
                             />
