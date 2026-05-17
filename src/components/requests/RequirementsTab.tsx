@@ -788,10 +788,13 @@ export function RequirementsTab() {
                 </div>
               )}
               {orderRequirements.length > 0 && (
-                <div className="flex justify-end mt-4">
+                <div className="flex justify-end mt-4 items-center gap-3">
+                  {hasPendingChanges && (
+                    <span className="text-sm text-muted-foreground">Unsaved changes</span>
+                  )}
                   <Button 
                     onClick={handleSaveAllChanges} 
-                    disabled={isSaving}
+                    disabled={isSaving || !hasPendingChanges}
                     className="gap-2"
                   >
                     {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
