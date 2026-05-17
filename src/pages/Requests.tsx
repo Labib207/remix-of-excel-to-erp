@@ -101,6 +101,7 @@ export default function Requests() {
   const [activeTab, setActiveTab] = useState('raw-material');
   const { addRequest, updateRequest, exportMonthlyExcel, submittedRequests } = useRequestStore();
   const submitCloudRequest = useSubmitCloudRequest();
+  const updateCloudRequest = useUpdateCloudRequest();
   const { updateRequestedQty, materialCatalog } = useRequirementStore();
   const { data: requirements = [] } = useDbRequirements();
   const { data: orders = [] } = useDbOrders();
