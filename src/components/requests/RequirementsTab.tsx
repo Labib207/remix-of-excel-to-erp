@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -106,6 +106,11 @@ export function RequirementsTab() {
     return (edit && field in edit ? (edit as any)[field] : req[field]);
   };
   const hasPendingChanges = Object.keys(pendingEdits).length > 0 || pendingDeletes.length > 0;
+
+  useEffect(() => {
+    setPendingEdits({});
+    setPendingDeletes([]);
+  }, [selectedOrderId]);
   
   const selectedOrder = orders.find(o => o.id === selectedOrderId);
   const orderRequirements = allRequirements.filter(r => r.orderId === selectedOrderId && !pendingDeletes.includes(r.id));
@@ -709,7 +714,7 @@ export function RequirementsTab() {
                         const showGroupHeader = groupByDescription && currentGroup !== prevGroup;
                         
                         return (
-                          <>
+                          <React.Fragment key={req.id}>
                             {showGroupHeader && (
                               <TableRow key={`group-${currentGroup}`}>
                                 <TableCell colSpan={8} className="bg-muted/50 py-2 font-semibold text-sm text-foreground">
@@ -717,7 +722,7 @@ export function RequirementsTab() {
                                 </TableCell>
                               </TableRow>
                             )}
-                            <TableRow key={req.id}>
+                            <TableRow>
                           <TableCell>
                             <Input
                               value={getReqValue(req, 'itemCode') as string}
@@ -780,7 +785,7 @@ export function RequirementsTab() {
                             </Button>
                           </TableCell>
                         </TableRow>
-                          </>
+                          </React.Fragment>
                         );
                       })}
                     </TableBody>
