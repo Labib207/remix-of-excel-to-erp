@@ -98,6 +98,14 @@ export function RequirementsTab() {
   const [editOrder, setEditOrder] = useState<NewOrder>(emptyOrder());
   const [groupByDescription, setGroupByDescription] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [pendingEdits, setPendingEdits] = useState<Record<string, Partial<MaterialRequirement>>>({});
+  const [pendingDeletes, setPendingDeletes] = useState<string[]>([]);
+
+  const getReqValue = <K extends keyof MaterialRequirement>(req: MaterialRequirement, field: K): MaterialRequirement[K] => {
+    const edit = pendingEdits[req.id];
+    return (edit && field in edit ? (edit as any)[field] : req[field]);
+  };
+  const hasPendingChanges = Object.keys(pendingEdits).length > 0 || pendingDeletes.length > 0;
   
   const selectedOrder = orders.find(o => o.id === selectedOrderId);
   const orderRequirements = allRequirements.filter(r => r.orderId === selectedOrderId);
