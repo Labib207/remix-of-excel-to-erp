@@ -98,9 +98,17 @@ export function RequirementsTab() {
   const [editOrder, setEditOrder] = useState<NewOrder>(emptyOrder());
   const [groupByDescription, setGroupByDescription] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [pendingEdits, setPendingEdits] = useState<Record<string, Partial<MaterialRequirement>>>({});
+  const [pendingDeletes, setPendingDeletes] = useState<string[]>([]);
+
+  const getReqValue = <K extends keyof MaterialRequirement>(req: MaterialRequirement, field: K): MaterialRequirement[K] => {
+    const edit = pendingEdits[req.id];
+    return (edit && field in edit ? (edit as any)[field] : req[field]);
+  };
+  const hasPendingChanges = Object.keys(pendingEdits).length > 0 || pendingDeletes.length > 0;
   
   const selectedOrder = orders.find(o => o.id === selectedOrderId);
-  const orderRequirements = allRequirements.filter(r => r.orderId === selectedOrderId);
+  const orderRequirements = allRequirements.filter(r => r.orderId === selectedOrderId && !pendingDeletes.includes(r.id));
 
   // Group requirements by description keyword (first word or category)
   const getGroupKey = (description: string) => {
@@ -267,24 +275,39 @@ export function RequirementsTab() {
   };
 
   const handleUpdateRequirement = (id: string, field: keyof MaterialRequirement, value: string | number) => {
-    updateRequirementMutation.mutate({ id, [field]: value });
+    setPendingEdits(prev => ({
+      ...prev,
+      [id]: { ...(prev[id] || {}), [field]: value },
+    }));
   };
 
   const handleDeleteRequirement = (id: string) => {
-    deleteRequirementMutation.mutate(id);
+    setPendingDeletes(prev => prev.includes(id) ? prev : [...prev, id]);
+    setPendingEdits(prev => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
   };
 
   const handleSaveAllChanges = useCallback(async () => {
     setIsSaving(true);
     try {
-      // Cloud-only: data is already saved, just confirm
-      toast.success('All changes are saved in the cloud');
+      for (const id of pendingDeletes) {
+        await deleteRequirementMutation.mutateAsync(id);
+      }
+      for (const [id, updates] of Object.entries(pendingEdits)) {
+        await updateRequirementMutation.mutateAsync({ id, ...updates });
+      }
+      setPendingEdits({});
+      setPendingDeletes([]);
+      toast.success('All changes saved');
     } catch (error: any) {
       toast.error('Save failed: ' + error.message);
     } finally {
       setIsSaving(false);
     }
-  }, []);
+  }, [pendingEdits, pendingDeletes, deleteRequirementMutation, updateRequirementMutation]);
 
   if (ordersLoading || reqsLoading) {
     return (
@@ -697,21 +720,21 @@ export function RequirementsTab() {
                             <TableRow key={req.id}>
                           <TableCell>
                             <Input
-                              value={req.itemCode}
+                              value={getReqValue(req, 'itemCode') as string}
                               onChange={(e) => handleUpdateRequirement(req.id, 'itemCode', e.target.value)}
                               className="h-8"
                             />
                           </TableCell>
                           <TableCell>
                             <Input
-                              value={req.description}
+                              value={getReqValue(req, 'description') as string}
                               onChange={(e) => handleUpdateRequirement(req.id, 'description', e.target.value)}
                               className="h-8"
                             />
                           </TableCell>
                           <TableCell>
                             <Input
-                              value={req.uom}
+                              value={getReqValue(req, 'uom') as string}
                               onChange={(e) => handleUpdateRequirement(req.id, 'uom', e.target.value)}
                               className="h-8"
                             />
@@ -719,7 +742,7 @@ export function RequirementsTab() {
                           <TableCell>
                             <Input
                               type="number"
-                              value={req.requiredQty || ''}
+                              value={(getReqValue(req, 'requiredQty') as number) || ''}
                               onChange={(e) => handleUpdateRequirement(req.id, 'requiredQty', parseFloat(e.target.value) || 0)}
                               className="h-8"
                             />
@@ -741,7 +764,7 @@ export function RequirementsTab() {
                           </TableCell>
                           <TableCell>
                             <Input
-                              value={req.remarks}
+                              value={getReqValue(req, 'remarks') as string}
                               onChange={(e) => handleUpdateRequirement(req.id, 'remarks', e.target.value)}
                               className="h-8"
                             />
@@ -765,10 +788,13 @@ export function RequirementsTab() {
                 </div>
               )}
               {orderRequirements.length > 0 && (
-                <div className="flex justify-end mt-4">
+                <div className="flex justify-end mt-4 items-center gap-3">
+                  {hasPendingChanges && (
+                    <span className="text-sm text-muted-foreground">Unsaved changes</span>
+                  )}
                   <Button 
                     onClick={handleSaveAllChanges} 
-                    disabled={isSaving}
+                    disabled={isSaving || !hasPendingChanges}
                     className="gap-2"
                   >
                     {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
