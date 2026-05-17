@@ -275,24 +275,39 @@ export function RequirementsTab() {
   };
 
   const handleUpdateRequirement = (id: string, field: keyof MaterialRequirement, value: string | number) => {
-    updateRequirementMutation.mutate({ id, [field]: value });
+    setPendingEdits(prev => ({
+      ...prev,
+      [id]: { ...(prev[id] || {}), [field]: value },
+    }));
   };
 
   const handleDeleteRequirement = (id: string) => {
-    deleteRequirementMutation.mutate(id);
+    setPendingDeletes(prev => prev.includes(id) ? prev : [...prev, id]);
+    setPendingEdits(prev => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
   };
 
   const handleSaveAllChanges = useCallback(async () => {
     setIsSaving(true);
     try {
-      // Cloud-only: data is already saved, just confirm
-      toast.success('All changes are saved in the cloud');
+      for (const id of pendingDeletes) {
+        await deleteRequirementMutation.mutateAsync(id);
+      }
+      for (const [id, updates] of Object.entries(pendingEdits)) {
+        await updateRequirementMutation.mutateAsync({ id, ...updates });
+      }
+      setPendingEdits({});
+      setPendingDeletes([]);
+      toast.success('All changes saved');
     } catch (error: any) {
       toast.error('Save failed: ' + error.message);
     } finally {
       setIsSaving(false);
     }
-  }, []);
+  }, [pendingEdits, pendingDeletes, deleteRequirementMutation, updateRequirementMutation]);
 
   if (ordersLoading || reqsLoading) {
     return (
