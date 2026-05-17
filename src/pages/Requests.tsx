@@ -31,7 +31,7 @@ import {
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { useRequestStore } from '@/store/requestStore';
-import { useSubmitCloudRequest } from '@/hooks/useCloudRequests';
+import { useSubmitCloudRequest, useUpdateCloudRequest } from '@/hooks/useCloudRequests';
 import { useRequirementStore } from '@/store/requirementStore';
 import { useDbOrders, useUpdateDbOrder } from '@/hooks/useDbOrders';
 import { useDbRequirements } from '@/hooks/useDbRequirements';
@@ -101,6 +101,7 @@ export default function Requests() {
   const [activeTab, setActiveTab] = useState('raw-material');
   const { addRequest, updateRequest, exportMonthlyExcel, submittedRequests } = useRequestStore();
   const submitCloudRequest = useSubmitCloudRequest();
+  const updateCloudRequest = useUpdateCloudRequest();
   const { updateRequestedQty, materialCatalog } = useRequirementStore();
   const { data: requirements = [] } = useDbRequirements();
   const { data: orders = [] } = useDbOrders();
@@ -434,9 +435,9 @@ export default function Requests() {
       }
     };
 
-    // Helper to save to cloud
+    // Helper to save to cloud (insert new, or update existing when editing)
     const saveToCloud = (formData: RequestForm, cloudItems: { item_code?: string; description?: string; color?: string; size?: string; unit?: string; requested_qty: number; issued_qty?: number; notes?: string; sort_order?: number; requirement_id?: string }[]) => {
-      submitCloudRequest.mutate({
+      const payload = {
         requestNo: docNumber,
         requestDate: formData.date,
         orderId: formData.orderId || undefined,
@@ -444,7 +445,12 @@ export default function Requests() {
         requestedBy: formData.requestedBy || undefined,
         notes: formData.approvedBy ? `Approved: ${formData.approvedBy}, Issued: ${formData.issuedBy}, ASWAQ: ${formData.aswaqNumber}` : undefined,
         items: cloudItems,
-      });
+      };
+      if (isEditing && editingRequestId) {
+        updateCloudRequest.mutate({ requestId: editingRequestId, ...payload });
+      } else {
+        submitCloudRequest.mutate(payload);
+      }
     };
 
     if (type === 'raw') {

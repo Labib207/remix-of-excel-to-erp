@@ -181,6 +181,94 @@ export function useSubmitCloudRequest() {
   });
 }
 
+export function useUpdateCloudRequest() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      requestId,
+      requestNo,
+      requestDate,
+      orderId,
+      department,
+      requestedBy,
+      notes,
+      items,
+    }: {
+      requestId: string;
+      requestNo: string;
+      requestDate: string;
+      orderId?: string;
+      department?: string;
+      requestedBy?: string;
+      notes?: string;
+      items: {
+        item_code?: string;
+        description?: string;
+        color?: string;
+        size?: string;
+        unit?: string;
+        requested_qty: number;
+        issued_qty?: number;
+        notes?: string;
+        sort_order?: number;
+        requirement_id?: string;
+      }[];
+    }) => {
+      // Update request row
+      const { error: updErr } = await supabase
+        .from('requests')
+        .update({
+          request_no: requestNo,
+          request_date: requestDate,
+          order_id: orderId || null,
+          department: department || null,
+          requested_by: requestedBy || null,
+          notes: notes || null,
+          status: 'submitted',
+          submitted_at: new Date().toISOString(),
+        })
+        .eq('id', requestId);
+      if (updErr) throw updErr;
+
+      // Replace items
+      const { error: delErr } = await supabase
+        .from('request_items')
+        .delete()
+        .eq('request_id', requestId);
+      if (delErr) throw delErr;
+
+      if (items.length > 0) {
+        const itemsToInsert = items.map((item, idx) => ({
+          request_id: requestId,
+          item_code: item.item_code || null,
+          description: item.description || null,
+          color: item.color || null,
+          size: item.size || null,
+          unit: item.unit || 'pcs',
+          requested_qty: item.requested_qty,
+          issued_qty: item.issued_qty || 0,
+          notes: item.notes || null,
+          sort_order: item.sort_order ?? idx + 1,
+          requirement_id: item.requirement_id || null,
+        }));
+        const { error: insErr } = await supabase
+          .from('request_items')
+          .insert(itemsToInsert);
+        if (insErr) throw insErr;
+      }
+
+      return { id: requestId };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['cloud-requests'] });
+    },
+    onError: (error) => {
+      console.error('Failed to update request in cloud:', error);
+    },
+  });
+}
+
 export function useDeleteCloudRequest() {
   const queryClient = useQueryClient();
 
