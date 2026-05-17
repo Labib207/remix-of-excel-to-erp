@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { Fragment, useState, useCallback, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -714,7 +714,7 @@ export function RequirementsTab() {
                         const showGroupHeader = groupByDescription && currentGroup !== prevGroup;
                         
                         return (
-                          <React.Fragment key={req.id}>
+                          <Fragment key={req.id}>
                             {showGroupHeader && (
                               <TableRow key={`group-${currentGroup}`}>
                                 <TableCell colSpan={8} className="bg-muted/50 py-2 font-semibold text-sm text-foreground">
@@ -785,7 +785,7 @@ export function RequirementsTab() {
                             </Button>
                           </TableCell>
                         </TableRow>
-                          </React.Fragment>
+                          </Fragment>
                         );
                       })}
                     </TableBody>
