@@ -1,32 +1,46 @@
 ## Goal
 
-Update the **Custom Item Report** (Reports page) so the user can search by **Order** alone, and the results only show **actually requested items** — no requirements, no other sources.
+Add a central **Item Master** (product list) module so descriptions are standardized across Trim Chart, Requests, and Delivery Notes — eliminating duplicates caused by typos or extra spaces.
 
-## Changes to `src/components/reports/CustomItemReport.tsx`
+## What you'll get
 
-### 1. Search by Order (without item description)
+1. **New sidebar page: "Item List"** (placed before "Trim Chart")
+  - Table of all items with columns: Item Code, Description, UOM, Category (optional), Actions
+  - Add / Edit / Delete buttons
+  - Search box to filter
+  - Bulk import from Excel (optional, reuses existing import pattern)
+2. **Strict autocomplete everywhere descriptions are typed**
+  - Trim Chart (Requirements tab)
+  - Request item rows
+  - Delivery Note item rows
+  - Dropdown suggests items from the master list as you type
+  - Selecting fills Item Code + Description + UOM together
+  - Option to "Add new item" inline if not found → opens a small dialog → saved to master → then inserted
+  - Free-typed descriptions that don't match are normalized (trimmed, collapsed spaces) before save, so "ZIPPER  10cm" and "ZIPPER 10cm" become the same item
+3. **Backend**
+  - Use the existing `material_catalog` table (already in DB with `item_code`, `description`, `uom`). No schema change needed for v1.
+  - Optional: add a `category` column later if you want grouping.
 
-- Make item description **optional** when an Order is selected.
-- Add a dedicated **"Search by Order"** action: if the user picks an order from the dropdown and clicks Search (or a new "Load Order Items" button), fetch every `request_items` row belonging to that order's requests — no description filter required.
-- Current behavior (description + optional order) still works.
-- Disable the Search button only when BOTH the description is empty AND no order is selected.
+## Technical details
 
-### 2. Show only requested items (drop requirements/garbage)
+- New page `src/pages/ItemMaster.tsx` + route `/items` in `App.tsx`
+- New sidebar link in `src/components/layout/Sidebar.tsx` (above Trim Chart)
+- New hook `src/hooks/useMaterialCatalog.ts` (React Query CRUD against `material_catalog`)
+- Refactor `DescriptionAutocomplete.tsx` to:
+  - Source data from cloud `material_catalog` instead of local zustand store
+  - Add "+ Add new item" footer row in the dropdown
+  - Normalize text (`.trim().replace(/\s+/g, ' ')`) on blur/save
+- Wire the autocomplete into Request item rows and Delivery item rows (currently only Trim Chart uses it)
 
-- Remove the `requirements` table query entirely from `handleSearch`.
-- Only pull from `request_items` joined to `requests` → `orders`.
-- Remove the **Source** column and the **Requirement** badge type from the table and Excel export.
-- Keep columns: Date, Request #, Order #, Type (Raw Material / General Supplies / Material Return), Item Code, Description, Color, Size, Unit, **Requested Qty**, Issued Qty.
-- Add **Item Code** and **Description** columns (currently missing) so the user can see exactly which item was requested.
-- Category totals (the bottom summary cards) drop the "Requirement" category automatically since it no longer exists.
+## Out of scope (ask if you want them)
 
-### 3. UI tweaks
+- Pricing / stock levels per item
+- Supplier info
+- Per-item images
+- Item categories / grouping filters
 
-- Update the helper text under the card title from "Search any item to see all request, requirement & issue history" → **"Search by item or order to see only requested quantities"**.
-- Update the empty-state message to handle both "no item searched" and "order has no requested items".
+## Questions before I build
 
-## Out of scope
-
-- No database/schema changes.
-- No changes to other reports, PDF export, or other pages.
-- Monthly Summary Report is untouched.
+1. Do you want **bulk Excel import** for the initial item list, or will you add items one-by-one?
+2. Should non-admin users be able to **add new items**, or only view/select existing ones?
+3. Any extra fields beyond **Item Code, Description, UOM** (e.g., Category, Color, Default Supplier)?

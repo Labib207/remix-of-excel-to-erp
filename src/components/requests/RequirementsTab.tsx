@@ -609,7 +609,6 @@ export function RequirementsTab() {
                             value={item.description}
                             onChange={(value) => updateNewItem(index, 'description', value)}
                             onSelect={(material) => handleMaterialSelect(index, material)}
-                            catalog={materialCatalog}
                           />
                         </TableCell>
                         <TableCell>

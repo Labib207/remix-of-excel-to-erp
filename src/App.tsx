@@ -10,6 +10,7 @@ import Dashboard from "./pages/Dashboard";
 import DeliveryNotes from "./pages/DeliveryNotes";
 import Requests from "./pages/Requests";
 import Requirements from "./pages/Requirements";
+import ItemList from "./pages/ItemList";
 import Auth from "./pages/Auth";
 import Admin from "./pages/Admin";
 import Profile from "./pages/Profile";
@@ -29,6 +30,7 @@ const App = () => (
             <Routes>
               <Route path="/auth" element={<Auth />} />
               <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+              <Route path="/items" element={<ProtectedRoute><ItemList /></ProtectedRoute>} />
               <Route path="/requirements" element={<ProtectedRoute><Requirements /></ProtectedRoute>} />
               <Route path="/requests" element={<ProtectedRoute><Requests /></ProtectedRoute>} />
               <Route path="/delivery-notes" element={<ProtectedRoute><DeliveryNotes /></ProtectedRoute>} />
