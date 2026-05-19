@@ -241,7 +241,7 @@ export function RequestHistoryTable({ onEdit }: { onEdit?: (request: any) => voi
           'Order': request.order_no || '-',
           'Date': format(new Date(request.request_date), 'dd/MM/yyyy'),
           'Department': request.department || '-',
-          'Returned By': request.requested_by || '-',
+          'Approval': request.approval_status || 'approved',
           'SL No': idx + 1,
           'Item Code': item.item_code || '-',
           'Description': item.description || '-',
