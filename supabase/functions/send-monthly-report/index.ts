@@ -62,8 +62,9 @@ Deno.serve(async (req) => {
       supabase.from('request_items').select('*').gte('created_at', startDate).lt('created_at', endDate),
     ])
 
-    const requests = requestsRes.data || []
-    const requestItems = requestItemsRes.data || []
+    const requests = (requestsRes.data || []).filter((r: any) => (r.approval_status || 'approved') === 'approved')
+    const approvedIds = new Set(requests.map((r: any) => r.id))
+    const requestItems = (requestItemsRes.data || []).filter((i: any) => approvedIds.has(i.request_id))
 
     const rawMaterialRequests = requests.filter(r => r.request_no?.startsWith('RM'))
     const generalRequests = requests.filter(r => r.request_no?.startsWith('GS'))

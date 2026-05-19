@@ -24,7 +24,7 @@ import {
   exportDeliveryNotePDF,
 } from '@/lib/requestPdfExport';
 import * as XLSX from 'xlsx';
-import { useCloudRequests, useDeleteCloudRequest, getRequestType, type CloudRequest } from '@/hooks/useCloudRequests';
+import { useCloudRequests, useDeleteCloudRequest, useUpdateApprovalStatus, getRequestType, type CloudRequest, type ApprovalStatus } from '@/hooks/useCloudRequests';
 
 const typeLabels: Record<string, string> = {
   'raw-material': 'Raw Material',
@@ -47,6 +47,7 @@ const typeBadgeVariant: Record<string, 'default' | 'secondary' | 'outline'> = {
 export function RequestHistoryTable({ onEdit }: { onEdit?: (request: any) => void }) {
   const { data: cloudRequests = [], isLoading } = useCloudRequests();
   const deleteCloudRequest = useDeleteCloudRequest();
+  const updateApprovalStatus = useUpdateApprovalStatus();
   const [searchQuery, setSearchQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
@@ -203,6 +204,8 @@ export function RequestHistoryTable({ onEdit }: { onEdit?: (request: any) => voi
 
   const getFilteredForExport = () => {
     return cloudRequests.filter((request) => {
+      // Only include approved requests in exports (hold/not_approved are display-only)
+      if ((request.approval_status || 'approved') !== 'approved') return false;
       if (dateFrom || dateTo) {
         const requestDate = new Date(request.request_date);
         if (dateFrom && dateTo) {
@@ -238,7 +241,7 @@ export function RequestHistoryTable({ onEdit }: { onEdit?: (request: any) => voi
           'Order': request.order_no || '-',
           'Date': format(new Date(request.request_date), 'dd/MM/yyyy'),
           'Department': request.department || '-',
-          'Returned By': request.requested_by || '-',
+          'Approval': request.approval_status || 'approved',
           'SL No': idx + 1,
           'Item Code': item.item_code || '-',
           'Description': item.description || '-',
@@ -252,7 +255,7 @@ export function RequestHistoryTable({ onEdit }: { onEdit?: (request: any) => voi
           'Order': request.order_no || '-',
           'Date': format(new Date(request.request_date), 'dd/MM/yyyy'),
           'Department': request.department || '-',
-          'Requested By': request.requested_by || '-',
+          'Approval': request.approval_status || 'approved',
           'SL No': idx + 1,
           'Item Code': item.item_code || '-',
           'Description': item.description || '-',
@@ -445,7 +448,7 @@ export function RequestHistoryTable({ onEdit }: { onEdit?: (request: any) => voi
                   <TableHead>Order</TableHead>
                   <TableHead>Date</TableHead>
                   <TableHead>Department</TableHead>
-                  <TableHead>Requested By</TableHead>
+                  <TableHead>Approval</TableHead>
                   <TableHead>Items</TableHead>
                   <TableHead>Submitted</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
@@ -481,7 +484,29 @@ export function RequestHistoryTable({ onEdit }: { onEdit?: (request: any) => voi
                         </TableCell>
                         <TableCell>{format(new Date(request.request_date), 'dd/MM/yyyy')}</TableCell>
                         <TableCell>{request.department || '-'}</TableCell>
-                        <TableCell>{request.requested_by || '-'}</TableCell>
+                        <TableCell>
+                          <Select
+                            value={(request.approval_status || 'approved') as ApprovalStatus}
+                            onValueChange={(val) => {
+                              updateApprovalStatus.mutate(
+                                { requestId: request.id, approvalStatus: val as ApprovalStatus },
+                                {
+                                  onSuccess: () => toast.success(`Marked as ${val.replace('_', ' ')}`),
+                                  onError: () => toast.error('Failed to update approval status'),
+                                }
+                              );
+                            }}
+                          >
+                            <SelectTrigger className="w-[140px] h-8">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="approved">Approved</SelectItem>
+                              <SelectItem value="not_approved">Not Approved</SelectItem>
+                              <SelectItem value="hold">Hold</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </TableCell>
                         <TableCell>{(request.items || []).length} items</TableCell>
                         <TableCell className="text-muted-foreground">
                           {request.submitted_at ? format(new Date(request.submitted_at), 'dd/MM/yyyy HH:mm') : '-'}

@@ -944,6 +944,7 @@ export type Database = {
       }
       requests: {
         Row: {
+          approval_status: string
           created_at: string
           created_by: string | null
           department: string | null
@@ -958,6 +959,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          approval_status?: string
           created_at?: string
           created_by?: string | null
           department?: string | null
@@ -972,6 +974,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          approval_status?: string
           created_at?: string
           created_by?: string | null
           department?: string | null
