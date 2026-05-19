@@ -484,7 +484,29 @@ export function RequestHistoryTable({ onEdit }: { onEdit?: (request: any) => voi
                         </TableCell>
                         <TableCell>{format(new Date(request.request_date), 'dd/MM/yyyy')}</TableCell>
                         <TableCell>{request.department || '-'}</TableCell>
-                        <TableCell>{request.requested_by || '-'}</TableCell>
+                        <TableCell>
+                          <Select
+                            value={(request.approval_status || 'approved') as ApprovalStatus}
+                            onValueChange={(val) => {
+                              updateApprovalStatus.mutate(
+                                { requestId: request.id, approvalStatus: val as ApprovalStatus },
+                                {
+                                  onSuccess: () => toast.success(`Marked as ${val.replace('_', ' ')}`),
+                                  onError: () => toast.error('Failed to update approval status'),
+                                }
+                              );
+                            }}
+                          >
+                            <SelectTrigger className="w-[140px] h-8">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="approved">Approved</SelectItem>
+                              <SelectItem value="not_approved">Not Approved</SelectItem>
+                              <SelectItem value="hold">Hold</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </TableCell>
                         <TableCell>{(request.items || []).length} items</TableCell>
                         <TableCell className="text-muted-foreground">
                           {request.submitted_at ? format(new Date(request.submitted_at), 'dd/MM/yyyy HH:mm') : '-'}
