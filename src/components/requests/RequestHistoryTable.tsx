@@ -24,7 +24,7 @@ import {
   exportDeliveryNotePDF,
 } from '@/lib/requestPdfExport';
 import * as XLSX from 'xlsx';
-import { useCloudRequests, useDeleteCloudRequest, getRequestType, type CloudRequest } from '@/hooks/useCloudRequests';
+import { useCloudRequests, useDeleteCloudRequest, useUpdateApprovalStatus, getRequestType, type CloudRequest, type ApprovalStatus } from '@/hooks/useCloudRequests';
 
 const typeLabels: Record<string, string> = {
   'raw-material': 'Raw Material',
