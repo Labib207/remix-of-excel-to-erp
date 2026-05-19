@@ -2,6 +2,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
+export type ApprovalStatus = 'approved' | 'not_approved' | 'hold';
+
 export interface CloudRequest {
   id: string;
   request_no: string;
@@ -10,6 +12,7 @@ export interface CloudRequest {
   department: string | null;
   requested_by: string | null;
   status: string;
+  approval_status: ApprovalStatus;
   submitted_at: string | null;
   notes: string | null;
   created_at: string;
