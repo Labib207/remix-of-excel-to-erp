@@ -1,0 +1,1 @@
+ALTER TABLE public.requests ADD COLUMN IF NOT EXISTS approval_status text NOT NULL DEFAULT 'approved';
