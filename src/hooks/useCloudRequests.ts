@@ -288,3 +288,19 @@ export function useDeleteCloudRequest() {
     },
   });
 }
+
+export function useUpdateApprovalStatus() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ requestId, approvalStatus }: { requestId: string; approvalStatus: ApprovalStatus }) => {
+      const { error } = await supabase
+        .from('requests')
+        .update({ approval_status: approvalStatus } as any)
+        .eq('id', requestId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['cloud-requests'] });
+    },
+  });
+}
