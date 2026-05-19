@@ -204,6 +204,8 @@ export function RequestHistoryTable({ onEdit }: { onEdit?: (request: any) => voi
 
   const getFilteredForExport = () => {
     return cloudRequests.filter((request) => {
+      // Only include approved requests in exports (hold/not_approved are display-only)
+      if ((request.approval_status || 'approved') !== 'approved') return false;
       if (dateFrom || dateTo) {
         const requestDate = new Date(request.request_date);
         if (dateFrom && dateTo) {
