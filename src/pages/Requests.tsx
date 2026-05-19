@@ -702,7 +702,6 @@ export default function Requests() {
                         value={item.description}
                         onChange={(value) => updateRequestItem(type, item.id, 'description', value)}
                         onSelect={(material) => handleMaterialSelect(type, item.id, material)}
-                        catalog={materialCatalog}
                       />
                     </TableCell>
                     <TableCell className="py-2">
