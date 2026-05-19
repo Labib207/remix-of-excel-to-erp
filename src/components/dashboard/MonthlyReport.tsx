@@ -33,8 +33,9 @@ async function fetchMonthData(m: number, y: number) {
 
   const orders = ordersRes.data || [];
   const requirements = requirementsRes.data || [];
-  const requests = requestsRes.data || [];
-  const requestItems = requestItemsRes.data || [];
+  const requests = (requestsRes.data || []).filter((r: any) => (r.approval_status || 'approved') === 'approved');
+  const approvedIds = new Set(requests.map((r: any) => r.id));
+  const requestItems = (requestItemsRes.data || []).filter((i: any) => approvedIds.has(i.request_id));
 
   const rawMaterialRequests = requests.filter(r => r.request_no?.startsWith('RM'));
   const generalRequests = requests.filter(r => r.request_no?.startsWith('GS'));
