@@ -47,6 +47,7 @@ const typeBadgeVariant: Record<string, 'default' | 'secondary' | 'outline'> = {
 export function RequestHistoryTable({ onEdit }: { onEdit?: (request: any) => void }) {
   const { data: cloudRequests = [], isLoading } = useCloudRequests();
   const deleteCloudRequest = useDeleteCloudRequest();
+  const updateApprovalStatus = useUpdateApprovalStatus();
   const [searchQuery, setSearchQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
