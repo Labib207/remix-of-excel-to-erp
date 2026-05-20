@@ -40,6 +40,7 @@ import {
 import { exportDeliveryNotePDF } from '@/lib/requestPdfExport';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { DescriptionAutocomplete } from '@/components/requests/DescriptionAutocomplete';
 
 interface DeliveryItem {
   id: string;
@@ -615,10 +616,13 @@ const DeliveryNotes = () => {
                         <TableRow key={item.id}>
                           <TableCell className="text-center font-mono">{item.slNo}</TableCell>
                           <TableCell>
-                            <Input
+                            <DescriptionAutocomplete
                               value={item.description}
-                              onChange={(e) => updateItem(item.id, 'description', e.target.value)}
-                              className="h-8"
+                              onChange={(value) => updateItem(item.id, 'description', value)}
+                              onSelect={(material) => {
+                                updateItem(item.id, 'description', material.description);
+                                updateItem(item.id, 'itemCode', material.itemCode);
+                              }}
                               placeholder="Item description"
                             />
                           </TableCell>

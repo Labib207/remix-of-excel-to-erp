@@ -730,10 +730,14 @@ export function RequirementsTab() {
                             />
                           </TableCell>
                           <TableCell>
-                            <Input
+                            <DescriptionAutocomplete
                               value={getReqValue(req, 'description') as string}
-                              onChange={(e) => handleUpdateRequirement(req.id, 'description', e.target.value)}
-                              className="h-8"
+                              onChange={(value) => handleUpdateRequirement(req.id, 'description', value)}
+                              onSelect={(material) => {
+                                handleUpdateRequirement(req.id, 'description', material.description);
+                                handleUpdateRequirement(req.id, 'itemCode', material.itemCode);
+                                handleUpdateRequirement(req.id, 'uom', material.uom);
+                              }}
                             />
                           </TableCell>
                           <TableCell>
