@@ -1030,10 +1030,14 @@ export default function Requests() {
                             />
                           </TableCell>
                           <TableCell>
-                            <Input
+                            <DescriptionAutocomplete
                               value={item.description}
-                              onChange={(e) => updateReturnItem(item.id, 'description', e.target.value)}
-                              className="h-8"
+                              onChange={(value) => updateReturnItem(item.id, 'description', value)}
+                              onSelect={(material) => {
+                                updateReturnItem(item.id, 'description', material.description);
+                                updateReturnItem(item.id, 'itemCode', material.itemCode);
+                                updateReturnItem(item.id, 'uom', material.uom);
+                              }}
                             />
                           </TableCell>
                           <TableCell>
