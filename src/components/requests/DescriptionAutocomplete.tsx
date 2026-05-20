@@ -61,6 +61,23 @@ export function DescriptionAutocomplete({
     setIsOpen(false);
   };
 
+  const handleQueryChange = (next: string) => {
+    setQuery(next);
+    setIsOpen(true);
+    const trimmed = next.trim().toLowerCase();
+    if (!trimmed) return;
+    // Auto-select on exact item code or exact description match
+    const exact = catalog.find(
+      m =>
+        m.itemCode.toLowerCase() === trimmed ||
+        m.description.toLowerCase() === trimmed
+    );
+    if (exact) {
+      onSelect(exact);
+      setQuery(exact.description);
+    }
+  };
+
   return (
     <div ref={wrapperRef} className="relative">
       <Input
