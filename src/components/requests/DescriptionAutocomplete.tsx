@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
-import { Plus } from 'lucide-react';
-import { useMaterialCatalog, useCreateCatalogItem, CatalogItem, normalizeText } from '@/hooks/useMaterialCatalog';
+import { PackageSearch } from 'lucide-react';
+import { useMaterialCatalog, CatalogItem } from '@/hooks/useMaterialCatalog';
 
 export interface SelectedMaterial {
   itemCode: string;
@@ -23,18 +24,18 @@ export function DescriptionAutocomplete({
   onChange,
   onSelect,
   catalog: catalogOverride,
-  placeholder = "Type to search items...",
+  placeholder = "Search by description or item code...",
 }: DescriptionAutocompleteProps) {
   const { data: cloudCatalog = [] } = useMaterialCatalog();
-  const createItem = useCreateCatalogItem();
   const catalog: SelectedMaterial[] = catalogOverride ?? cloudCatalog.map((c: CatalogItem) => ({
     itemCode: c.itemCode, description: c.description, uom: c.uom,
   }));
 
+  const [query, setQuery] = useState(value);
   const [isOpen, setIsOpen] = useState(false);
-  const [suggestions, setSuggestions] = useState<SelectedMaterial[]>([]);
-  const [noMatch, setNoMatch] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => { setQuery(value); }, [value]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -46,90 +47,62 @@ export function DescriptionAutocomplete({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const runFilter = (inputValue: string) => {
-    if (inputValue.length >= 1) {
-      const lowerQuery = inputValue.toLowerCase();
-      const filtered = catalog.filter(m =>
-        m.description.toLowerCase().includes(lowerQuery) ||
-        m.itemCode.toLowerCase().includes(lowerQuery)
-      ).slice(0, 8);
-      setSuggestions(filtered);
-      const normalized = normalizeText(inputValue).toLowerCase();
-      const exact = catalog.some(m => normalizeText(m.description).toLowerCase() === normalized);
-      setNoMatch(!exact && normalized.length > 0);
-      setIsOpen(true);
-    } else {
-      setSuggestions([]);
-      setNoMatch(false);
-      setIsOpen(false);
-    }
-  };
-
-  const handleInputChange = (inputValue: string) => {
-    onChange(inputValue);
-    runFilter(inputValue);
-  };
+  const q = query.trim().toLowerCase();
+  const suggestions = q.length === 0
+    ? catalog.slice(0, 20)
+    : catalog.filter(m =>
+        m.description.toLowerCase().includes(q) ||
+        m.itemCode.toLowerCase().includes(q)
+      ).slice(0, 20);
 
   const handleSelect = (material: SelectedMaterial) => {
     onSelect(material);
+    setQuery(material.description);
     setIsOpen(false);
-    setSuggestions([]);
-  };
-
-  const handleAddNew = () => {
-    const description = normalizeText(value);
-    if (!description) return;
-    createItem.mutate(
-      { itemCode: '', description, uom: 'pcs' },
-      {
-        onSuccess: (data: any) => {
-          handleSelect({
-            itemCode: data.item_code || '',
-            description: data.description,
-            uom: data.uom || 'pcs',
-          });
-        },
-      }
-    );
   };
 
   return (
     <div ref={wrapperRef} className="relative">
       <Input
-        value={value}
-        onChange={(e) => handleInputChange(e.target.value)}
-        onFocus={() => runFilter(value)}
-        onBlur={() => onChange(normalizeText(value))}
+        value={query}
+        onChange={(e) => { setQuery(e.target.value); setIsOpen(true); }}
+        onFocus={() => setIsOpen(true)}
         className="h-8"
         placeholder={placeholder}
       />
-      {isOpen && (suggestions.length > 0 || noMatch) && (
+      {isOpen && (
         <div className="absolute z-50 w-full mt-1 bg-background border rounded-md shadow-lg max-h-60 overflow-y-auto">
-          {suggestions.map((material, idx) => (
-            <div
-              key={`${material.itemCode}-${idx}`}
-              className="px-3 py-2 hover:bg-accent cursor-pointer border-b last:border-b-0"
-              onClick={() => handleSelect(material)}
-            >
-              <div className="text-sm">{material.description}</div>
-              <div className="text-xs text-muted-foreground flex gap-2">
-                <span>{material.itemCode}</span>
-                <span>•</span>
-                <span>{material.uom}</span>
+          {suggestions.length > 0 ? (
+            suggestions.map((material, idx) => (
+              <div
+                key={`${material.itemCode}-${idx}`}
+                className="px-3 py-2 hover:bg-accent cursor-pointer border-b last:border-b-0"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => handleSelect(material)}
+              >
+                <div className="text-sm">{material.description}</div>
+                <div className="text-xs text-muted-foreground flex gap-2">
+                  <span>{material.itemCode}</span>
+                  <span>•</span>
+                  <span>{material.uom}</span>
+                </div>
               </div>
+            ))
+          ) : (
+            <div className="px-3 py-3 text-sm text-muted-foreground flex flex-col gap-2">
+              <div className="flex items-center gap-2">
+                <PackageSearch className="h-4 w-4" />
+                <span>Item not found.</span>
+              </div>
+              <Link
+                to="/items"
+                className="text-primary hover:underline text-xs"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => setIsOpen(false)}
+              >
+                Add it in Item List first →
+              </Link>
             </div>
-          ))}
-          {noMatch && !catalogOverride && (
-            <button
-              type="button"
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={handleAddNew}
-              disabled={createItem.isPending}
-              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-primary hover:bg-accent border-t bg-muted/30"
-            >
-              <Plus className="h-4 w-4" />
-              Add "{normalizeText(value)}" to catalog
-            </button>
           )}
         </div>
       )}
