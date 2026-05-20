@@ -82,7 +82,7 @@ export function DescriptionAutocomplete({
     <div ref={wrapperRef} className="relative">
       <Input
         value={query}
-        onChange={(e) => { setQuery(e.target.value); setIsOpen(true); }}
+        onChange={(e) => handleQueryChange(e.target.value)}
         onFocus={() => setIsOpen(true)}
         className="h-8"
         placeholder={placeholder}
