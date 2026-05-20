@@ -40,6 +40,7 @@ import {
 import { exportDeliveryNotePDF } from '@/lib/requestPdfExport';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { DescriptionAutocomplete } from '@/components/requests/DescriptionAutocomplete';
 
 interface DeliveryItem {
   id: string;
