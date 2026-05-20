@@ -25,4 +25,6 @@ Change the Description field in Trim Chart, Requests, and Delivery Notes from a 
 - Remove the inline "Add to catalog" button and the `useCreateCatalogItem` call from this component.
 - Keep the `onSelect(material)` contract identical so the three call sites need no changes.
 - Empty-state inside the popover shows a `Link` to `/items`.
-- Existing rows that already contain a description not in the catalog still display their text (read-only fallback) but cannot be re-selected until added to the Item List.
+- Existing rows that already contain a description not in the catalog still display their text (read-only fallback) but cannot be re-selected until added to the Item List.  
+  
+NOTE: IS IT POSSIBLE TO ADD BOX NOT DROP DOWN . THEN IF I SEARCH ANY WORD ITS TAKE FROM THE ITEM LIST OR IF I ENTER ITEM CODE ITS SHOW ME THE EXACT ITEM.
