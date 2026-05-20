@@ -1,46 +1,28 @@
+# Lock Description fields to Item List only
+
 ## Goal
 
-Add a central **Item Master** (product list) module so descriptions are standardized across Trim Chart, Requests, and Delivery Notes — eliminating duplicates caused by typos or extra spaces.
+Change the Description field in Trim Chart, Requests, and Delivery Notes from a free-text autocomplete into a **searchable dropdown** that only accepts items already in the Item List. If the item the user needs is not there, they must add it from the Item List page first — no inline "Add to catalog" button anymore.
 
-## What you'll get
+## Behavior
 
-1. **New sidebar page: "Item List"** (placed before "Trim Chart")
-  - Table of all items with columns: Item Code, Description, UOM, Category (optional), Actions
-  - Add / Edit / Delete buttons
-  - Search box to filter
-  - Bulk import from Excel (optional, reuses existing import pattern)
-2. **Strict autocomplete everywhere descriptions are typed**
-  - Trim Chart (Requirements tab)
-  - Request item rows
-  - Delivery Note item rows
-  - Dropdown suggests items from the master list as you type
-  - Selecting fills Item Code + Description + UOM together
-  - Option to "Add new item" inline if not found → opens a small dialog → saved to master → then inserted
-  - Free-typed descriptions that don't match are normalized (trimmed, collapsed spaces) before save, so "ZIPPER  10cm" and "ZIPPER 10cm" become the same item
-3. **Backend**
-  - Use the existing `material_catalog` table (already in DB with `item_code`, `description`, `uom`). No schema change needed for v1.
-  - Optional: add a `category` column later if you want grouping.
+- Click the Description field → a searchable dropdown opens showing all items from the Item List.
+- Type to filter by description or item code.
+- Only values that exist in the Item List can be selected.
+- Selecting an item auto-fills Description, Item Code, and UOM (same as today).
+- If no match is found, show an empty state: *"Item not found. Add it in Item List first."* with a link/button to open the Item List page.
+- No free typing is committed to the field — the value always corresponds to a catalog entry.
+
+## Where it applies
+
+- Trim Chart edit row (`src/components/requests/RequirementsTab.tsx`)
+- Requests material-return edit row (`src/pages/Requests.tsx`)
+- Delivery Notes item edit row (`src/pages/DeliveryNotes.tsx`)
 
 ## Technical details
 
-- New page `src/pages/ItemMaster.tsx` + route `/items` in `App.tsx`
-- New sidebar link in `src/components/layout/Sidebar.tsx` (above Trim Chart)
-- New hook `src/hooks/useMaterialCatalog.ts` (React Query CRUD against `material_catalog`)
-- Refactor `DescriptionAutocomplete.tsx` to:
-  - Source data from cloud `material_catalog` instead of local zustand store
-  - Add "+ Add new item" footer row in the dropdown
-  - Normalize text (`.trim().replace(/\s+/g, ' ')`) on blur/save
-- Wire the autocomplete into Request item rows and Delivery item rows (currently only Trim Chart uses it)
-
-## Out of scope (ask if you want them)
-
-- Pricing / stock levels per item
-- Supplier info
-- Per-item images
-- Item categories / grouping filters
-
-## Questions before I build
-
-1. Do you want **bulk Excel import** for the initial item list, or will you add items one-by-one?
-2. Should non-admin users be able to **add new items**, or only view/select existing ones?
-3. Any extra fields beyond **Item Code, Description, UOM** (e.g., Category, Color, Default Supplier)?
+- Rewrite `src/components/requests/DescriptionAutocomplete.tsx` to use shadcn `Popover` + `Command` (combobox pattern) instead of the current `Input` + custom suggestion list.
+- Remove the inline "Add to catalog" button and the `useCreateCatalogItem` call from this component.
+- Keep the `onSelect(material)` contract identical so the three call sites need no changes.
+- Empty-state inside the popover shows a `Link` to `/items`.
+- Existing rows that already contain a description not in the catalog still display their text (read-only fallback) but cannot be re-selected until added to the Item List.
