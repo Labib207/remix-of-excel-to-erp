@@ -35,18 +35,48 @@ export function DescriptionAutocomplete({
   const [query, setQuery] = useState(value);
   const [isOpen, setIsOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const popupRef = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState<{ top: number; left: number; width: number; placement: 'bottom' | 'top' }>({ top: 0, left: 0, width: 0, placement: 'bottom' });
 
   useEffect(() => { setQuery(value); }, [value]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
+      const target = event.target as Node;
+      if (
+        wrapperRef.current && !wrapperRef.current.contains(target) &&
+        popupRef.current && !popupRef.current.contains(target)
+      ) {
         setIsOpen(false);
       }
     }
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  useLayoutEffect(() => {
+    if (!isOpen || !inputRef.current) return;
+    const update = () => {
+      const r = inputRef.current!.getBoundingClientRect();
+      const POPUP_H = 240;
+      const spaceBelow = window.innerHeight - r.bottom;
+      const placement: 'bottom' | 'top' = spaceBelow < POPUP_H + 16 && r.top > spaceBelow ? 'top' : 'bottom';
+      setPos({
+        top: placement === 'bottom' ? r.bottom + 4 : r.top - 4,
+        left: r.left,
+        width: r.width,
+        placement,
+      });
+    };
+    update();
+    window.addEventListener('scroll', update, true);
+    window.addEventListener('resize', update);
+    return () => {
+      window.removeEventListener('scroll', update, true);
+      window.removeEventListener('resize', update);
+    };
+  }, [isOpen]);
 
   const q = query.trim().toLowerCase();
   const suggestions = q.length === 0
