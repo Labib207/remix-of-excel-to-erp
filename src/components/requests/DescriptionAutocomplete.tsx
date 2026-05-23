@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useLayoutEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
 import { PackageSearch } from 'lucide-react';
@@ -34,18 +35,48 @@ export function DescriptionAutocomplete({
   const [query, setQuery] = useState(value);
   const [isOpen, setIsOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const popupRef = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState<{ top: number; left: number; width: number; placement: 'bottom' | 'top' }>({ top: 0, left: 0, width: 0, placement: 'bottom' });
 
   useEffect(() => { setQuery(value); }, [value]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
+      const target = event.target as Node;
+      if (
+        wrapperRef.current && !wrapperRef.current.contains(target) &&
+        popupRef.current && !popupRef.current.contains(target)
+      ) {
         setIsOpen(false);
       }
     }
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  useLayoutEffect(() => {
+    if (!isOpen || !inputRef.current) return;
+    const update = () => {
+      const r = inputRef.current!.getBoundingClientRect();
+      const POPUP_H = 240;
+      const spaceBelow = window.innerHeight - r.bottom;
+      const placement: 'bottom' | 'top' = spaceBelow < POPUP_H + 16 && r.top > spaceBelow ? 'top' : 'bottom';
+      setPos({
+        top: placement === 'bottom' ? r.bottom + 4 : r.top - 4,
+        left: r.left,
+        width: r.width,
+        placement,
+      });
+    };
+    update();
+    window.addEventListener('scroll', update, true);
+    window.addEventListener('resize', update);
+    return () => {
+      window.removeEventListener('scroll', update, true);
+      window.removeEventListener('resize', update);
+    };
+  }, [isOpen]);
 
   const q = query.trim().toLowerCase();
   const suggestions = q.length === 0
@@ -81,14 +112,26 @@ export function DescriptionAutocomplete({
   return (
     <div ref={wrapperRef} className="relative">
       <Input
+        ref={inputRef}
         value={query}
         onChange={(e) => handleQueryChange(e.target.value)}
         onFocus={() => setIsOpen(true)}
         className="h-8"
         placeholder={placeholder}
       />
-      {isOpen && (
-        <div className="absolute z-50 w-full mt-1 bg-background border rounded-md shadow-lg max-h-60 overflow-y-auto">
+      {isOpen && createPortal(
+        <div
+          ref={popupRef}
+          style={{
+            position: 'fixed',
+            top: pos.placement === 'bottom' ? pos.top : undefined,
+            bottom: pos.placement === 'top' ? window.innerHeight - pos.top : undefined,
+            left: pos.left,
+            width: Math.max(pos.width, 320),
+            zIndex: 9999,
+          }}
+          className="bg-popover text-popover-foreground border rounded-md shadow-lg max-h-60 overflow-y-auto"
+        >
           {suggestions.length > 0 ? (
             suggestions.map((material, idx) => (
               <div
@@ -121,7 +164,8 @@ export function DescriptionAutocomplete({
               </Link>
             </div>
           )}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
