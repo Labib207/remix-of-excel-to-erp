@@ -112,14 +112,26 @@ export function DescriptionAutocomplete({
   return (
     <div ref={wrapperRef} className="relative">
       <Input
+        ref={inputRef}
         value={query}
         onChange={(e) => handleQueryChange(e.target.value)}
         onFocus={() => setIsOpen(true)}
         className="h-8"
         placeholder={placeholder}
       />
-      {isOpen && (
-        <div className="absolute z-50 w-full mt-1 bg-background border rounded-md shadow-lg max-h-60 overflow-y-auto">
+      {isOpen && createPortal(
+        <div
+          ref={popupRef}
+          style={{
+            position: 'fixed',
+            top: pos.placement === 'bottom' ? pos.top : undefined,
+            bottom: pos.placement === 'top' ? window.innerHeight - pos.top : undefined,
+            left: pos.left,
+            width: Math.max(pos.width, 320),
+            zIndex: 9999,
+          }}
+          className="bg-popover text-popover-foreground border rounded-md shadow-lg max-h-60 overflow-y-auto"
+        >
           {suggestions.length > 0 ? (
             suggestions.map((material, idx) => (
               <div
@@ -152,7 +164,8 @@ export function DescriptionAutocomplete({
               </Link>
             </div>
           )}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
