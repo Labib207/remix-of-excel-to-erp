@@ -344,8 +344,14 @@ export default function Requests() {
   };
 
   const updateReturnItem = (id: string, field: keyof ReturnItem, value: string | number) => {
-    setMaterialReturnItems(materialReturnItems.map(item => 
+    setMaterialReturnItems(prev => prev.map(item =>
       item.id === id ? { ...item, [field]: value } : item
+    ));
+  };
+
+  const updateReturnItemFields = (id: string, fields: Partial<ReturnItem>) => {
+    setMaterialReturnItems(prev => prev.map(item =>
+      item.id === id ? { ...item, ...fields } : item
     ));
   };
 
