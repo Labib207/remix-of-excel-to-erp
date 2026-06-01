@@ -1040,9 +1040,11 @@ export default function Requests() {
                               value={item.description}
                               onChange={(value) => updateReturnItem(item.id, 'description', value)}
                               onSelect={(material) => {
-                                updateReturnItem(item.id, 'description', material.description);
-                                updateReturnItem(item.id, 'itemCode', material.itemCode);
-                                updateReturnItem(item.id, 'uom', material.uom);
+                                updateReturnItemFields(item.id, {
+                                  description: material.description,
+                                  itemCode: material.itemCode,
+                                  uom: material.uom,
+                                });
                               }}
                             />
                           </TableCell>
