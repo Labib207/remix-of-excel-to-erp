@@ -95,6 +95,7 @@ export function DescriptionAutocomplete({
   const handleQueryChange = (next: string) => {
     setQuery(next);
     setIsOpen(true);
+    onChange(next); // propagate every keystroke to parent so it's saved
     const trimmed = next.trim().toLowerCase();
     if (!trimmed) return;
     // Auto-select on exact item code or exact description match

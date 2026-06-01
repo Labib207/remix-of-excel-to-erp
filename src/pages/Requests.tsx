@@ -724,7 +724,7 @@ export default function Requests() {
                       <Input
                         type="number"
                         value={item.requestedQty || ''}
-                        onChange={(e) => updateRequestItem(type, item.id, 'requestedQty', parseInt(e.target.value) || 0)}
+                        onChange={(e) => updateRequestItem(type, item.id, 'requestedQty', parseFloat(e.target.value) || 0)}
                         className="h-10"
                         placeholder="Enter qty"
                       />
@@ -733,7 +733,7 @@ export default function Requests() {
                       <Input
                         type="number"
                         value={item.issuedQty || ''}
-                        onChange={(e) => updateRequestItem(type, item.id, 'issuedQty', parseInt(e.target.value) || 0)}
+                        onChange={(e) => updateRequestItem(type, item.id, 'issuedQty', parseFloat(e.target.value) || 0)}
                         className="h-10"
                       />
                     </TableCell>
@@ -1051,7 +1051,7 @@ export default function Requests() {
                             <Input
                               type="number"
                               value={item.qtyReturned || ''}
-                              onChange={(e) => updateReturnItem(item.id, 'qtyReturned', parseInt(e.target.value) || 0)}
+                              onChange={(e) => updateReturnItem(item.id, 'qtyReturned', parseFloat(e.target.value) || 0)}
                               className="h-8"
                             />
                           </TableCell>
@@ -1059,7 +1059,7 @@ export default function Requests() {
                             <Input
                               type="number"
                               value={item.qtyReceived || ''}
-                              onChange={(e) => updateReturnItem(item.id, 'qtyReceived', parseInt(e.target.value) || 0)}
+                              onChange={(e) => updateReturnItem(item.id, 'qtyReceived', parseFloat(e.target.value) || 0)}
                               className="h-8"
                             />
                           </TableCell>

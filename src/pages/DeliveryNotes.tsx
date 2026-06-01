@@ -631,7 +631,7 @@ const DeliveryNotes = () => {
                               type="number"
                               min="0"
                               value={item.requirementQty || ''}
-                              onChange={(e) => updateItem(item.id, 'requirementQty', parseInt(e.target.value) || 0)}
+                              onChange={(e) => updateItem(item.id, 'requirementQty', parseFloat(e.target.value) || 0)}
                               className="h-8 w-20 text-center mx-auto"
                               placeholder="0"
                             />
@@ -641,7 +641,7 @@ const DeliveryNotes = () => {
                               type="number"
                               min="0"
                               value={item.issuedQty || ''}
-                              onChange={(e) => updateItem(item.id, 'issuedQty', parseInt(e.target.value) || 0)}
+                              onChange={(e) => updateItem(item.id, 'issuedQty', parseFloat(e.target.value) || 0)}
                               className="h-8 w-20 text-center mx-auto"
                               placeholder="0"
                             />
