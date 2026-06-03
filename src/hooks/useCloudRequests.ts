@@ -16,6 +16,7 @@ export interface CloudRequest {
   submitted_at: string | null;
   notes: string | null;
   created_at: string;
+  updated_at?: string | null;
   created_by: string | null;
   // Joined data
   order_no?: string;

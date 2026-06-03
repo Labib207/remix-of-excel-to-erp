@@ -450,7 +450,7 @@ export function RequestHistoryTable({ onEdit }: { onEdit?: (request: any) => voi
                   <TableHead>Department</TableHead>
                   <TableHead>Approval</TableHead>
                   <TableHead>Items</TableHead>
-                  <TableHead>Submitted</TableHead>
+                  <TableHead>Submitted / Updated</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -508,8 +508,20 @@ export function RequestHistoryTable({ onEdit }: { onEdit?: (request: any) => voi
                           </Select>
                         </TableCell>
                         <TableCell>{(request.items || []).length} items</TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {request.submitted_at ? format(new Date(request.submitted_at), 'dd/MM/yyyy HH:mm') : '-'}
+                        <TableCell className="text-muted-foreground text-xs">
+                          {(() => {
+                            const sub = request.submitted_at ? format(new Date(request.submitted_at), 'dd/MM/yyyy HH:mm') : '-';
+                            const hasUpdate = request.updated_at && request.submitted_at &&
+                              Math.abs(new Date(request.updated_at).getTime() - new Date(request.submitted_at).getTime()) > 60_000;
+                            return (
+                              <div className="flex flex-col leading-tight">
+                                <span><span className="opacity-70">Sub:</span> {sub}</span>
+                                {hasUpdate && (
+                                  <span className="text-primary"><span className="opacity-70">Upd:</span> {format(new Date(request.updated_at), 'dd/MM/yyyy HH:mm')}</span>
+                                )}
+                              </div>
+                            );
+                          })()}
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-1">
@@ -617,6 +629,13 @@ export function RequestHistoryTable({ onEdit }: { onEdit?: (request: any) => voi
                   <div><span className="text-muted-foreground">Department:</span> {selectedRequest.department || '-'}</div>
                   <div><span className="text-muted-foreground">Order:</span> <span className="font-semibold">{selectedRequest.order_no || '-'}</span></div>
                   <div><span className="text-muted-foreground">Requested By:</span> {selectedRequest.requested_by || '-'}</div>
+                  {selectedRequest.submitted_at && (
+                    <div><span className="text-muted-foreground">Submitted:</span> {format(new Date(selectedRequest.submitted_at), 'dd/MM/yyyy HH:mm')}</div>
+                  )}
+                  {selectedRequest.updated_at && selectedRequest.submitted_at &&
+                    Math.abs(new Date(selectedRequest.updated_at).getTime() - new Date(selectedRequest.submitted_at).getTime()) > 60_000 && (
+                    <div className="text-primary"><span className="text-muted-foreground">Last Updated:</span> {format(new Date(selectedRequest.updated_at), 'dd/MM/yyyy HH:mm')}</div>
+                  )}
                   {selectedRequest.notes && (
                     <div className="col-span-2"><span className="text-muted-foreground">Notes:</span> {selectedRequest.notes}</div>
                   )}
