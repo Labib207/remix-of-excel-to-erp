@@ -508,8 +508,20 @@ export function RequestHistoryTable({ onEdit }: { onEdit?: (request: any) => voi
                           </Select>
                         </TableCell>
                         <TableCell>{(request.items || []).length} items</TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {request.submitted_at ? format(new Date(request.submitted_at), 'dd/MM/yyyy HH:mm') : '-'}
+                        <TableCell className="text-muted-foreground text-xs">
+                          {(() => {
+                            const sub = request.submitted_at ? format(new Date(request.submitted_at), 'dd/MM/yyyy HH:mm') : '-';
+                            const hasUpdate = request.updated_at && request.submitted_at &&
+                              Math.abs(new Date(request.updated_at).getTime() - new Date(request.submitted_at).getTime()) > 60_000;
+                            return (
+                              <div className="flex flex-col leading-tight">
+                                <span><span className="opacity-70">Sub:</span> {sub}</span>
+                                {hasUpdate && (
+                                  <span className="text-primary"><span className="opacity-70">Upd:</span> {format(new Date(request.updated_at), 'dd/MM/yyyy HH:mm')}</span>
+                                )}
+                              </div>
+                            );
+                          })()}
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-1">
