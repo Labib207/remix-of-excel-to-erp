@@ -629,6 +629,13 @@ export function RequestHistoryTable({ onEdit }: { onEdit?: (request: any) => voi
                   <div><span className="text-muted-foreground">Department:</span> {selectedRequest.department || '-'}</div>
                   <div><span className="text-muted-foreground">Order:</span> <span className="font-semibold">{selectedRequest.order_no || '-'}</span></div>
                   <div><span className="text-muted-foreground">Requested By:</span> {selectedRequest.requested_by || '-'}</div>
+                  {selectedRequest.submitted_at && (
+                    <div><span className="text-muted-foreground">Submitted:</span> {format(new Date(selectedRequest.submitted_at), 'dd/MM/yyyy HH:mm')}</div>
+                  )}
+                  {selectedRequest.updated_at && selectedRequest.submitted_at &&
+                    Math.abs(new Date(selectedRequest.updated_at).getTime() - new Date(selectedRequest.submitted_at).getTime()) > 60_000 && (
+                    <div className="text-primary"><span className="text-muted-foreground">Last Updated:</span> {format(new Date(selectedRequest.updated_at), 'dd/MM/yyyy HH:mm')}</div>
+                  )}
                   {selectedRequest.notes && (
                     <div className="col-span-2"><span className="text-muted-foreground">Notes:</span> {selectedRequest.notes}</div>
                   )}
