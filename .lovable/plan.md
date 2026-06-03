@@ -1,23 +1,19 @@
 ## Goal
-When a request is edited, the records UI should show both the original request date/submission and the latest updated date — only on screen, not in PDFs or delivery notes.
+Requests marked as "Not Approved" must not appear anywhere in the Reports page (Custom Item Report table, totals, and Excel export).
 
-## Changes (UI only — `src/components/requests/RequestHistoryTable.tsx`)
+## Current state
+- `MonthlyReport.tsx` and `send-monthly-report` edge function already filter by `approval_status === 'approved'`.
+- `CustomItemReport.tsx` does NOT — it pulls every `request_item` regardless of the parent request's approval status, which is why RMR-2026-0098 still appears.
 
-1. **Records table** (Requests → Records tab):
-   - Rename existing "Submitted" column to "Submitted / Updated".
-   - In each row cell, show two stacked lines:
-     - Line 1: `submitted_at` formatted as `dd/MM/yyyy HH:mm` (label: "Sub:")
-     - Line 2: `updated_at` formatted the same way (label: "Upd:") — only rendered when `updated_at` exists and differs from `submitted_at` by more than a few seconds; otherwise show a single line as today.
-   - Use `text-xs` and `text-muted-foreground` for the second line so the row stays compact.
+## Change (single file: `src/components/reports/CustomItemReport.tsx`)
+1. In the `handleSearch` Supabase select for `requests`, include `approval_status`:
+   ```
+   .select('id, request_no, request_date, order_id, approval_status')
+   ```
+2. When building `requestMap`, skip requests where `(r.approval_status || 'approved') !== 'approved'` so their items are dropped.
+3. In the items loop, also drop any item whose `request_id` is not in `requestMap` (already true when an order filter is set — extend to always).
 
-2. **View Details dialog** (the modal opened by the eye icon):
-   - Add a small "Last updated: dd/MM/yyyy HH:mm" line under the submitted timestamp when `updated_at` differs from `submitted_at`.
+Result: Not Approved requests and their quantities disappear from the Custom Item Report rows, category totals, grand total, and the Excel export (which is generated from the same `results` array).
 
 ## Out of scope
-- No changes to `src/lib/requestPdfExport.ts`, delivery-note PDFs, or Excel export — printed documents keep showing only the original request/submitted date as today.
-- No schema changes (Supabase `requests.updated_at` already exists and is bumped on edit by `useUpdateCloudRequest`).
-- No changes to business logic, mutations, or sorting.
-
-## Technical notes
-- Reuse existing `format` from `date-fns` already imported.
-- Diff check: `Math.abs(new Date(updated_at).getTime() - new Date(submitted_at).getTime()) > 60_000`.
+No schema changes. No changes to Records/History tab, monthly Excel/PDF, or email report (already filtered).

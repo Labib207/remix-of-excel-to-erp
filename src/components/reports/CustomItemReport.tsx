@@ -76,13 +76,17 @@ export function CustomItemReport() {
       if (requestIds.length > 0) {
         let reqQuery = supabase
           .from('requests')
-          .select('id, request_no, request_date, order_id')
+          .select('id, request_no, request_date, order_id, approval_status')
           .in('id', requestIds);
         if (orderFilter !== 'all') {
           reqQuery = reqQuery.eq('order_id', orderFilter);
         }
         const { data: requests } = await reqQuery;
-        (requests || []).forEach(r => requestMap.set(r.id, r));
+        (requests || []).forEach(r => {
+          if ((r.approval_status || 'approved') === 'approved') {
+            requestMap.set(r.id, r);
+          }
+        });
       }
 
       const allOrderIds = [
@@ -102,8 +106,8 @@ export function CustomItemReport() {
 
       items.forEach(item => {
         const req = requestMap.get(item.request_id || '');
-        // If an order filter is active, drop items whose request isn't in that order
-        if (orderFilter !== 'all' && !req) return;
+        // Drop items whose request isn't approved or isn't in the active order filter
+        if (!req) return;
         const requestNo = req?.request_no || '—';
         const rowDate = req?.request_date || item.created_at?.split('T')[0] || '';
         rows.push({
