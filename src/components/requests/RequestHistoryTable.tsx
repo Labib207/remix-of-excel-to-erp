@@ -450,7 +450,7 @@ export function RequestHistoryTable({ onEdit }: { onEdit?: (request: any) => voi
                   <TableHead>Department</TableHead>
                   <TableHead>Approval</TableHead>
                   <TableHead>Items</TableHead>
-                  <TableHead>Submitted</TableHead>
+                  <TableHead>Submitted / Updated</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
