@@ -10,11 +10,12 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
 } from '@/components/ui/dialog';
-import { Plus, Trash2, Pencil, Package, Loader2, Search } from 'lucide-react';
+import { Plus, Trash2, Pencil, Package, Loader2, Search, Upload } from 'lucide-react';
 import {
   useMaterialCatalog, useCreateCatalogItem, useUpdateCatalogItem, useDeleteCatalogItem,
   CatalogItem, normalizeText,
 } from '@/hooks/useMaterialCatalog';
+import { BulkAddItemsDialog } from '@/components/items/BulkAddItemsDialog';
 
 const empty = () => ({ itemCode: '', description: '', uom: 'pcs' });
 
@@ -26,6 +27,7 @@ const ItemList = () => {
 
   const [search, setSearch] = useState('');
   const [isAddOpen, setIsAddOpen] = useState(false);
+  const [isBulkOpen, setIsBulkOpen] = useState(false);
   const [editing, setEditing] = useState<CatalogItem | null>(null);
   const [form, setForm] = useState(empty());
 
@@ -86,6 +88,9 @@ const ItemList = () => {
                     className="pl-8 w-64"
                   />
                 </div>
+                <Button variant="outline" className="gap-2" onClick={() => setIsBulkOpen(true)}>
+                  <Upload className="h-4 w-4" /> Bulk Add
+                </Button>
                 <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
                   <DialogTrigger asChild>
                     <Button className="gap-2"><Plus className="h-4 w-4" /> Add Item</Button>
@@ -214,6 +219,12 @@ const ItemList = () => {
             </div>
           </DialogContent>
         </Dialog>
+
+        <BulkAddItemsDialog
+          open={isBulkOpen}
+          onOpenChange={setIsBulkOpen}
+          existing={items}
+        />
       </div>
     </MainLayout>
   );
