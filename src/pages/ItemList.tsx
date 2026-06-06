@@ -27,6 +27,7 @@ const ItemList = () => {
 
   const [search, setSearch] = useState('');
   const [isAddOpen, setIsAddOpen] = useState(false);
+  const [isBulkOpen, setIsBulkOpen] = useState(false);
   const [editing, setEditing] = useState<CatalogItem | null>(null);
   const [form, setForm] = useState(empty());
 
