@@ -219,6 +219,12 @@ const ItemList = () => {
             </div>
           </DialogContent>
         </Dialog>
+
+        <BulkAddItemsDialog
+          open={isBulkOpen}
+          onOpenChange={setIsBulkOpen}
+          existing={items}
+        />
       </div>
     </MainLayout>
   );
