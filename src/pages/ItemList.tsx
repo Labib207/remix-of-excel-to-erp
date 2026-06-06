@@ -88,6 +88,9 @@ const ItemList = () => {
                     className="pl-8 w-64"
                   />
                 </div>
+                <Button variant="outline" className="gap-2" onClick={() => setIsBulkOpen(true)}>
+                  <Upload className="h-4 w-4" /> Bulk Add
+                </Button>
                 <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
                   <DialogTrigger asChild>
                     <Button className="gap-2"><Plus className="h-4 w-4" /> Add Item</Button>
