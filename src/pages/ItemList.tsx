@@ -10,11 +10,12 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
 } from '@/components/ui/dialog';
-import { Plus, Trash2, Pencil, Package, Loader2, Search } from 'lucide-react';
+import { Plus, Trash2, Pencil, Package, Loader2, Search, Upload } from 'lucide-react';
 import {
   useMaterialCatalog, useCreateCatalogItem, useUpdateCatalogItem, useDeleteCatalogItem,
   CatalogItem, normalizeText,
 } from '@/hooks/useMaterialCatalog';
+import { BulkAddItemsDialog } from '@/components/items/BulkAddItemsDialog';
 
 const empty = () => ({ itemCode: '', description: '', uom: 'pcs' });
 
