@@ -205,10 +205,6 @@ const DeliveryNotes = () => {
     setDeliveryItems(prev => prev.map(item => {
       if (item.id === id) {
         const updated = { ...item, [field]: value };
-        // Recalculate balance when requirement or issued qty changes
-        if (field === 'requirementQty' || field === 'issuedQty') {
-          updated.balance = (updated.requirementQty || 0) - (updated.issuedQty || 0);
-        }
         return updated;
       }
       return item;
