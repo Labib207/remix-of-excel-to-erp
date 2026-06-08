@@ -643,12 +643,13 @@ const DeliveryNotes = () => {
                             />
                           </TableCell>
                           <TableCell className="text-center">
-                            <Badge 
-                              variant={item.balance === 0 ? 'default' : item.balance < 0 ? 'destructive' : 'secondary'}
-                              className="font-mono"
-                            >
-                              {item.balance}
-                            </Badge>
+                            <Input
+                              type="number"
+                              value={item.balance === 0 || item.balance == null ? '' : item.balance}
+                              onChange={(e) => updateItem(item.id, 'balance', e.target.value === '' ? 0 : parseFloat(e.target.value) || 0)}
+                              className="h-8 w-20 text-center mx-auto"
+                              placeholder=""
+                            />
                           </TableCell>
                           <TableCell>
                             <Input
