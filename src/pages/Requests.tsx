@@ -435,6 +435,7 @@ export default function Requests() {
       if (isEditing && editingRequestId) {
         updateRequest(editingRequestId, requestData);
         setEditingRequestId(null);
+        setEditingDocNumber(null);
         toast.success(`Request ${docNumber} updated successfully`);
       } else {
         addRequest(requestData);
