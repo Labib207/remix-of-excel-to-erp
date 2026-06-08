@@ -579,7 +579,7 @@ interface DeliveryNoteItem {
   description: string;
   requirementQty: number;
   issuedQty: number;
-  balance: number;
+  balance?: number | null;
   remarks: string;
 }
 
