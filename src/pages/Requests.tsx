@@ -1156,6 +1156,7 @@ export default function Requests() {
             <RequestHistoryTable onEdit={(request) => {
               // Track which request we're editing so submit updates instead of duplicating
               setEditingRequestId(request.id);
+              setEditingDocNumber(request.docNumber);
               
               // Load the request back into the appropriate form for editing
               const tabType = request.type === 'raw-material' ? 'raw-material' : 
