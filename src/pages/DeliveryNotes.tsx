@@ -678,11 +678,7 @@ const DeliveryNotes = () => {
                         <TableCell className="text-right">TOTAL</TableCell>
                         <TableCell className="text-center font-mono">{totalRequirementQty}</TableCell>
                         <TableCell className="text-center font-mono">{totalIssuedQty}</TableCell>
-                        <TableCell className="text-center">
-                          <Badge variant="outline" className="font-mono">
-                            {totalBalance}
-                          </Badge>
-                        </TableCell>
+                        <TableCell className="text-center"></TableCell>
                         <TableCell></TableCell>
                         <TableCell></TableCell>
                       </TableRow>
