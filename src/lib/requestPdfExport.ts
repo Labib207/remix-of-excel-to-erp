@@ -579,7 +579,7 @@ interface DeliveryNoteItem {
   description: string;
   requirementQty: number;
   issuedQty: number;
-  balance: number;
+  balance?: number | null;
   remarks: string;
 }
 
@@ -794,19 +794,17 @@ export const exportDeliveryNotePDF = async (
   // Prepare table rows with totals calculation
   let totalRequirement = 0;
   let totalIssued = 0;
-  let totalBalance = 0;
 
   const tableRows = items.length > 0 
     ? items.map(item => {
         totalRequirement += item.requirementQty || 0;
         totalIssued += item.issuedQty || 0;
-        totalBalance += item.balance || 0;
         return [
           item.slNo.toString(),
           item.description,
           item.requirementQty > 0 ? item.requirementQty.toString() : '',
           item.issuedQty > 0 ? item.issuedQty.toString() : '',
-          item.balance !== 0 ? item.balance.toString() : '',
+          item.balance != null && item.balance !== 0 ? item.balance.toString() : '',
           item.remarks || ''
         ];
       })
@@ -817,13 +815,13 @@ export const exportDeliveryNotePDF = async (
     tableRows.push(['', '', '', '', '', '']);
   }
 
-  // Add totals row
+  // Add totals row (Balance column intentionally blank)
   tableRows.push([
     '',
     'TOTAL',
     totalRequirement > 0 ? totalRequirement.toString() : '',
     totalIssued > 0 ? totalIssued.toString() : '',
-    totalBalance !== 0 ? totalBalance.toString() : '',
+    '',
     ''
   ]);
 

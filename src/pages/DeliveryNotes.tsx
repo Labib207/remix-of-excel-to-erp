@@ -205,10 +205,6 @@ const DeliveryNotes = () => {
     setDeliveryItems(prev => prev.map(item => {
       if (item.id === id) {
         const updated = { ...item, [field]: value };
-        // Recalculate balance when requirement or issued qty changes
-        if (field === 'requirementQty' || field === 'issuedQty') {
-          updated.balance = (updated.requirementQty || 0) - (updated.issuedQty || 0);
-        }
         return updated;
       }
       return item;
@@ -647,12 +643,13 @@ const DeliveryNotes = () => {
                             />
                           </TableCell>
                           <TableCell className="text-center">
-                            <Badge 
-                              variant={item.balance === 0 ? 'default' : item.balance < 0 ? 'destructive' : 'secondary'}
-                              className="font-mono"
-                            >
-                              {item.balance}
-                            </Badge>
+                            <Input
+                              type="number"
+                              value={item.balance === 0 || item.balance == null ? '' : item.balance}
+                              onChange={(e) => updateItem(item.id, 'balance', e.target.value === '' ? 0 : parseFloat(e.target.value) || 0)}
+                              className="h-8 w-20 text-center mx-auto"
+                              placeholder=""
+                            />
                           </TableCell>
                           <TableCell>
                             <Input
@@ -681,11 +678,7 @@ const DeliveryNotes = () => {
                         <TableCell className="text-right">TOTAL</TableCell>
                         <TableCell className="text-center font-mono">{totalRequirementQty}</TableCell>
                         <TableCell className="text-center font-mono">{totalIssuedQty}</TableCell>
-                        <TableCell className="text-center">
-                          <Badge variant="outline" className="font-mono">
-                            {totalBalance}
-                          </Badge>
-                        </TableCell>
+                        <TableCell className="text-center"></TableCell>
                         <TableCell></TableCell>
                         <TableCell></TableCell>
                       </TableRow>
