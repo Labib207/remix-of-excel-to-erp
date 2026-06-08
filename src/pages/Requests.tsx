@@ -427,9 +427,9 @@ export default function Requests() {
     // Use existing doc number if editing, otherwise generate new one
     const isEditing = !!editingRequestId;
     const existingRequest = isEditing ? submittedRequests.find(r => r.id === editingRequestId) : null;
-    const docNumber = existingRequest?.docNumber || getNextDocNumber(
-      type === 'raw' ? 'RMR' : type === 'general' ? 'GSR' : 'MRS'
-    );
+    const docNumber = (isEditing && (editingDocNumber || existingRequest?.docNumber))
+      ? (editingDocNumber || existingRequest!.docNumber)
+      : getNextDocNumber(type === 'raw' ? 'RMR' : type === 'general' ? 'GSR' : 'MRS');
 
     const saveOrUpdate = (requestData: Parameters<typeof addRequest>[0]) => {
       if (isEditing && editingRequestId) {
