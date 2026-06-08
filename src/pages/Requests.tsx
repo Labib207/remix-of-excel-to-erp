@@ -125,6 +125,7 @@ export default function Requests() {
 
   // Track editing request from history
   const [editingRequestId, setEditingRequestId] = useState<string | null>(null);
+  const [editingDocNumber, setEditingDocNumber] = useState<string | null>(null);
 
   // Edit Order State
   const [isEditOrderOpen, setIsEditOrderOpen] = useState(false);
