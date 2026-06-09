@@ -846,6 +846,17 @@ export function RecordsAnalytics() {
                               >
                                 <Download className="h-4 w-4" />
                               </Button>
+                              {!isApproved && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => { setApproveTarget(request); setTrInput(''); setTrError(''); }}
+                                  title="Approve with TR / PL number"
+                                  className="text-green-600 hover:text-green-700"
+                                >
+                                  <CheckCheck className="h-4 w-4" />
+                                </Button>
+                              )}
                               {request.isExternal && (
                                 <Button
                                   variant="ghost"
