@@ -468,6 +468,7 @@ export function RecordsAnalytics() {
     setOrderFilter('all');
     setMaterialTypeFilter('all');
     setStatusFilter('all');
+    setApprovalFilter('all');
     setSourceFilter('all');
     setDateFrom(startOfMonth(new Date()));
     setDateTo(endOfMonth(new Date()));
