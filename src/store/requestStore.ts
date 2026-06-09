@@ -54,6 +54,7 @@ interface RequestStore {
   addRequest: (request: Omit<SubmittedRequest, 'id' | 'submittedAt'>) => void;
   addExternalRequest: (request: Omit<SubmittedRequest, 'id' | 'submittedAt' | 'isExternal'>) => void;
   updateRequest: (id: string, request: Omit<SubmittedRequest, 'id' | 'submittedAt'>) => void;
+  approveRequest: (id: string, trNumber: string) => void;
   deleteRequest: (id: string) => void;
   getRequestsByMonth: (year: number, month: number) => SubmittedRequest[];
   exportMonthlyExcel: (year: number, month: number) => void;
