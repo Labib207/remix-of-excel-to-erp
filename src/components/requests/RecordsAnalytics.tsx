@@ -308,6 +308,15 @@ export function RecordsAnalytics() {
           if (statusFilter === 'partial' && !isPartial) return false;
         }
 
+        // Approval filter (Pending / Approved)
+        if (approvalFilter !== 'all') {
+          const isApproved = request.approvalStatus === 'approved';
+          if (approvalFilter === 'approved' && !isApproved) return false;
+          if (approvalFilter === 'pending' && isApproved) return false;
+        }
+
+
+
         // Date range filter
         if (dateFrom || dateTo) {
           const requestDate = new Date(request.form.date);
