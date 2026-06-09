@@ -820,6 +820,15 @@ export function RecordsAnalytics() {
                             </Badge>
                           </TableCell>
                           <TableCell>
+                            {isApproved ? (
+                              <Badge className="bg-green-600 hover:bg-green-600 text-white font-mono">
+                                {request.trNumber}
+                              </Badge>
+                            ) : (
+                              <Badge variant="destructive">Pending</Badge>
+                            )}
+                          </TableCell>
+                          <TableCell>
                             <div className="flex gap-1">
                               <Button
                                 variant="ghost"
