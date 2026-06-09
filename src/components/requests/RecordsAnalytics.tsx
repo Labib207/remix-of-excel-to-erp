@@ -767,7 +767,7 @@ export function RecordsAnalytics() {
                 <TableBody>
                   {filteredRequests.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
+                      <TableCell colSpan={10} className="text-center text-muted-foreground py-8">
                         No records found matching your filters
                       </TableCell>
                     </TableRow>
