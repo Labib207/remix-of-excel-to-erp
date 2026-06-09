@@ -760,7 +760,8 @@ export function RecordsAnalytics() {
                     <TableHead>Requested</TableHead>
                     <TableHead>Issued</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead className="w-24">Actions</TableHead>
+                    <TableHead>Approval</TableHead>
+                    <TableHead className="w-32">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
