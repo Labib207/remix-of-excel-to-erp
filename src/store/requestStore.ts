@@ -44,6 +44,9 @@ interface SubmittedRequest {
   items: (RequestItem | ReturnItem)[];
   submittedAt: string;
   isExternal?: boolean; // True if imported from Excel
+  approvalStatus?: 'pending' | 'approved'; // Approval state for Reports module
+  trNumber?: string; // TR/PL reference captured at approval time
+  approvedAt?: string; // ISO timestamp of approval
 }
 
 interface RequestStore {
