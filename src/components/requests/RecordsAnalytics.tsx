@@ -353,7 +353,7 @@ export function RecordsAnalytics() {
         return true;
       })
       .sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime());
-  }, [rawMaterialRequests, searchQuery, orderFilter, materialTypeFilter, statusFilter, sourceFilter, dateFrom, dateTo, orders]);
+  }, [rawMaterialRequests, searchQuery, orderFilter, materialTypeFilter, statusFilter, approvalFilter, sourceFilter, dateFrom, dateTo, orders]);
 
   // Calculate analytics
   const analytics = useMemo(() => {
