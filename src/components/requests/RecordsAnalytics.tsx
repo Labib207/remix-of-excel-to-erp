@@ -925,6 +925,65 @@ export function RecordsAnalytics() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Approve Dialog */}
+      <Dialog
+        open={!!approveTarget}
+        onOpenChange={(open) => {
+          if (!open) { setApproveTarget(null); setTrInput(''); setTrError(''); }
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Approve Request</DialogTitle>
+            <DialogDescription>
+              Enter the TR or PL reference number to approve{' '}
+              <span className="font-mono">{approveTarget?.docNumber}</span>. This action is final.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 py-2">
+            <Label htmlFor="tr-number">TR / PL Number</Label>
+            <Input
+              id="tr-number"
+              placeholder="TR-08754 or PL-1234"
+              value={trInput}
+              onChange={(e) => { setTrInput(e.target.value); setTrError(''); }}
+              autoFocus
+            />
+            {trError && <p className="text-sm text-destructive">{trError}</p>}
+            <p className="text-xs text-muted-foreground">
+              Must start with TR- or PL- followed by the reference.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => { setApproveTarget(null); setTrInput(''); setTrError(''); }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                const value = trInput.trim().toUpperCase();
+                if (!/^(TR|PL)-.+/.test(value)) {
+                  setTrError('Reference must start with TR- or PL- and include a number.');
+                  return;
+                }
+                if (approveTarget) {
+                  approveRequest(approveTarget.id, value);
+                  toast.success(`Approved ${approveTarget.docNumber} with ${value}`);
+                }
+                setApproveTarget(null);
+                setTrInput('');
+                setTrError('');
+              }}
+            >
+              Approve
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
+
   );
 }
