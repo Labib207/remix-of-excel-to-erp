@@ -1,20 +1,34 @@
 ## Goal
-Balance column in Delivery Notes (UI form + PDF + totals) should always be blank — never computed by the platform.
+Every request defaults to **Pending**. In Reports → Records tab, user can approve a row by entering a TR/PL number. Without a valid TR/PL number, the row stays pending. Pending rows show a red badge; approved rows show a green badge with the TR/PL number. Requests page and PDFs are not changed.
 
-## Changes
+## Database (migration)
+Add to `public.requests`:
+- `approval_status` text NOT NULL DEFAULT `'pending'` (values: `pending`, `approved`)
+- `tr_number` text NULL
+- `approved_at` timestamptz NULL
+- `approved_by` uuid NULL
 
-### `src/pages/DeliveryNotes.tsx`
-- In `updateItem` (line ~210), remove the auto-recalculation: do not set `updated.balance`.
-- In the items table row (line ~651-654), render an empty cell (or a plain editable input bound to `item.balance` with empty default) instead of the calculated Badge.
-- Make the Balance cell editable so user can type a value if needed (kept blank by default).
-- Totals row (line ~686): show empty for Balance total, or sum only if all rows have values. Simplest: leave Balance total blank.
-- PDF payload (line ~295): pass `balance` as-is (user-entered or undefined), not the computed one.
+Existing rows backfill to `pending`. No uniqueness on `tr_number` (repeats allowed). RLS already exists on `requests`; reuse current policies — authenticated users can update.
 
-### `src/lib/requestPdfExport.ts`
-- Update `DeliveryItem.balance` type to `number | undefined | null` (line 582).
-- In the row rendering (line 809) print `''` when balance is null/undefined/0 — i.e. always blank unless explicitly provided.
-- Totals row (line 826): leave the Balance total cell blank.
+## Reports → Records tab (`src/components/requests/RecordsAnalytics.tsx`)
+- New **Status** column showing:
+  - Red `Pending` badge when `approval_status = 'pending'`
+  - Green badge showing the `tr_number` (e.g. `TR-08754`) when approved
+- **Approve** action button on each pending row → opens a dialog with one input "TR / PL Number".
+  - Validation: must match regex `/^(TR|PL)-.+/i` (case-insensitive, requires `TR-` or `PL-` prefix + at least one more character). Empty or wrong-prefix value blocks submit with inline error.
+  - On submit: update the request row with `approval_status='approved'`, `tr_number`, `approved_at=now()`, `approved_by=auth.uid()`. Toast success. Refresh query.
+- Approved rows: **no** revoke/edit action (final).
+- Add **status filter** dropdown above the records table: `All` / `Pending` / `Approved` — filters the displayed list client-side.
+- Optional row tint: pending rows get a subtle red-tinted background using a semantic token (`bg-destructive/5`) so they stand out when scrolling search results.
+
+## Imported / external records
+Historical Excel-imported records also start as `pending` (default applies). User must enter TR/PL to mark approved — no auto-approval.
+
+## Hooks
+- Extend `src/hooks/useRequests.ts` (and `useLocalRequests.ts` if used by Records) — `Request` type adds the four new fields; add a small `useApproveRequest` mutation that calls update with the four fields and invalidates `['requests']`.
 
 ## Out of scope
-- Requirement Qty and Issued Qty auto-fill behavior unchanged.
-- No schema changes.
+- Requests page UI, request creation flow, request PDF, delivery notes, dashboard — unchanged.
+- No revoke/unapprove flow.
+- No uniqueness check on TR numbers.
+- No changes to monthly Excel export columns (can be revisited later if you want TR included in the export).

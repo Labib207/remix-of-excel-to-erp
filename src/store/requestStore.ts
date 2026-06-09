@@ -44,6 +44,9 @@ interface SubmittedRequest {
   items: (RequestItem | ReturnItem)[];
   submittedAt: string;
   isExternal?: boolean; // True if imported from Excel
+  approvalStatus?: 'pending' | 'approved'; // Approval state for Reports module
+  trNumber?: string; // TR/PL reference captured at approval time
+  approvedAt?: string; // ISO timestamp of approval
 }
 
 interface RequestStore {
@@ -51,6 +54,7 @@ interface RequestStore {
   addRequest: (request: Omit<SubmittedRequest, 'id' | 'submittedAt'>) => void;
   addExternalRequest: (request: Omit<SubmittedRequest, 'id' | 'submittedAt' | 'isExternal'>) => void;
   updateRequest: (id: string, request: Omit<SubmittedRequest, 'id' | 'submittedAt'>) => void;
+  approveRequest: (id: string, trNumber: string) => void;
   deleteRequest: (id: string) => void;
   getRequestsByMonth: (year: number, month: number) => SubmittedRequest[];
   exportMonthlyExcel: (year: number, month: number) => void;
@@ -91,6 +95,16 @@ export const useRequestStore = create<RequestStore>()(
           submittedRequests: state.submittedRequests.map((req) =>
             req.id === id
               ? { ...request, id, submittedAt: req.submittedAt }
+              : req
+          ),
+        }));
+      },
+
+      approveRequest: (id, trNumber) => {
+        set((state) => ({
+          submittedRequests: state.submittedRequests.map((req) =>
+            req.id === id
+              ? { ...req, approvalStatus: 'approved', trNumber, approvedAt: new Date().toISOString() }
               : req
           ),
         }));

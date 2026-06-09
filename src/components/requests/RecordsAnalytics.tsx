@@ -33,7 +33,8 @@ import {
   FileSpreadsheet,
   Upload,
   ExternalLink,
-  Trash2
+  Trash2,
+  CheckCheck
 } from 'lucide-react';
 import { format, isWithinInterval, startOfDay, endOfDay, startOfMonth, endOfMonth } from 'date-fns';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -45,7 +46,11 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
+  DialogDescription,
 } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { toast } from 'sonner';
 import {
   exportRawMaterialRequestPDF,
   exportGeneralSuppliesRequestPDF,
@@ -96,6 +101,9 @@ interface SubmittedRequestExtended {
   items: (RequestItem | ReturnItem)[];
   submittedAt: string;
   isExternal?: boolean;
+  approvalStatus?: 'pending' | 'approved';
+  trNumber?: string;
+  approvedAt?: string;
 }
 
 const typeLabels: Record<string, string> = {
@@ -133,7 +141,7 @@ const getMaterialCategory = (itemCode: string): string => {
 };
 
 export function RecordsAnalytics() {
-  const { submittedRequests, addExternalRequest, deleteRequest } = useRequestStore();
+  const { submittedRequests, addExternalRequest, deleteRequest, approveRequest } = useRequestStore();
   const { data: orders = [] } = useDbOrders();
   
   // Cast requests to extended type (orderId is added at runtime in Requests.tsx)
@@ -144,10 +152,15 @@ export function RecordsAnalytics() {
   const [orderFilter, setOrderFilter] = useState<string>('all');
   const [materialTypeFilter, setMaterialTypeFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [approvalFilter, setApprovalFilter] = useState<string>('all');
   const [sourceFilter, setSourceFilter] = useState<string>('all');
   const [dateFrom, setDateFrom] = useState<Date | undefined>(startOfMonth(new Date()));
   const [dateTo, setDateTo] = useState<Date | undefined>(endOfMonth(new Date()));
   const [selectedRequest, setSelectedRequest] = useState<SubmittedRequestExtended | null>(null);
+  const [approveTarget, setApproveTarget] = useState<SubmittedRequestExtended | null>(null);
+  const [trInput, setTrInput] = useState('');
+  const [trError, setTrError] = useState('');
+
 
   // Handle Excel import
   const handleExcelImport = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -295,6 +308,15 @@ export function RecordsAnalytics() {
           if (statusFilter === 'partial' && !isPartial) return false;
         }
 
+        // Approval filter (Pending / Approved)
+        if (approvalFilter !== 'all') {
+          const isApproved = request.approvalStatus === 'approved';
+          if (approvalFilter === 'approved' && !isApproved) return false;
+          if (approvalFilter === 'pending' && isApproved) return false;
+        }
+
+
+
         // Date range filter
         if (dateFrom || dateTo) {
           const requestDate = new Date(request.form.date);
@@ -331,7 +353,7 @@ export function RecordsAnalytics() {
         return true;
       })
       .sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime());
-  }, [rawMaterialRequests, searchQuery, orderFilter, materialTypeFilter, statusFilter, sourceFilter, dateFrom, dateTo, orders]);
+  }, [rawMaterialRequests, searchQuery, orderFilter, materialTypeFilter, statusFilter, approvalFilter, sourceFilter, dateFrom, dateTo, orders]);
 
   // Calculate analytics
   const analytics = useMemo(() => {
@@ -412,6 +434,8 @@ export function RecordsAnalytics() {
         'Status': item.issuedQty >= item.requestedQty ? 'Completed' : item.issuedQty > 0 ? 'Partial' : 'Pending',
         'Remarks': item.remarks,
         'Submitted At': format(new Date(request.submittedAt), 'dd/MM/yyyy HH:mm'),
+        'Approval': request.approvalStatus === 'approved' ? 'Approved' : 'Pending',
+        'TR / PL Number': request.trNumber || '',
       }));
     });
 
@@ -446,6 +470,7 @@ export function RecordsAnalytics() {
     setOrderFilter('all');
     setMaterialTypeFilter('all');
     setStatusFilter('all');
+    setApprovalFilter('all');
     setSourceFilter('all');
     setDateFrom(startOfMonth(new Date()));
     setDateTo(endOfMonth(new Date()));
@@ -634,6 +659,19 @@ export function RecordsAnalytics() {
                 </SelectContent>
               </Select>
 
+              <Select value={approvalFilter} onValueChange={setApprovalFilter}>
+                <SelectTrigger className="w-40">
+                  <SelectValue placeholder="Approval" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Approvals</SelectItem>
+                  <SelectItem value="pending">Pending Approval</SelectItem>
+                  <SelectItem value="approved">Approved (TR)</SelectItem>
+                </SelectContent>
+              </Select>
+
+
+
               <Select value={sourceFilter} onValueChange={setSourceFilter}>
                 <SelectTrigger className="w-36">
                   <SelectValue placeholder="Source" />
@@ -724,13 +762,14 @@ export function RecordsAnalytics() {
                     <TableHead>Requested</TableHead>
                     <TableHead>Issued</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead className="w-24">Actions</TableHead>
+                    <TableHead>Approval</TableHead>
+                    <TableHead className="w-32">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredRequests.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
+                      <TableCell colSpan={10} className="text-center text-muted-foreground py-8">
                         No records found matching your filters
                       </TableCell>
                     </TableRow>
@@ -743,8 +782,17 @@ export function RecordsAnalytics() {
                       const isPartial = totalIss > 0 && totalIss < totalReq;
                       const order = orders.find(o => o.id === request.form.orderId);
 
+                      const isApproved = request.approvalStatus === 'approved';
+
                       return (
-                        <TableRow key={request.id} className={request.isExternal ? 'bg-accent/50' : ''}>
+                        <TableRow
+                          key={request.id}
+                          className={
+                            !isApproved
+                              ? 'bg-destructive/5 hover:bg-destructive/10'
+                              : request.isExternal ? 'bg-accent/50' : ''
+                          }
+                        >
                           <TableCell className="font-mono text-sm">
                             <div className="flex items-center gap-2">
                               {request.docNumber}
@@ -774,6 +822,15 @@ export function RecordsAnalytics() {
                             </Badge>
                           </TableCell>
                           <TableCell>
+                            {isApproved ? (
+                              <Badge className="bg-green-600 hover:bg-green-600 text-white font-mono">
+                                {request.trNumber}
+                              </Badge>
+                            ) : (
+                              <Badge variant="destructive">Pending</Badge>
+                            )}
+                          </TableCell>
+                          <TableCell>
                             <div className="flex gap-1">
                               <Button
                                 variant="ghost"
@@ -791,6 +848,17 @@ export function RecordsAnalytics() {
                               >
                                 <Download className="h-4 w-4" />
                               </Button>
+                              {!isApproved && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => { setApproveTarget(request); setTrInput(''); setTrError(''); }}
+                                  title="Approve with TR / PL number"
+                                  className="text-green-600 hover:text-green-700"
+                                >
+                                  <CheckCheck className="h-4 w-4" />
+                                </Button>
+                              )}
                               {request.isExternal && (
                                 <Button
                                   variant="ghost"
@@ -859,6 +927,65 @@ export function RecordsAnalytics() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Approve Dialog */}
+      <Dialog
+        open={!!approveTarget}
+        onOpenChange={(open) => {
+          if (!open) { setApproveTarget(null); setTrInput(''); setTrError(''); }
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Approve Request</DialogTitle>
+            <DialogDescription>
+              Enter the TR or PL reference number to approve{' '}
+              <span className="font-mono">{approveTarget?.docNumber}</span>. This action is final.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 py-2">
+            <Label htmlFor="tr-number">TR / PL Number</Label>
+            <Input
+              id="tr-number"
+              placeholder="TR-08754 or PL-1234"
+              value={trInput}
+              onChange={(e) => { setTrInput(e.target.value); setTrError(''); }}
+              autoFocus
+            />
+            {trError && <p className="text-sm text-destructive">{trError}</p>}
+            <p className="text-xs text-muted-foreground">
+              Must start with TR- or PL- followed by the reference.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => { setApproveTarget(null); setTrInput(''); setTrError(''); }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                const value = trInput.trim().toUpperCase();
+                if (!/^(TR|PL)-.+/.test(value)) {
+                  setTrError('Reference must start with TR- or PL- and include a number.');
+                  return;
+                }
+                if (approveTarget) {
+                  approveRequest(approveTarget.id, value);
+                  toast.success(`Approved ${approveTarget.docNumber} with ${value}`);
+                }
+                setApproveTarget(null);
+                setTrInput('');
+                setTrError('');
+              }}
+            >
+              Approve
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
+
   );
 }

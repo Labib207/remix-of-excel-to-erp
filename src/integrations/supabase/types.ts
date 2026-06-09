@@ -945,6 +945,8 @@ export type Database = {
       requests: {
         Row: {
           approval_status: string
+          approved_at: string | null
+          approved_by: string | null
           created_at: string
           created_by: string | null
           department: string | null
@@ -956,10 +958,13 @@ export type Database = {
           requested_by: string | null
           status: string
           submitted_at: string | null
+          tr_number: string | null
           updated_at: string
         }
         Insert: {
           approval_status?: string
+          approved_at?: string | null
+          approved_by?: string | null
           created_at?: string
           created_by?: string | null
           department?: string | null
@@ -971,10 +976,13 @@ export type Database = {
           requested_by?: string | null
           status?: string
           submitted_at?: string | null
+          tr_number?: string | null
           updated_at?: string
         }
         Update: {
           approval_status?: string
+          approved_at?: string | null
+          approved_by?: string | null
           created_at?: string
           created_by?: string | null
           department?: string | null
@@ -986,6 +994,7 @@ export type Database = {
           requested_by?: string | null
           status?: string
           submitted_at?: string | null
+          tr_number?: string | null
           updated_at?: string
         }
         Relationships: [
