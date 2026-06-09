@@ -101,6 +101,9 @@ interface SubmittedRequestExtended {
   items: (RequestItem | ReturnItem)[];
   submittedAt: string;
   isExternal?: boolean;
+  approvalStatus?: 'pending' | 'approved';
+  trNumber?: string;
+  approvedAt?: string;
 }
 
 const typeLabels: Record<string, string> = {
