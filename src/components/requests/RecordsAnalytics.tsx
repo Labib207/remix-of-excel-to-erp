@@ -657,6 +657,19 @@ export function RecordsAnalytics() {
                 </SelectContent>
               </Select>
 
+              <Select value={approvalFilter} onValueChange={setApprovalFilter}>
+                <SelectTrigger className="w-40">
+                  <SelectValue placeholder="Approval" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Approvals</SelectItem>
+                  <SelectItem value="pending">Pending Approval</SelectItem>
+                  <SelectItem value="approved">Approved (TR)</SelectItem>
+                </SelectContent>
+              </Select>
+
+
+
               <Select value={sourceFilter} onValueChange={setSourceFilter}>
                 <SelectTrigger className="w-36">
                   <SelectValue placeholder="Source" />
