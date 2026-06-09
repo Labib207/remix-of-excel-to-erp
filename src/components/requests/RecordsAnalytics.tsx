@@ -780,8 +780,17 @@ export function RecordsAnalytics() {
                       const isPartial = totalIss > 0 && totalIss < totalReq;
                       const order = orders.find(o => o.id === request.form.orderId);
 
+                      const isApproved = request.approvalStatus === 'approved';
+
                       return (
-                        <TableRow key={request.id} className={request.isExternal ? 'bg-accent/50' : ''}>
+                        <TableRow
+                          key={request.id}
+                          className={
+                            !isApproved
+                              ? 'bg-destructive/5 hover:bg-destructive/10'
+                              : request.isExternal ? 'bg-accent/50' : ''
+                          }
+                        >
                           <TableCell className="font-mono text-sm">
                             <div className="flex items-center gap-2">
                               {request.docNumber}
