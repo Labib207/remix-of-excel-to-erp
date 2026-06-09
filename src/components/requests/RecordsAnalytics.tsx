@@ -33,7 +33,8 @@ import {
   FileSpreadsheet,
   Upload,
   ExternalLink,
-  Trash2
+  Trash2,
+  CheckCheck
 } from 'lucide-react';
 import { format, isWithinInterval, startOfDay, endOfDay, startOfMonth, endOfMonth } from 'date-fns';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
