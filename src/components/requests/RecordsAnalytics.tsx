@@ -141,7 +141,7 @@ const getMaterialCategory = (itemCode: string): string => {
 };
 
 export function RecordsAnalytics() {
-  const { submittedRequests, addExternalRequest, deleteRequest } = useRequestStore();
+  const { submittedRequests, addExternalRequest, deleteRequest, approveRequest } = useRequestStore();
   const { data: orders = [] } = useDbOrders();
   
   // Cast requests to extended type (orderId is added at runtime in Requests.tsx)
@@ -152,10 +152,15 @@ export function RecordsAnalytics() {
   const [orderFilter, setOrderFilter] = useState<string>('all');
   const [materialTypeFilter, setMaterialTypeFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [approvalFilter, setApprovalFilter] = useState<string>('all');
   const [sourceFilter, setSourceFilter] = useState<string>('all');
   const [dateFrom, setDateFrom] = useState<Date | undefined>(startOfMonth(new Date()));
   const [dateTo, setDateTo] = useState<Date | undefined>(endOfMonth(new Date()));
   const [selectedRequest, setSelectedRequest] = useState<SubmittedRequestExtended | null>(null);
+  const [approveTarget, setApproveTarget] = useState<SubmittedRequestExtended | null>(null);
+  const [trInput, setTrInput] = useState('');
+  const [trError, setTrError] = useState('');
+
 
   // Handle Excel import
   const handleExcelImport = (event: React.ChangeEvent<HTMLInputElement>) => {
