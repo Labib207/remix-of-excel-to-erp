@@ -100,6 +100,16 @@ export const useRequestStore = create<RequestStore>()(
         }));
       },
 
+      approveRequest: (id, trNumber) => {
+        set((state) => ({
+          submittedRequests: state.submittedRequests.map((req) =>
+            req.id === id
+              ? { ...req, approvalStatus: 'approved', trNumber, approvedAt: new Date().toISOString() }
+              : req
+          ),
+        }));
+      },
+
       deleteRequest: (id) => {
         set((state) => ({
           submittedRequests: state.submittedRequests.filter((req) => req.id !== id),
