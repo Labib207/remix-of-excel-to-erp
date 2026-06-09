@@ -434,6 +434,8 @@ export function RecordsAnalytics() {
         'Status': item.issuedQty >= item.requestedQty ? 'Completed' : item.issuedQty > 0 ? 'Partial' : 'Pending',
         'Remarks': item.remarks,
         'Submitted At': format(new Date(request.submittedAt), 'dd/MM/yyyy HH:mm'),
+        'Approval': request.approvalStatus === 'approved' ? 'Approved' : 'Pending',
+        'TR / PL Number': request.trNumber || '',
       }));
     });
 
