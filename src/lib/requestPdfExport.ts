@@ -804,7 +804,7 @@ export const exportDeliveryNotePDF = async (
           item.description,
           item.requirementQty > 0 ? item.requirementQty.toString() : '',
           item.issuedQty > 0 ? item.issuedQty.toString() : '',
-          item.balance != null && item.balance !== 0 ? item.balance.toString() : '',
+          '',
           item.remarks || ''
         ];
       })
