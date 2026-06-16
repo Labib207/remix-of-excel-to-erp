@@ -865,7 +865,7 @@ export function RecordsAnalytics() {
                                 <Button
                                   variant="ghost"
                                   size="icon"
-                                  onClick={() => { setApproveTarget(request); setTrInput(''); setTrError(''); }}
+                                  onClick={() => setApproveTarget(request)}
                                   title="Approve with TR / PL number"
                                   className="text-green-600 hover:text-green-700"
                                 >
