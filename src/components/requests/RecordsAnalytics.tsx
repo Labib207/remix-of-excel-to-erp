@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
+import { ApproveRequestDialog } from './ApproveRequestDialog';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -130,14 +131,20 @@ const materialCategories: Record<string, string[]> = {
   'Accessories': ['TAB', 'WEB', 'BKL', 'CRD', 'STP', 'PAD', 'RIV'],
 };
 
+const materialCategoryCache = new Map<string, string>();
 const getMaterialCategory = (itemCode: string): string => {
   const prefix = itemCode.split('-')[0]?.toUpperCase() || '';
+  const cached = materialCategoryCache.get(prefix);
+  if (cached) return cached;
+  let found = 'Other';
   for (const [category, prefixes] of Object.entries(materialCategories)) {
     if (prefixes.includes(prefix)) {
-      return category;
+      found = category;
+      break;
     }
   }
-  return 'Other';
+  materialCategoryCache.set(prefix, found);
+  return found;
 };
 
 export function RecordsAnalytics() {
@@ -158,8 +165,14 @@ export function RecordsAnalytics() {
   const [dateTo, setDateTo] = useState<Date | undefined>(endOfMonth(new Date()));
   const [selectedRequest, setSelectedRequest] = useState<SubmittedRequestExtended | null>(null);
   const [approveTarget, setApproveTarget] = useState<SubmittedRequestExtended | null>(null);
-  const [trInput, setTrInput] = useState('');
-  const [trError, setTrError] = useState('');
+
+  // O(1) order lookup
+  const ordersById = useMemo(() => {
+    const m = new Map<string, typeof orders[number]>();
+    for (const o of orders) m.set(o.id, o);
+    return m;
+  }, [orders]);
+
 
 
   // Handle Excel import
@@ -258,13 +271,13 @@ export function RecordsAnalytics() {
       }
     });
     return Array.from(orderIds).map(id => {
-      const order = orders.find(o => o.id === id);
+      const order = ordersById.get(id);
       return {
         id,
         label: order ? `${order.orderNumber} - ${order.customer}` : id
       };
     });
-  }, [extendedRequests, orders]);
+  }, [extendedRequests, ordersById]);
 
   // Filter raw material requests only
   const rawMaterialRequests = useMemo(() => {
@@ -342,7 +355,7 @@ export function RecordsAnalytics() {
               item.description.toLowerCase().includes(query)
           );
           // Match order
-          const order = orders.find(o => o.id === request.form.orderId);
+          const order = ordersById.get(request.form.orderId ?? "");
           const matchesOrder = order ? 
             order.orderNumber.toLowerCase().includes(query) ||
             order.customer.toLowerCase().includes(query) : false;
@@ -353,7 +366,7 @@ export function RecordsAnalytics() {
         return true;
       })
       .sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime());
-  }, [rawMaterialRequests, searchQuery, orderFilter, materialTypeFilter, statusFilter, approvalFilter, sourceFilter, dateFrom, dateTo, orders]);
+  }, [rawMaterialRequests, searchQuery, orderFilter, materialTypeFilter, statusFilter, approvalFilter, sourceFilter, dateFrom, dateTo, ordersById]);
 
   // Calculate analytics
   const analytics = useMemo(() => {
@@ -404,9 +417,9 @@ export function RecordsAnalytics() {
     };
   }, [filteredRequests]);
 
-  const handleDownloadPDF = (request: SubmittedRequestExtended) => {
+  const handleDownloadPDF = useCallback((request: SubmittedRequestExtended) => {
     exportRawMaterialRequestPDF(request.form as any, request.items as RequestItem[], request.docNumber);
-  };
+  }, []);
 
   const exportToExcel = () => {
     if (filteredRequests.length === 0) return;
@@ -417,7 +430,7 @@ export function RecordsAnalytics() {
       : format(new Date(), 'yyyy-MM-dd');
     
     const data = filteredRequests.flatMap(request => {
-      const order = orders.find(o => o.id === request.form.orderId);
+      const order = ordersById.get(request.form.orderId ?? "");
       return (request.items as RequestItem[]).map(item => ({
         'Doc Number': request.docNumber,
         'Order': order ? order.orderNumber : '-',
@@ -465,7 +478,7 @@ export function RecordsAnalytics() {
     XLSX.writeFile(wb, `Raw_Material_Records_${dateRangeText}.xlsx`);
   };
 
-  const clearFilters = () => {
+  const clearFilters = useCallback(() => {
     setSearchQuery('');
     setOrderFilter('all');
     setMaterialTypeFilter('all');
@@ -474,13 +487,13 @@ export function RecordsAnalytics() {
     setSourceFilter('all');
     setDateFrom(startOfMonth(new Date()));
     setDateTo(endOfMonth(new Date()));
-  };
+  }, []);
 
-  const handleDeleteRequest = (request: SubmittedRequestExtended) => {
+  const handleDeleteRequest = useCallback((request: SubmittedRequestExtended) => {
     if (confirm(`Are you sure you want to delete record "${request.docNumber}"?`)) {
       deleteRequest(request.id);
     }
-  };
+  }, [deleteRequest]);
 
   const renderItemsTable = (request: SubmittedRequestExtended) => {
     const items = request.items as RequestItem[];
@@ -780,7 +793,7 @@ export function RecordsAnalytics() {
                       const totalIss = items.reduce((sum, i) => sum + i.issuedQty, 0);
                       const isComplete = totalIss >= totalReq && totalReq > 0;
                       const isPartial = totalIss > 0 && totalIss < totalReq;
-                      const order = orders.find(o => o.id === request.form.orderId);
+                      const order = ordersById.get(request.form.orderId ?? "");
 
                       const isApproved = request.approvalStatus === 'approved';
 
@@ -852,7 +865,7 @@ export function RecordsAnalytics() {
                                 <Button
                                   variant="ghost"
                                   size="icon"
-                                  onClick={() => { setApproveTarget(request); setTrInput(''); setTrError(''); }}
+                                  onClick={() => setApproveTarget(request)}
                                   title="Approve with TR / PL number"
                                   className="text-green-600 hover:text-green-700"
                                 >
@@ -929,62 +942,18 @@ export function RecordsAnalytics() {
       </Dialog>
 
       {/* Approve Dialog */}
-      <Dialog
+      <ApproveRequestDialog
         open={!!approveTarget}
-        onOpenChange={(open) => {
-          if (!open) { setApproveTarget(null); setTrInput(''); setTrError(''); }
+        docNumber={approveTarget?.docNumber}
+        onOpenChange={(open) => { if (!open) setApproveTarget(null); }}
+        onApprove={(tr) => {
+          if (approveTarget) {
+            approveRequest(approveTarget.id, tr);
+            toast.success(`Approved ${approveTarget.docNumber} with ${tr}`);
+          }
         }}
-      >
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Approve Request</DialogTitle>
-            <DialogDescription>
-              Enter the TR or PL reference number to approve{' '}
-              <span className="font-mono">{approveTarget?.docNumber}</span>. This action is final.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-2 py-2">
-            <Label htmlFor="tr-number">TR / PL Number</Label>
-            <Input
-              id="tr-number"
-              placeholder="TR-08754 or PL-1234"
-              value={trInput}
-              onChange={(e) => { setTrInput(e.target.value); setTrError(''); }}
-              autoFocus
-            />
-            {trError && <p className="text-sm text-destructive">{trError}</p>}
-            <p className="text-xs text-muted-foreground">
-              Must start with TR- or PL- followed by the reference.
-            </p>
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => { setApproveTarget(null); setTrInput(''); setTrError(''); }}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={() => {
-                const value = trInput.trim().toUpperCase();
-                if (!/^(TR|PL)-.+/.test(value)) {
-                  setTrError('Reference must start with TR- or PL- and include a number.');
-                  return;
-                }
-                if (approveTarget) {
-                  approveRequest(approveTarget.id, value);
-                  toast.success(`Approved ${approveTarget.docNumber} with ${value}`);
-                }
-                setApproveTarget(null);
-                setTrInput('');
-                setTrError('');
-              }}
-            >
-              Approve
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      />
+
     </>
 
   );
