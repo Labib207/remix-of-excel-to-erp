@@ -478,7 +478,7 @@ export function RecordsAnalytics() {
     XLSX.writeFile(wb, `Raw_Material_Records_${dateRangeText}.xlsx`);
   };
 
-  const clearFilters = () => {
+  const clearFilters = useCallback(() => {
     setSearchQuery('');
     setOrderFilter('all');
     setMaterialTypeFilter('all');
@@ -487,13 +487,13 @@ export function RecordsAnalytics() {
     setSourceFilter('all');
     setDateFrom(startOfMonth(new Date()));
     setDateTo(endOfMonth(new Date()));
-  };
+  }, []);
 
-  const handleDeleteRequest = (request: SubmittedRequestExtended) => {
+  const handleDeleteRequest = useCallback((request: SubmittedRequestExtended) => {
     if (confirm(`Are you sure you want to delete record "${request.docNumber}"?`)) {
       deleteRequest(request.id);
     }
-  };
+  }, [deleteRequest]);
 
   const renderItemsTable = (request: SubmittedRequestExtended) => {
     const items = request.items as RequestItem[];
