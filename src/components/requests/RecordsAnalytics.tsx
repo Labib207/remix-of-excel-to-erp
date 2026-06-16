@@ -271,7 +271,7 @@ export function RecordsAnalytics() {
       }
     });
     return Array.from(orderIds).map(id => {
-      const order = orders.find(o => o.id === id);
+      const order = ordersById.get(id);
       return {
         id,
         label: order ? `${order.orderNumber} - ${order.customer}` : id
@@ -355,7 +355,7 @@ export function RecordsAnalytics() {
               item.description.toLowerCase().includes(query)
           );
           // Match order
-          const order = orders.find(o => o.id === request.form.orderId);
+          const order = ordersById.get(request.form.orderId ?? "");
           const matchesOrder = order ? 
             order.orderNumber.toLowerCase().includes(query) ||
             order.customer.toLowerCase().includes(query) : false;
@@ -430,7 +430,7 @@ export function RecordsAnalytics() {
       : format(new Date(), 'yyyy-MM-dd');
     
     const data = filteredRequests.flatMap(request => {
-      const order = orders.find(o => o.id === request.form.orderId);
+      const order = ordersById.get(request.form.orderId ?? "");
       return (request.items as RequestItem[]).map(item => ({
         'Doc Number': request.docNumber,
         'Order': order ? order.orderNumber : '-',
@@ -793,7 +793,7 @@ export function RecordsAnalytics() {
                       const totalIss = items.reduce((sum, i) => sum + i.issuedQty, 0);
                       const isComplete = totalIss >= totalReq && totalReq > 0;
                       const isPartial = totalIss > 0 && totalIss < totalReq;
-                      const order = orders.find(o => o.id === request.form.orderId);
+                      const order = ordersById.get(request.form.orderId ?? "");
 
                       const isApproved = request.approvalStatus === 'approved';
 
