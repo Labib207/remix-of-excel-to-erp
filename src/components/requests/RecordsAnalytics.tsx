@@ -277,7 +277,7 @@ export function RecordsAnalytics() {
         label: order ? `${order.orderNumber} - ${order.customer}` : id
       };
     });
-  }, [extendedRequests, orders]);
+  }, [extendedRequests, ordersById]);
 
   // Filter raw material requests only
   const rawMaterialRequests = useMemo(() => {
@@ -366,7 +366,7 @@ export function RecordsAnalytics() {
         return true;
       })
       .sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime());
-  }, [rawMaterialRequests, searchQuery, orderFilter, materialTypeFilter, statusFilter, approvalFilter, sourceFilter, dateFrom, dateTo, orders]);
+  }, [rawMaterialRequests, searchQuery, orderFilter, materialTypeFilter, statusFilter, approvalFilter, sourceFilter, dateFrom, dateTo, ordersById]);
 
   // Calculate analytics
   const analytics = useMemo(() => {
