@@ -131,14 +131,20 @@ const materialCategories: Record<string, string[]> = {
   'Accessories': ['TAB', 'WEB', 'BKL', 'CRD', 'STP', 'PAD', 'RIV'],
 };
 
+const materialCategoryCache = new Map<string, string>();
 const getMaterialCategory = (itemCode: string): string => {
   const prefix = itemCode.split('-')[0]?.toUpperCase() || '';
+  const cached = materialCategoryCache.get(prefix);
+  if (cached) return cached;
+  let found = 'Other';
   for (const [category, prefixes] of Object.entries(materialCategories)) {
     if (prefixes.includes(prefix)) {
-      return category;
+      found = category;
+      break;
     }
   }
-  return 'Other';
+  materialCategoryCache.set(prefix, found);
+  return found;
 };
 
 export function RecordsAnalytics() {
