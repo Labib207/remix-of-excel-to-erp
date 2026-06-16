@@ -417,9 +417,9 @@ export function RecordsAnalytics() {
     };
   }, [filteredRequests]);
 
-  const handleDownloadPDF = (request: SubmittedRequestExtended) => {
+  const handleDownloadPDF = useCallback((request: SubmittedRequestExtended) => {
     exportRawMaterialRequestPDF(request.form as any, request.items as RequestItem[], request.docNumber);
-  };
+  }, []);
 
   const exportToExcel = () => {
     if (filteredRequests.length === 0) return;
