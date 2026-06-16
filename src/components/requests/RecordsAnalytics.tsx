@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
+import { ApproveRequestDialog } from './ApproveRequestDialog';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
