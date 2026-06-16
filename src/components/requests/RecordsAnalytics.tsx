@@ -165,8 +165,14 @@ export function RecordsAnalytics() {
   const [dateTo, setDateTo] = useState<Date | undefined>(endOfMonth(new Date()));
   const [selectedRequest, setSelectedRequest] = useState<SubmittedRequestExtended | null>(null);
   const [approveTarget, setApproveTarget] = useState<SubmittedRequestExtended | null>(null);
-  const [trInput, setTrInput] = useState('');
-  const [trError, setTrError] = useState('');
+
+  // O(1) order lookup
+  const ordersById = useMemo(() => {
+    const m = new Map<string, typeof orders[number]>();
+    for (const o of orders) m.set(o.id, o);
+    return m;
+  }, [orders]);
+
 
 
   // Handle Excel import
