@@ -63,9 +63,11 @@ export function CustomItemReport() {
     setSearched(true);
     try {
       let itemsQuery = supabase.from('request_items').select('*');
-      if (search.trim()) {
-        itemsQuery = itemsQuery.ilike('description', `%${search.trim()}%`);
-      }
+      const tokens = search.trim().toLowerCase().split(/\s+/).filter(Boolean);
+      // Each typed word must appear in the description (case-insensitive, any order)
+      tokens.forEach(t => {
+        itemsQuery = itemsQuery.ilike('description', `%${t}%`);
+      });
 
       const { data: itemsData } = await itemsQuery;
       const items = itemsData || [];
