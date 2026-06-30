@@ -71,17 +71,17 @@ export function RequestHistoryTable({ onEdit }: { onEdit?: (request: any) => voi
           }
         }
 
-        if (searchQuery) {
-          const query = searchQuery.toLowerCase();
-          const matchesDoc = request.request_no.toLowerCase().includes(query);
-          const matchesDept = (request.department || '').toLowerCase().includes(query);
-          const matchesBy = (request.requested_by || '').toLowerCase().includes(query);
-          const matchesOrder = (request.order_no || '').toLowerCase().includes(query);
-          const matchesItems = (request.items || []).some(
-            item => (item.description || '').toLowerCase().includes(query) ||
-                    (item.item_code || '').toLowerCase().includes(query)
-          );
-          return matchesDoc || matchesDept || matchesBy || matchesOrder || matchesItems;
+        if (searchQuery.trim()) {
+          const tokens = searchQuery.toLowerCase().split(/\s+/).filter(Boolean);
+          const haystack = [
+            request.request_no,
+            request.department || '',
+            request.requested_by || '',
+            request.order_no || '',
+            ...(request.items || []).flatMap(item => [item.description || '', item.item_code || '']),
+          ].join(' ').toLowerCase();
+          // Every typed word must appear somewhere (case-insensitive, in any order)
+          if (!tokens.every(t => haystack.includes(t))) return false;
         }
 
         return true;
