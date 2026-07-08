@@ -17,7 +17,18 @@ import Profile from "./pages/Profile";
 import Reports from "./pages/Reports";
 import NotFound from "./pages/NotFound";
 
-const queryClient = new QueryClient();
+// Tuned for solo user with growing data: cache aggressively, avoid refetch storms
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000,          // 5 min — treat data fresh, skip refetch
+      gcTime: 30 * 60 * 1000,            // 30 min — keep in memory when tabbing around
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
+      retry: 1,
+    },
+  },
+});
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
