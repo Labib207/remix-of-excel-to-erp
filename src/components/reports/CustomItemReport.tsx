@@ -57,12 +57,27 @@ export function CustomItemReport() {
 
   const canSearch = search.trim().length > 0 || orderFilter !== 'all';
 
+  // Debounced auto-search: fires 400ms after the user stops typing / changing filters
+  useEffect(() => {
+    if (!canSearch) {
+      setResults([]);
+      setSearched(false);
+      return;
+    }
+    const t = setTimeout(() => { handleSearch(); }, 400);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search, orderFilter, dateFrom, dateTo]);
+
   const handleSearch = async () => {
     if (!canSearch) return;
     setLoading(true);
     setSearched(true);
     try {
-      let itemsQuery = supabase.from('request_items').select('*');
+      let itemsQuery = supabase
+        .from('request_items')
+        .select('request_id, item_code, description, color, size, unit, requested_qty, issued_qty, created_at')
+        .limit(5000);
       const tokens = search.trim().toLowerCase().split(/\s+/).filter(Boolean);
       // Each typed word must appear in the description (case-insensitive, any order)
       tokens.forEach(t => {
