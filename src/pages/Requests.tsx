@@ -914,7 +914,7 @@ export default function Requests() {
                 ))}
                 {items.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={10} className="text-center text-muted-foreground py-8">
+                    <TableCell colSpan={type === 'raw' && rawExtraOrderIds.length > 0 ? 11 : 10} className="text-center text-muted-foreground py-8">
                       No items added. Select an order above to auto-fill or click "Add Item".
                     </TableCell>
                   </TableRow>
