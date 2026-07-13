@@ -711,6 +711,86 @@ export default function Requests() {
             )}
           </div>
 
+          {/* Additional Styles multi-picker (Raw Material only) - combine multiple styles into ONE sheet to save paper */}
+          {type === 'raw' && (
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <Layers className="h-4 w-4" />
+                Additional Styles (optional) — combine into this sheet
+              </Label>
+              <div className="flex flex-wrap gap-2 items-center">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" className="gap-2">
+                      <Plus className="h-4 w-4" />
+                      Add another style
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-80 bg-background z-50" align="start">
+                    <div className="space-y-1 max-h-72 overflow-auto">
+                      <p className="text-xs text-muted-foreground pb-2">
+                        Pick more orders to include in the same request. Each item can be tagged per style.
+                      </p>
+                      {orders
+                        .filter(o => o.id && o.id !== form.orderId)
+                        .map(o => {
+                          const checked = rawExtraOrderIds.includes(o.id);
+                          return (
+                            <label
+                              key={o.id}
+                              className="flex items-start gap-2 rounded-md px-2 py-2 hover:bg-accent cursor-pointer"
+                            >
+                              <Checkbox
+                                checked={checked}
+                                onCheckedChange={(v) => {
+                                  setRawExtraOrderIds(prev =>
+                                    v ? [...prev, o.id] : prev.filter(id => id !== o.id)
+                                  );
+                                }}
+                                className="mt-0.5"
+                              />
+                              <span className="text-sm leading-tight">
+                                <span className="font-medium">{o.orderNumber}</span>
+                                {o.styleNo ? ` — ${o.styleNo}` : ''}
+                                {o.customer ? ` — ${o.customer}` : ''}
+                                {o.totalQty ? ` — ${o.totalQty} QTY` : ''}
+                              </span>
+                            </label>
+                          );
+                        })}
+                      {orders.filter(o => o.id && o.id !== form.orderId).length === 0 && (
+                        <p className="text-sm text-muted-foreground py-4 text-center">No other orders available.</p>
+                      )}
+                    </div>
+                  </PopoverContent>
+                </Popover>
+                {rawExtraOrderIds.map(id => {
+                  const o = orders.find(x => x.id === id);
+                  if (!o) return null;
+                  return (
+                    <Badge key={id} variant="outline" className="gap-1 pl-2 pr-1 py-1">
+                      {o.orderNumber}{o.styleNo ? ' ' + o.styleNo : ''}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-5 w-5 hover:bg-destructive/20"
+                        onClick={() => setRawExtraOrderIds(prev => prev.filter(x => x !== id))}
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </Badge>
+                  );
+                })}
+              </div>
+              {rawExtraOrderIds.length > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  Main order stays in the PO/header. Additional styles will show per-line in Remarks as <code className="px-1 rounded bg-muted">[Style: ...]</code> so records stay separated by style.
+                </p>
+              )}
+            </div>
+          )}
+
+
           {/* Items Table */}
           <div className="border rounded-lg overflow-hidden">
             <Table>
