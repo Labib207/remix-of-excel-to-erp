@@ -500,8 +500,8 @@ export default function Requests() {
         return;
       }
       
-      // Auto-fill empty requestedQty with requirementQty before submission
-      const itemsToSubmit = autoFillRequestedQty(rawMaterialItems);
+      // Auto-fill empty requestedQty with requirementQty, then apply multi-style tags
+      const itemsToSubmit = applyStyleTags(autoFillRequestedQty(rawMaterialItems), rawMaterialForm.orderId);
       
       // Update requirement records
       const requirementUpdates = itemsToSubmit
@@ -538,6 +538,7 @@ export default function Requests() {
       })));
       setRawMaterialForm(emptyRequestForm());
       setRawMaterialItems([]);
+      setRawExtraOrderIds([]);
     } else if (type === 'general') {
       if (generalSuppliesItems.length === 0) {
         toast.error('Please add at least one item before submitting');
