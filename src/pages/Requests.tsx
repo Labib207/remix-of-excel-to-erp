@@ -117,6 +117,8 @@ export default function Requests() {
   // Raw Material Request State
   const [rawMaterialForm, setRawMaterialForm] = useState<RequestForm>(emptyRequestForm());
   const [rawMaterialItems, setRawMaterialItems] = useState<RequestItem[]>([]);
+  // Additional styles/orders included in the same raw-material sheet (to save paper)
+  const [rawExtraOrderIds, setRawExtraOrderIds] = useState<string[]>([]);
 
   // General Supplies Request State
   const [generalSuppliesForm, setGeneralSuppliesForm] = useState<RequestForm>(emptyRequestForm());
