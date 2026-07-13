@@ -62,6 +62,7 @@ interface RequestItem {
   remainingQty: number;
   remarks: string;
   requirementId?: string; // Link to requirement for updating
+  styleOrderId?: string; // For multi-style requests: which order/style this item belongs to
 }
 
 interface ReturnItem {
