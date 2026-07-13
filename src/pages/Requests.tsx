@@ -422,7 +422,7 @@ export default function Requests() {
         ? `${selectedOrder.orderNumber} ${selectedOrder.styleNo || ''} ${selectedOrder.customer || ''} ${selectedOrder.totalQty || ''} QTY`.trim()
         : '';
       // Auto-fill empty requestedQty with requirementQty before PDF export
-      const itemsForPdf = autoFillRequestedQty(rawMaterialItems);
+      const itemsForPdf = applyStyleTags(autoFillRequestedQty(rawMaterialItems), rawMaterialForm.orderId);
       exportRawMaterialRequestPDF({ ...rawMaterialForm, orderName }, itemsForPdf);
       toast.success('Raw Material Request PDF downloaded');
     } else if (type === 'general') {
