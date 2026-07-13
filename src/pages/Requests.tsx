@@ -386,6 +386,30 @@ export default function Requests() {
     }));
   };
 
+  // Build short label for an order (used for style tagging in multi-style requests)
+  const orderShortLabel = (orderId?: string): string => {
+    if (!orderId) return '';
+    const o = orders.find(x => x.id === orderId);
+    if (!o) return '';
+    return `${o.orderNumber}${o.styleNo ? ' ' + o.styleNo : ''}`.trim();
+  };
+
+  // Apply style-tag prefix to remarks for multi-style raw requests so each line
+  // clearly shows which style/order it belongs to (main order stays clean in header).
+  const applyStyleTags = (items: RequestItem[], primaryOrderId: string): RequestItem[] => {
+    if (rawExtraOrderIds.length === 0) return items;
+    return items.map(item => {
+      const tagOrderId = item.styleOrderId || primaryOrderId;
+      if (!tagOrderId || tagOrderId === primaryOrderId) return item;
+      const label = orderShortLabel(tagOrderId);
+      if (!label) return item;
+      const prefix = `[Style: ${label}]`;
+      const current = item.remarks || '';
+      if (current.includes(prefix)) return item;
+      return { ...item, remarks: prefix + (current ? ' ' + current : '') };
+    });
+  };
+
   // Download PDF function
   const downloadPDF = (type: 'raw' | 'general' | 'return') => {
     if (type === 'raw') {
