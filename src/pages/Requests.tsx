@@ -251,6 +251,10 @@ export default function Requests() {
     else generalManualEdit.current = false;
     
     setForm({ ...form, orderId: actualOrderId });
+    if (type === 'raw') {
+      // Remove the primary order from extras if it was there
+      setRawExtraOrderIds(prev => prev.filter(id => id !== actualOrderId));
+    }
     
     if (actualOrderId) {
       // Auto-fill items from ALL requirements for this order
