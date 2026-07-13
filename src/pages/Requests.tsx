@@ -804,6 +804,9 @@ export default function Requests() {
                   <TableHead className="w-24">Requested Qty</TableHead>
                   <TableHead className="w-24">Issued Qty</TableHead>
                   <TableHead className="w-24">Remaining Qty</TableHead>
+                  {type === 'raw' && rawExtraOrderIds.length > 0 && (
+                    <TableHead className="w-32">Style</TableHead>
+                  )}
                   <TableHead>{remarksLabel}</TableHead>
                   <TableHead className="w-12"></TableHead>
                 </TableRow>
