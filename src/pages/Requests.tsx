@@ -869,6 +869,30 @@ export default function Requests() {
                         className="h-10 bg-muted"
                       />
                     </TableCell>
+                    {type === 'raw' && rawExtraOrderIds.length > 0 && (
+                      <TableCell className="py-2">
+                        <Select
+                          value={item.styleOrderId || form.orderId || 'primary'}
+                          onValueChange={(v) => updateRequestItem(type, item.id, 'styleOrderId' as keyof RequestItem, v)}
+                        >
+                          <SelectTrigger className="h-10">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className="bg-background z-50">
+                            {form.orderId && (
+                              <SelectItem value={form.orderId}>
+                                {orderShortLabel(form.orderId) || 'Main'} (Main)
+                              </SelectItem>
+                            )}
+                            {rawExtraOrderIds.map(id => (
+                              <SelectItem key={id} value={id}>
+                                {orderShortLabel(id) || id}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </TableCell>
+                    )}
                     <TableCell className="py-2">
                       <Input
                         value={item.remarks}
