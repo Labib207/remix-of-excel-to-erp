@@ -791,39 +791,22 @@ export const exportDeliveryNotePDF = async (
   // Draw signature section
   drawDeliveryNoteSignature(doc, marginLeft, contentWidth, sigY);
 
-  // Prepare table rows with totals calculation
-  let totalRequirement = 0;
-  let totalIssued = 0;
-
+  // Prepare table rows
   const tableRows = items.length > 0 
-    ? items.map(item => {
-        totalRequirement += item.requirementQty || 0;
-        totalIssued += item.issuedQty || 0;
-        return [
-          item.slNo.toString(),
-          item.description,
-          item.requirementQty > 0 ? item.requirementQty.toString() : '',
-          item.issuedQty > 0 ? item.issuedQty.toString() : '',
-          '',
-          item.remarks || ''
-        ];
-      })
+    ? items.map(item => [
+        item.slNo.toString(),
+        item.description,
+        item.requirementQty > 0 ? item.requirementQty.toString() : '',
+        item.issuedQty > 0 ? item.issuedQty.toString() : '',
+        '',
+        item.remarks || ''
+      ])
     : [];
   
   // Pad to fill page but not overflow
   while (tableRows.length < 10) {
     tableRows.push(['', '', '', '', '', '']);
   }
-
-  // Add totals row (Balance column intentionally blank)
-  tableRows.push([
-    '',
-    'TOTAL',
-    totalRequirement > 0 ? totalRequirement.toString() : '',
-    totalIssued > 0 ? totalIssued.toString() : '',
-    '',
-    ''
-  ]);
 
   autoTable(doc, {
     startY: tableStartY,
@@ -857,13 +840,6 @@ export const exportDeliveryNotePDF = async (
     },
     margin: { left: marginLeft, right: marginLeft, top: 58, bottom: sigBoxHeight + 15 },
     tableWidth: contentWidth,
-    didParseCell: (data) => {
-      // Style the totals row
-      if (data.row.index === tableRows.length - 1 && data.section === 'body') {
-        data.cell.styles.fontStyle = 'bold';
-        data.cell.styles.fillColor = [245, 245, 245];
-      }
-    },
     didDrawPage: (data) => {
       if (data.pageNumber > 1) {
         drawDeliveryNoteHeader(doc, logoBase64, docNumber, form, marginLeft, contentWidth, pageWidth);
