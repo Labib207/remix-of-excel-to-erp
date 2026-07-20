@@ -791,39 +791,22 @@ export const exportDeliveryNotePDF = async (
   // Draw signature section
   drawDeliveryNoteSignature(doc, marginLeft, contentWidth, sigY);
 
-  // Prepare table rows with totals calculation
-  let totalRequirement = 0;
-  let totalIssued = 0;
-
+  // Prepare table rows
   const tableRows = items.length > 0 
-    ? items.map(item => {
-        totalRequirement += item.requirementQty || 0;
-        totalIssued += item.issuedQty || 0;
-        return [
-          item.slNo.toString(),
-          item.description,
-          item.requirementQty > 0 ? item.requirementQty.toString() : '',
-          item.issuedQty > 0 ? item.issuedQty.toString() : '',
-          '',
-          item.remarks || ''
-        ];
-      })
+    ? items.map(item => [
+        item.slNo.toString(),
+        item.description,
+        item.requirementQty > 0 ? item.requirementQty.toString() : '',
+        item.issuedQty > 0 ? item.issuedQty.toString() : '',
+        '',
+        item.remarks || ''
+      ])
     : [];
   
   // Pad to fill page but not overflow
   while (tableRows.length < 10) {
     tableRows.push(['', '', '', '', '', '']);
   }
-
-  // Add totals row (Balance column intentionally blank)
-  tableRows.push([
-    '',
-    'TOTAL',
-    totalRequirement > 0 ? totalRequirement.toString() : '',
-    totalIssued > 0 ? totalIssued.toString() : '',
-    '',
-    ''
-  ]);
 
   autoTable(doc, {
     startY: tableStartY,
