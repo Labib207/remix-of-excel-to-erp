@@ -277,27 +277,16 @@ export default function Auth() {
             </div>
           )}
 
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
-            {/* Only show tabs if online, otherwise just login */}
-            {isOnline ? (
-              <TabsList className="grid w-full grid-cols-2 mb-6">
-                <TabsTrigger value="login" className="gap-2">
-                  <LogIn className="h-4 w-4" />
-                  Login
-                </TabsTrigger>
-                <TabsTrigger value="signup" className="gap-2">
-                  <UserPlus className="h-4 w-4" />
-                  Sign Up
-                </TabsTrigger>
-              </TabsList>
-            ) : (
-              <div className="mb-6 text-center">
-                <h3 className="text-lg font-medium flex items-center justify-center gap-2">
-                  <LogIn className="h-5 w-5" />
-                  Login
-                </h3>
-              </div>
-            )}
+          <Tabs value="login" onValueChange={setActiveTab}>
+            <div className="mb-6 text-center">
+              <h3 className="text-lg font-medium flex items-center justify-center gap-2">
+                <LogIn className="h-5 w-5" />
+                Login
+              </h3>
+              <p className="text-xs text-muted-foreground mt-2">
+                Sign-up is disabled. Contact the administrator for account access.
+              </p>
+            </div>
 
             <TabsContent value="login">
               <Form {...loginForm}>
@@ -354,81 +343,6 @@ export default function Auth() {
                 </form>
               </Form>
             </TabsContent>
-
-            {/* Only show signup tab when online */}
-            {isOnline && (
-              <TabsContent value="signup">
-                <Form {...signupForm}>
-                  <form onSubmit={signupForm.handleSubmit(handleSignup)} className="space-y-4">
-                    <FormField
-                      control={signupForm.control}
-                      name="fullName"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Full Name</FormLabel>
-                          <FormControl>
-                            <Input placeholder="John Doe" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={signupForm.control}
-                      name="email"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Email</FormLabel>
-                          <FormControl>
-                            <Input placeholder="you@example.com" type="email" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={signupForm.control}
-                      name="password"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Password</FormLabel>
-                          <FormControl>
-                            <Input placeholder="••••••••" type="password" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={signupForm.control}
-                      name="confirmPassword"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Confirm Password</FormLabel>
-                          <FormControl>
-                            <Input placeholder="••••••••" type="password" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <Button type="submit" className="w-full" disabled={isLoading}>
-                      {isLoading ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Creating account...
-                        </>
-                      ) : (
-                        <>
-                          <UserPlus className="mr-2 h-4 w-4" />
-                          Create Account
-                        </>
-                      )}
-                    </Button>
-                  </form>
-                </Form>
-              </TabsContent>
-            )}
           </Tabs>
         </CardContent>
       </Card>
