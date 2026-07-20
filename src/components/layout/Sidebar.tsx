@@ -39,7 +39,7 @@ export function Sidebar() {
   };
 
   return (
-    <aside className="fixed inset-y-0 left-0 z-50 flex h-screen w-64 flex-col bg-sidebar border-r border-sidebar-border shadow-xl">
+    <aside className="flex h-screen w-64 flex-col bg-sidebar border-r border-sidebar-border shadow-xl">
       {/* Logo Section */}
       <div className="flex h-20 items-center justify-center border-b border-sidebar-border bg-sidebar-accent/30">
         <img src={logo} alt="Ghoush Logo" className="h-14 w-auto object-contain drop-shadow-md" />
