@@ -343,8 +343,6 @@ export default function Auth() {
                 </form>
               </Form>
             </TabsContent>
-
-            )}
           </Tabs>
         </CardContent>
       </Card>
