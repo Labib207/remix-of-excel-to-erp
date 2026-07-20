@@ -840,13 +840,6 @@ export const exportDeliveryNotePDF = async (
     },
     margin: { left: marginLeft, right: marginLeft, top: 58, bottom: sigBoxHeight + 15 },
     tableWidth: contentWidth,
-    didParseCell: (data) => {
-      // Style the totals row
-      if (data.row.index === tableRows.length - 1 && data.section === 'body') {
-        data.cell.styles.fontStyle = 'bold';
-        data.cell.styles.fillColor = [245, 245, 245];
-      }
-    },
     didDrawPage: (data) => {
       if (data.pageNumber > 1) {
         drawDeliveryNoteHeader(doc, logoBase64, docNumber, form, marginLeft, contentWidth, pageWidth);
