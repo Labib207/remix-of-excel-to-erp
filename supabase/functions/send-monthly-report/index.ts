@@ -18,6 +18,32 @@ Deno.serve(async (req) => {
     return new Response('ok', { headers: corsHeaders })
   }
 
+  // --- AUTH GUARD ---
+  // Accept either an authenticated user JWT, or the service-role key
+  // (used by pg_cron scheduled invocations).
+  const authHeader = req.headers.get('Authorization') || ''
+  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : ''
+  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+
+  if (!token) {
+    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+      status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    })
+  }
+
+  let authorized = token === serviceRoleKey
+  if (!authorized) {
+    const anonClient = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY')!)
+    const { data, error } = await anonClient.auth.getClaims(token)
+    if (!error && data?.claims) authorized = true
+  }
+  if (!authorized) {
+    return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+      status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    })
+  }
+
   const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY')
   if (!LOVABLE_API_KEY) {
     return new Response(JSON.stringify({ error: 'LOVABLE_API_KEY not configured' }), {
@@ -32,9 +58,7 @@ Deno.serve(async (req) => {
     })
   }
 
-  const supabaseUrl = Deno.env.get('SUPABASE_URL')!
-  const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-  const supabase = createClient(supabaseUrl, supabaseKey)
+  const supabase = createClient(supabaseUrl, serviceRoleKey)
 
   try {
     let month: number, year: number
