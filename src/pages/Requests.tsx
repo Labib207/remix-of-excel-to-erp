@@ -615,31 +615,31 @@ export default function Requests() {
     const selectedOrder = orders.find(o => o.id === form.orderId);
     
     return (
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div className="flex items-center gap-3">
+      <Card className="min-w-0">
+        <CardHeader className="gap-4 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+          <div className="flex min-w-0 items-start gap-3 sm:items-center">
             {icon}
-            <div>
-              <CardTitle>{title}</CardTitle>
+            <div className="min-w-0">
+              <CardTitle className="text-xl leading-tight sm:text-2xl">{title}</CardTitle>
               <p className="text-sm text-muted-foreground mt-1">
                 Document ID: {type === 'raw' ? 'RMR' : 'GSR'}-01-2024
               </p>
             </div>
           </div>
-          <div className="flex gap-2">
-            <Button onClick={() => downloadPDF(type)} variant="outline" className="gap-2">
+          <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:justify-end">
+            <Button onClick={() => downloadPDF(type)} variant="outline" className="gap-2 px-3 text-xs sm:text-sm">
               <Download className="h-4 w-4" />
               Download PDF
             </Button>
-            <Button onClick={() => submitRequest(type)} className="gap-2">
+            <Button onClick={() => submitRequest(type)} className="gap-2 px-3 text-xs sm:text-sm">
               <Send className="h-4 w-4" />
               {editingRequestId ? 'Update' : 'Submit'}
             </Button>
           </div>
         </CardHeader>
-        <CardContent className="space-y-6">
+        <CardContent className="space-y-5 p-4 pt-0 sm:space-y-6 sm:p-6 sm:pt-0">
           {/* Form Header */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label>Date</Label>
               <Input
@@ -668,12 +668,12 @@ export default function Requests() {
               <ClipboardList className="h-4 w-4" />
               Order (Optional - Auto-fill from requirements)
             </Label>
-            <div className="flex gap-4 items-center">
+            <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center">
               <Select 
                 value={form.orderId || 'none'} 
                 onValueChange={(value) => handleOrderSelect(value, type)}
               >
-                <SelectTrigger className="flex-1">
+                <SelectTrigger className="w-full sm:flex-1">
                   <SelectValue placeholder="Select an order to auto-fill requirements" />
                 </SelectTrigger>
                 <SelectContent className="bg-background">
@@ -700,7 +700,7 @@ export default function Requests() {
                   >
                     <Pencil className="h-4 w-4" />
                   </Button>
-                  <Badge variant="secondary" className="whitespace-nowrap font-semibold">
+                  <Badge variant="secondary" className="max-w-full whitespace-normal break-words text-xs leading-tight sm:whitespace-nowrap">
                     {selectedOrder.orderNumber} - {selectedOrder.styleNo} - {selectedOrder.customer} - {selectedOrder.totalQty} QTY
                   </Badge>
                 </>
@@ -718,15 +718,15 @@ export default function Requests() {
                 <Layers className="h-4 w-4" />
                 Additional Styles (optional) — combine into this sheet
               </Label>
-              <div className="flex flex-wrap gap-2 items-center">
+              <div className="flex min-w-0 flex-wrap gap-2 items-center">
                 <Popover>
                   <PopoverTrigger asChild>
-                    <Button variant="outline" size="sm" className="gap-2">
+                    <Button variant="outline" size="sm" className="w-full gap-2 sm:w-auto">
                       <Plus className="h-4 w-4" />
                       Add another style
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-80 bg-background z-50" align="start">
+                  <PopoverContent className="w-[calc(100vw-2rem)] bg-background z-50 sm:w-80" align="start">
                     <div className="space-y-1 max-h-72 overflow-auto">
                       <p className="text-xs text-muted-foreground pb-2">
                         Pick more orders to include in the same request. Each item can be tagged per style.
@@ -792,8 +792,8 @@ export default function Requests() {
 
 
           {/* Items Table */}
-          <div className="border rounded-lg overflow-hidden">
-            <Table>
+          <div className="rounded-lg border overflow-x-auto">
+            <Table className="min-w-[920px]">
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-12">SL No</TableHead>
@@ -923,7 +923,7 @@ export default function Requests() {
             </Table>
           </div>
 
-          <Button onClick={() => addRequestItem(type)} variant="outline" className="gap-2">
+          <Button onClick={() => addRequestItem(type)} variant="outline" className="w-full gap-2 sm:w-auto">
             <Plus className="h-4 w-4" />
             Add Item
           </Button>
@@ -971,27 +971,29 @@ export default function Requests() {
 
   return (
     <MainLayout>
-      <div className="space-y-6">
-        <div className="flex items-start justify-between flex-wrap gap-4">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Material Requests</h1>
+      <div className="max-w-full min-w-0 space-y-4 sm:space-y-6">
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+          <div className="min-w-0">
+            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Material Requests</h1>
             <p className="text-muted-foreground mt-1">
               Manage requirements, raw material requests, general supplies, and material returns
             </p>
           </div>
           
-          <div className="flex gap-3 flex-wrap">
+          <div className="grid w-full grid-cols-1 gap-3 lg:grid-cols-2 xl:w-auto">
             {/* Empty Forms Download Section */}
-            <Card className="p-4">
-              <div className="flex items-center gap-3">
-                <FileDown className="h-5 w-5 text-muted-foreground" />
-                <span className="text-sm font-medium">Empty Forms:</span>
-                <div className="flex gap-2">
+            <Card className="min-w-0 p-3 sm:p-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                <div className="flex items-center gap-2">
+                  <FileDown className="h-5 w-5 text-muted-foreground" />
+                  <span className="text-sm font-medium">Empty Forms:</span>
+                </div>
+                <div className="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap">
                   <Button 
                     onClick={() => exportEmptyRawMaterialPDF()} 
                     variant="outline" 
                     size="sm"
-                    className="gap-1"
+                    className="gap-1 text-xs sm:text-sm"
                   >
                     <FileBox className="h-3 w-3" />
                     Raw Material
@@ -1000,7 +1002,7 @@ export default function Requests() {
                     onClick={() => exportEmptyGeneralSuppliesPDF()} 
                     variant="outline" 
                     size="sm"
-                    className="gap-1"
+                    className="gap-1 text-xs sm:text-sm"
                   >
                     <Package className="h-3 w-3" />
                     General Supplies
@@ -1009,7 +1011,7 @@ export default function Requests() {
                     onClick={() => exportEmptyMaterialReturnPDF()} 
                     variant="outline" 
                     size="sm"
-                    className="gap-1"
+                    className="gap-1 text-xs sm:text-sm"
                   >
                     <Undo2 className="h-3 w-3" />
                     Material Return
@@ -1019,12 +1021,12 @@ export default function Requests() {
             </Card>
 
             {/* Monthly Excel Export Section */}
-            <Card className="p-4">
-              <div className="flex items-center gap-3">
+            <Card className="min-w-0 p-3 sm:p-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                 <Calendar className="h-5 w-5 text-muted-foreground" />
-                <div className="flex gap-2">
+                <div className="grid grid-cols-2 gap-2 sm:flex">
                   <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-                    <SelectTrigger className="w-32">
+                    <SelectTrigger className="w-full sm:w-32">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent className="bg-background">
@@ -1036,7 +1038,7 @@ export default function Requests() {
                     </SelectContent>
                   </Select>
                   <Select value={selectedYear} onValueChange={setSelectedYear}>
-                    <SelectTrigger className="w-24">
+                    <SelectTrigger className="w-full sm:w-24">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent className="bg-background">
@@ -1048,7 +1050,7 @@ export default function Requests() {
                     </SelectContent>
                   </Select>
                 </div>
-                <Button onClick={handleExportMonthlyExcel} variant="outline" className="gap-2">
+                <Button onClick={handleExportMonthlyExcel} variant="outline" className="gap-2 text-xs sm:text-sm">
                   <FileSpreadsheet className="h-4 w-4" />
                   Export Excel
                 </Button>
@@ -1061,24 +1063,24 @@ export default function Requests() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="raw-material" className="gap-2">
+          <TabsList className="flex h-auto w-full justify-start gap-1 overflow-x-auto p-1">
+            <TabsTrigger value="raw-material" className="shrink-0 gap-1 px-3 py-2 text-xs sm:gap-2 sm:text-sm">
               <FileBox className="h-4 w-4" />
               Raw Material
             </TabsTrigger>
-            <TabsTrigger value="general-supplies" className="gap-2">
+            <TabsTrigger value="general-supplies" className="shrink-0 gap-1 px-3 py-2 text-xs sm:gap-2 sm:text-sm">
               <Package className="h-4 w-4" />
               General Supplies
             </TabsTrigger>
-            <TabsTrigger value="material-return" className="gap-2">
+            <TabsTrigger value="material-return" className="shrink-0 gap-1 px-3 py-2 text-xs sm:gap-2 sm:text-sm">
               <Undo2 className="h-4 w-4" />
               Material Return
             </TabsTrigger>
-            <TabsTrigger value="records" className="gap-2">
+            <TabsTrigger value="records" className="shrink-0 gap-1 px-3 py-2 text-xs sm:gap-2 sm:text-sm">
               <Database className="h-4 w-4" />
               Records
             </TabsTrigger>
-            <TabsTrigger value="history" className="gap-2">
+            <TabsTrigger value="history" className="shrink-0 gap-1 px-3 py-2 text-xs sm:gap-2 sm:text-sm">
               <History className="h-4 w-4" />
               History
             </TabsTrigger>
@@ -1109,31 +1111,31 @@ export default function Requests() {
           </TabsContent>
 
           <TabsContent value="material-return" className="mt-6">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Undo2 className="h-8 w-8 text-primary" />
-                  <div>
-                    <CardTitle>Material Return Slip</CardTitle>
+            <Card className="min-w-0">
+              <CardHeader className="gap-4 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+                <div className="flex min-w-0 items-start gap-3 sm:items-center">
+                  <Undo2 className="h-6 w-6 shrink-0 text-primary sm:h-8 sm:w-8" />
+                  <div className="min-w-0">
+                    <CardTitle className="text-xl leading-tight sm:text-2xl">Material Return Slip</CardTitle>
                     <p className="text-sm text-muted-foreground mt-1">
                       Document ID: MRS-01-2024
                     </p>
                   </div>
                 </div>
-                <div className="flex gap-2">
-                  <Button onClick={() => downloadPDF('return')} variant="outline" className="gap-2">
+                <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:justify-end">
+                  <Button onClick={() => downloadPDF('return')} variant="outline" className="gap-2 px-3 text-xs sm:text-sm">
                     <Download className="h-4 w-4" />
                     Download PDF
                   </Button>
-                  <Button onClick={() => submitRequest('return')} className="gap-2">
+                  <Button onClick={() => submitRequest('return')} className="gap-2 px-3 text-xs sm:text-sm">
                     <Send className="h-4 w-4" />
                     {editingRequestId ? 'Update' : 'Submit'}
                   </Button>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-6">
+              <CardContent className="space-y-5 p-4 pt-0 sm:space-y-6 sm:p-6 sm:pt-0">
                 {/* Form Header */}
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
                     <Label>Date</Label>
                     <Input
@@ -1153,8 +1155,8 @@ export default function Requests() {
                 </div>
 
                 {/* Items Table */}
-                <div className="border rounded-lg overflow-hidden">
-                  <Table>
+                <div className="rounded-lg border overflow-x-auto">
+                  <Table className="min-w-[760px]">
                     <TableHeader>
                       <TableRow>
                         <TableHead className="w-12">SL No</TableHead>
@@ -1244,13 +1246,13 @@ export default function Requests() {
                   </Table>
                 </div>
 
-                <Button onClick={addReturnItem} variant="outline" className="gap-2">
+                <Button onClick={addReturnItem} variant="outline" className="w-full gap-2 sm:w-auto">
                   <Plus className="h-4 w-4" />
                   Add Item
                 </Button>
 
                 {/* Signatories */}
-                <div className="grid grid-cols-3 gap-4 pt-4 border-t">
+                <div className="grid grid-cols-1 gap-4 border-t pt-4 md:grid-cols-3">
                   <div className="space-y-2">
                     <Label>Returned By (Line Leader)</Label>
                     <Input
@@ -1356,12 +1358,12 @@ export default function Requests() {
 
         {/* Edit Order Dialog */}
         <Dialog open={isEditOrderOpen} onOpenChange={setIsEditOrderOpen}>
-          <DialogContent className="sm:max-w-lg">
+          <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-lg">
             <DialogHeader>
               <DialogTitle>Edit Order</DialogTitle>
             </DialogHeader>
             <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label>Order Number *</Label>
                   <Input
@@ -1379,7 +1381,7 @@ export default function Requests() {
                   />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label>Style No</Label>
                   <Input
@@ -1397,7 +1399,7 @@ export default function Requests() {
                   />
                 </div>
               </div>
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                 <div className="space-y-2">
                   <Label>Shade</Label>
                   <Input
@@ -1434,7 +1436,7 @@ export default function Requests() {
                 />
               </div>
             </div>
-            <div className="flex justify-end gap-2">
+            <div className="grid grid-cols-2 gap-2 sm:flex sm:justify-end">
               <Button variant="outline" onClick={() => setIsEditOrderOpen(false)}>
                 Cancel
               </Button>
