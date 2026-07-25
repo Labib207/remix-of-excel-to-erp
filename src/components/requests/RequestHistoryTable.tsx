@@ -369,17 +369,17 @@ export function RequestHistoryTable({ onEdit }: { onEdit?: (request: any) => voi
 
   return (
     <>
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+      <Card className="min-w-0">
+        <CardHeader className="p-4 sm:p-6">
+          <CardTitle className="flex items-center gap-2 text-xl sm:text-2xl">
             <FileText className="h-5 w-5" />
             Request History
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-4 p-4 pt-0 sm:p-6 sm:pt-0">
           {/* Filters */}
-          <div className="flex flex-wrap gap-4">
-            <div className="relative flex-1 min-w-[200px]">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
+            <div className="relative min-w-0">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Search by doc number, department, item..."
@@ -389,7 +389,7 @@ export function RequestHistoryTable({ onEdit }: { onEdit?: (request: any) => voi
               />
             </div>
             <Select value={typeFilter} onValueChange={setTypeFilter}>
-              <SelectTrigger className="w-48">
+              <SelectTrigger className="w-full sm:w-48">
                 <SelectValue placeholder="All Types" />
               </SelectTrigger>
               <SelectContent>
@@ -402,12 +402,12 @@ export function RequestHistoryTable({ onEdit }: { onEdit?: (request: any) => voi
           </div>
 
           {/* Date Range Filter */}
-          <div className="flex flex-wrap gap-4 items-center">
-            <div className="flex items-center gap-2">
+          <div className="grid grid-cols-1 gap-3 sm:flex sm:flex-wrap sm:items-center">
+            <div className="grid grid-cols-[3rem_minmax(0,1fr)] items-center gap-2 sm:flex">
               <span className="text-sm text-muted-foreground">From:</span>
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" className="w-[140px] justify-start text-left font-normal">
+                  <Button variant="outline" className="w-full justify-start text-left font-normal sm:w-[140px]">
                     <CalendarIcon className="mr-2 h-4 w-4" />
                     {dateFrom ? format(dateFrom, 'dd/MM/yyyy') : 'Pick date'}
                   </Button>
@@ -417,11 +417,11 @@ export function RequestHistoryTable({ onEdit }: { onEdit?: (request: any) => voi
                 </PopoverContent>
               </Popover>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="grid grid-cols-[3rem_minmax(0,1fr)] items-center gap-2 sm:flex">
               <span className="text-sm text-muted-foreground">To:</span>
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" className="w-[140px] justify-start text-left font-normal">
+                  <Button variant="outline" className="w-full justify-start text-left font-normal sm:w-[140px]">
                     <CalendarIcon className="mr-2 h-4 w-4" />
                     {dateTo ? format(dateTo, 'dd/MM/yyyy') : 'Pick date'}
                   </Button>
@@ -432,15 +432,15 @@ export function RequestHistoryTable({ onEdit }: { onEdit?: (request: any) => voi
               </Popover>
             </div>
             {(dateFrom || dateTo) && (
-              <Button variant="ghost" size="sm" onClick={() => { setDateFrom(undefined); setDateTo(undefined); }}>
+              <Button variant="ghost" size="sm" onClick={() => { setDateFrom(undefined); setDateTo(undefined); }} className="w-full sm:w-auto">
                 Clear Dates
               </Button>
             )}
           </div>
 
           {/* Results Table */}
-          <div className="border rounded-lg overflow-hidden">
-            <Table>
+          <div className="rounded-lg border overflow-x-auto">
+            <Table className="min-w-[980px]">
               <TableHeader>
                 <TableRow>
                   <TableHead>Doc Number</TableHead>
@@ -579,7 +579,7 @@ export function RequestHistoryTable({ onEdit }: { onEdit?: (request: any) => voi
                 <span className="text-xs text-muted-foreground ml-2">(Filtered by date range)</span>
               )}
             </h4>
-            <div className="flex flex-wrap gap-2">
+            <div className="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap">
               <Button variant="outline" size="sm" onClick={() => exportToExcel('raw-material')} disabled={exportCounts.rawMaterial === 0} className="gap-2">
                 <Package className="h-4 w-4" /> Raw Material ({exportCounts.rawMaterial})
               </Button>
@@ -596,7 +596,7 @@ export function RequestHistoryTable({ onEdit }: { onEdit?: (request: any) => voi
           </div>
 
           {/* Summary */}
-          <div className="flex gap-4 text-sm text-muted-foreground">
+          <div className="flex flex-wrap gap-x-3 gap-y-1 text-sm text-muted-foreground">
             <span>Total: {filteredRequests.length} requests</span>
             <span>•</span>
             <span>Raw Material: {filteredRequests.filter(r => getRequestType(r.request_no) === 'raw-material').length}</span>
@@ -610,11 +610,11 @@ export function RequestHistoryTable({ onEdit }: { onEdit?: (request: any) => voi
 
       {/* Details Dialog */}
       <Dialog open={!!selectedRequest} onOpenChange={() => setSelectedRequest(null)}>
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-h-[80vh] w-[calc(100vw-2rem)] overflow-y-auto sm:max-w-4xl">
           {selectedRequest && (
             <>
               <DialogHeader>
-                <DialogTitle className="flex items-center gap-2">
+                <DialogTitle className="flex flex-wrap items-center gap-2">
                   <Badge variant={typeBadgeVariant[getRequestType(selectedRequest.request_no)]} className="gap-1">
                     {typeIcons[getRequestType(selectedRequest.request_no)]}
                     {typeLabels[getRequestType(selectedRequest.request_no)]}
@@ -624,7 +624,7 @@ export function RequestHistoryTable({ onEdit }: { onEdit?: (request: any) => voi
               </DialogHeader>
 
               <div className="space-y-4">
-                <div className="grid grid-cols-3 gap-4 text-sm">
+                <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-3 sm:gap-4">
                   <div><span className="text-muted-foreground">Date:</span> {format(new Date(selectedRequest.request_date), 'dd/MM/yyyy')}</div>
                   <div><span className="text-muted-foreground">Department:</span> {selectedRequest.department || '-'}</div>
                   <div><span className="text-muted-foreground">Order:</span> <span className="font-semibold">{selectedRequest.order_no || '-'}</span></div>
