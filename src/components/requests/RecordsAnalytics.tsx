@@ -545,16 +545,16 @@ export function RecordsAnalytics() {
 
   return (
     <>
-      <div className="space-y-6">
+      <div className="max-w-full min-w-0 space-y-4 sm:space-y-6">
         {/* Summary Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Card>
-            <CardContent className="pt-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-primary/10 rounded-lg">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-4 sm:gap-4">
+          <Card className="min-w-0">
+            <CardContent className="p-4">
+              <div className="flex min-w-0 items-center gap-3">
+                <div className="shrink-0 rounded-lg bg-primary/10 p-2">
                   <BarChart3 className="h-5 w-5 text-primary" />
                 </div>
-                <div>
+                <div className="min-w-0">
                   <p className="text-sm text-muted-foreground">Total Requests</p>
                   <p className="text-2xl font-bold">{analytics.totalRequests}</p>
                 </div>
@@ -562,13 +562,13 @@ export function RecordsAnalytics() {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardContent className="pt-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-secondary rounded-lg">
+          <Card className="min-w-0">
+            <CardContent className="p-4">
+              <div className="flex min-w-0 items-center gap-3">
+                <div className="shrink-0 rounded-lg bg-secondary p-2">
                   <TrendingUp className="h-5 w-5 text-secondary-foreground" />
                 </div>
-                <div>
+                <div className="min-w-0">
                   <p className="text-sm text-muted-foreground">Total Qty Requested</p>
                   <p className="text-2xl font-bold">{analytics.totalRequested.toLocaleString()}</p>
                   <p className="text-xs text-muted-foreground">
@@ -579,13 +579,13 @@ export function RecordsAnalytics() {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardContent className="pt-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-accent rounded-lg">
+          <Card className="min-w-0">
+            <CardContent className="p-4">
+              <div className="flex min-w-0 items-center gap-3">
+                <div className="shrink-0 rounded-lg bg-accent p-2">
                   <Package className="h-5 w-5 text-accent-foreground" />
                 </div>
-                <div>
+                <div className="min-w-0">
                   <p className="text-sm text-muted-foreground">Fabric Consumption</p>
                   <p className="text-2xl font-bold">{analytics.fabricConsumption.toLocaleString()}</p>
                   <p className="text-xs text-muted-foreground">Meters</p>
@@ -594,15 +594,15 @@ export function RecordsAnalytics() {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardContent className="pt-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-muted rounded-lg">
+          <Card className="min-w-0">
+            <CardContent className="p-4">
+              <div className="flex min-w-0 items-center gap-3">
+                <div className="shrink-0 rounded-lg bg-muted p-2">
                   <CheckCircle2 className="h-5 w-5 text-foreground" />
                 </div>
-                <div>
+                <div className="min-w-0">
                   <p className="text-sm text-muted-foreground">Status</p>
-                  <div className="flex gap-2 text-sm">
+                  <div className="flex flex-wrap gap-x-2 gap-y-1 text-sm">
                     <span className="text-primary">{analytics.completedRequests} Done</span>
                     <span className="text-muted-foreground">{analytics.partialRequests} Partial</span>
                     <span className="text-muted-foreground">{analytics.pendingRequests} Pending</span>
@@ -614,14 +614,14 @@ export function RecordsAnalytics() {
         </div>
 
         {/* Filters */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg flex items-center gap-2">
+        <Card className="min-w-0">
+          <CardHeader className="p-4 pb-3 sm:p-6 sm:pb-3">
+            <CardTitle className="flex items-center gap-2 text-lg">
               <Search className="h-5 w-5" />
               Search & Filter Raw Material Records
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-4 p-4 pt-0 sm:p-6 sm:pt-0">
             {/* Search Bar */}
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -634,9 +634,9 @@ export function RecordsAnalytics() {
             </div>
 
             {/* Filter Dropdowns */}
-            <div className="flex flex-wrap gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:flex lg:flex-wrap">
               <Select value={orderFilter} onValueChange={setOrderFilter}>
-                <SelectTrigger className="w-52">
+                <SelectTrigger className="w-full lg:w-52">
                   <SelectValue placeholder="All Orders" />
                 </SelectTrigger>
                 <SelectContent>
@@ -648,7 +648,7 @@ export function RecordsAnalytics() {
               </Select>
 
               <Select value={materialTypeFilter} onValueChange={setMaterialTypeFilter}>
-                <SelectTrigger className="w-40">
+                <SelectTrigger className="w-full lg:w-40">
                   <SelectValue placeholder="Material Type" />
                 </SelectTrigger>
                 <SelectContent>
@@ -661,7 +661,7 @@ export function RecordsAnalytics() {
               </Select>
 
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-36">
+                <SelectTrigger className="w-full lg:w-36">
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -673,7 +673,7 @@ export function RecordsAnalytics() {
               </Select>
 
               <Select value={approvalFilter} onValueChange={setApprovalFilter}>
-                <SelectTrigger className="w-40">
+                <SelectTrigger className="w-full lg:w-40">
                   <SelectValue placeholder="Approval" />
                 </SelectTrigger>
                 <SelectContent>
@@ -686,7 +686,7 @@ export function RecordsAnalytics() {
 
 
               <Select value={sourceFilter} onValueChange={setSourceFilter}>
-                <SelectTrigger className="w-36">
+                <SelectTrigger className="w-full lg:w-36">
                   <SelectValue placeholder="Source" />
                 </SelectTrigger>
                 <SelectContent>
@@ -697,10 +697,10 @@ export function RecordsAnalytics() {
               </Select>
 
               {/* Date Range */}
-              <div className="flex items-center gap-2">
+              <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 sm:col-span-2 lg:flex">
                 <Popover>
                   <PopoverTrigger asChild>
-                    <Button variant="outline" className="w-[130px] justify-start text-left font-normal">
+                    <Button variant="outline" className="w-full justify-start text-left font-normal lg:w-[130px]">
                       <CalendarIcon className="mr-2 h-4 w-4" />
                       {dateFrom ? format(dateFrom, 'dd/MM/yy') : 'From'}
                     </Button>
@@ -712,7 +712,7 @@ export function RecordsAnalytics() {
                 <span className="text-muted-foreground">-</span>
                 <Popover>
                   <PopoverTrigger asChild>
-                    <Button variant="outline" className="w-[130px] justify-start text-left font-normal">
+                    <Button variant="outline" className="w-full justify-start text-left font-normal lg:w-[130px]">
                       <CalendarIcon className="mr-2 h-4 w-4" />
                       {dateTo ? format(dateTo, 'dd/MM/yy') : 'To'}
                     </Button>
@@ -723,12 +723,12 @@ export function RecordsAnalytics() {
                 </Popover>
               </div>
 
-              <Button variant="ghost" size="sm" onClick={clearFilters}>
+              <Button variant="ghost" size="sm" onClick={clearFilters} className="w-full lg:w-auto">
                 Clear Filters
               </Button>
 
-              <div className="ml-auto">
-                <Button onClick={exportToExcel} variant="outline" className="gap-2">
+              <div className="lg:ml-auto">
+                <Button onClick={exportToExcel} variant="outline" className="w-full gap-2 lg:w-auto">
                   <FileSpreadsheet className="h-4 w-4" />
                   Export Excel
                 </Button>
@@ -738,12 +738,12 @@ export function RecordsAnalytics() {
         </Card>
 
         {/* Results Table */}
-        <Card>
-          <CardHeader className="pb-3 flex flex-row items-center justify-between">
+        <Card className="min-w-0">
+          <CardHeader className="gap-3 p-4 pb-3 sm:flex-row sm:items-center sm:justify-between sm:p-6 sm:pb-3">
             <CardTitle className="text-lg">
               Records ({filteredRequests.length})
             </CardTitle>
-            <div className="flex gap-2">
+            <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto">
               <Button variant="outline" size="sm" asChild>
                 <label className="cursor-pointer">
                   <Upload className="h-4 w-4 mr-2" />
@@ -762,9 +762,9 @@ export function RecordsAnalytics() {
               </Button>
             </div>
           </CardHeader>
-          <CardContent>
-            <div className="border rounded-lg overflow-hidden">
-              <Table>
+          <CardContent className="p-4 pt-0 sm:p-6 sm:pt-0">
+            <div className="rounded-lg border overflow-x-auto">
+              <Table className="min-w-[900px]">
                 <TableHeader>
                   <TableRow>
                     <TableHead>Doc #</TableHead>
@@ -898,17 +898,17 @@ export function RecordsAnalytics() {
 
       {/* Detail Dialog */}
       <Dialog open={!!selectedRequest} onOpenChange={(open) => !open && setSelectedRequest(null)}>
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-h-[80vh] w-[calc(100vw-2rem)] overflow-y-auto sm:max-w-4xl">
           {selectedRequest && (
             <>
               <DialogHeader>
-                <DialogTitle className="flex items-center gap-2">
+                <DialogTitle className="flex flex-wrap items-center gap-2">
                   <FileText className="h-5 w-5" />
                   {selectedRequest.docNumber} - Raw Material Request
                 </DialogTitle>
               </DialogHeader>
               <div className="space-y-4">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2 md:grid-cols-4 sm:gap-4">
                   <div>
                     <span className="text-muted-foreground">Date:</span>
                     <p className="font-medium">{format(new Date(selectedRequest.form.date), 'dd/MM/yyyy')}</p>
