@@ -1,0 +1,222 @@
+{
+  "version": 1,
+  "sdk_version": "0.25.0",
+  "path": "/mcp",
+  "auth": {
+    "type": "oauth",
+    "issuer": "https://howbucpdnhanjctztajx.supabase.co/auth/v1",
+    "accepted_audiences": [
+      "authenticated"
+    ]
+  },
+  "mcp": {
+    "server": {
+      "name": "ghoush-stock-management",
+      "version": "0.1.0",
+      "title": "GHOUSH - Stock Management"
+    },
+    "tools": [
+      {
+        "name": "list_orders",
+        "title": "List orders",
+        "description": "List production orders (order no, style, customer, quantity, dates). Optionally filter by a search term matching order no, style or customer.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "search": {
+              "type": "string",
+              "description": "Text to match in order no, style no, style name or customer."
+            },
+            "limit": {
+              "type": "integer",
+              "description": "Maximum rows to return (default 50)."
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_requests",
+        "title": "List material requests",
+        "description": "List material requests with their approval status, TR number and linked order. Filter by approval status or order id.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "approval_status": {
+              "type": "string",
+              "description": "One of: pending, approved, not_approved, hold."
+            },
+            "order_id": {
+              "type": "string",
+              "description": "Only requests for this order id."
+            },
+            "limit": {
+              "type": "integer",
+              "description": "Maximum rows to return (default 50)."
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_request",
+        "title": "Get request with items",
+        "description": "Fetch one material request by id or request number, including all of its line items.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "request_id": {
+              "type": "string",
+              "description": "Request id (uuid)."
+            },
+            "request_no": {
+              "type": "string",
+              "description": "Request/document number, e.g. RMR-0012."
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_requirements",
+        "title": "List trim chart requirements",
+        "description": "List trim chart requirement lines (required, received and balance quantities) for a given order.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "order_id": {
+              "type": "string",
+              "description": "Order id (uuid) whose trim chart should be listed."
+            },
+            "limit": {
+              "type": "integer",
+              "description": "Maximum rows to return (default 200)."
+            }
+          },
+          "required": [
+            "order_id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_delivery_notes",
+        "title": "List delivery notes",
+        "description": "List delivery acknowledgments (delivery notes). Optionally include their line items or filter by request id.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "request_id": {
+              "type": "string",
+              "description": "Only delivery notes for this request id."
+            },
+            "include_items": {
+              "type": "boolean",
+              "description": "Include line items for each note."
+            },
+            "limit": {
+              "type": "integer",
+              "description": "Maximum rows to return (default 50)."
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "search_items",
+        "title": "Search item catalog",
+        "description": "Search the item master catalog by item code or description. Use this to find the exact standardized description before referencing an item.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "search": {
+              "type": "string",
+              "description": "Text to match in item code or description."
+            },
+            "limit": {
+              "type": "integer",
+              "description": "Maximum rows to return (default 50)."
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "add_catalog_item",
+        "title": "Add item to catalog",
+        "description": "Add a new item (item code, description, unit of measure) to the item master catalog. Search first to avoid duplicates.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "item_code": {
+              "type": "string",
+              "description": "Item code, e.g. TRM-1042."
+            },
+            "description": {
+              "type": "string",
+              "description": "Standardized item description."
+            },
+            "uom": {
+              "type": "string",
+              "description": "Unit of measure, e.g. PCS, MTR, YDS."
+            }
+          },
+          "required": [
+            "item_code",
+            "description"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      }
+    ]
+  }
+}
