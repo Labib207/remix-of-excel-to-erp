@@ -116,7 +116,7 @@ export default function Auth() {
         title: 'Welcome back!',
         description: 'You have successfully logged in.',
       });
-      navigate('/');
+      navigate(nextPath);
     }
   };
 
@@ -137,7 +137,7 @@ export default function Auth() {
         title: 'Account Created!',
         description: 'You have successfully signed up and logged in.',
       });
-      navigate('/');
+      navigate(nextPath);
     }
   };
 
