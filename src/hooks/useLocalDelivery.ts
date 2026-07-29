@@ -1,3 +1,4 @@
+import { safeErrorMessage } from '@/lib/errorHandler';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { generateId, nowISO, cloudFetch, cloudInsert, cloudDelete } from '@/lib/cloudDb';
 import { toast } from 'sonner';
@@ -52,7 +53,7 @@ export function useCreateLocalDeliveryAcknowledgment() {
       toast.success('Delivery acknowledgment saved');
     },
     onError: (error) => {
-      toast.error('Failed to save delivery acknowledgment: ' + error.message);
+      toast.error(safeErrorMessage(error, 'save delivery acknowledgment'));
     },
   });
 }
@@ -86,7 +87,7 @@ export function useCreateLocalDeliveryItems() {
       queryClient.invalidateQueries({ queryKey: ['local_delivery_items'] });
     },
     onError: (error) => {
-      toast.error('Failed to save delivery items: ' + error.message);
+      toast.error(safeErrorMessage(error, 'save delivery items'));
     },
   });
 }
@@ -124,7 +125,7 @@ export function useDeleteLocalDeliveryAcknowledgment() {
           queryClient.setQueryData(key, data);
         }
       }
-      toast.error('Failed to delete delivery acknowledgment: ' + error.message);
+      toast.error(safeErrorMessage(error, 'delete delivery acknowledgment'));
     },
   });
 }

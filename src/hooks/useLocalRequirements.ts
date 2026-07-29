@@ -1,3 +1,4 @@
+import { safeErrorMessage } from '@/lib/errorHandler';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { generateId, nowISO, cloudFetch, cloudInsert, cloudUpdate, cloudDelete } from '@/lib/cloudDb';
 import { toast } from 'sonner';
@@ -73,7 +74,7 @@ export function useCreateLocalRequirement() {
       queryClient.invalidateQueries({ queryKey: ['local_requirements'] });
     },
     onError: (error) => {
-      toast.error('Failed to create requirement: ' + error.message);
+      toast.error(safeErrorMessage(error, 'create requirement'));
     },
   });
 }
@@ -120,7 +121,7 @@ export function useCreateLocalRequirements() {
       queryClient.invalidateQueries({ queryKey: ['local_requirements'] });
     },
     onError: (error) => {
-      toast.error('Failed to create requirements: ' + error.message);
+      toast.error(safeErrorMessage(error, 'create requirements'));
     },
   });
 }
@@ -146,7 +147,7 @@ export function useUpdateLocalRequirement() {
       queryClient.invalidateQueries({ queryKey: ['local_requirements'] });
     },
     onError: (error) => {
-      toast.error('Failed to update requirement: ' + error.message);
+      toast.error(safeErrorMessage(error, 'update requirement'));
     },
   });
 }
@@ -177,7 +178,7 @@ export function useDeleteLocalRequirement() {
           queryClient.setQueryData(key, data);
         }
       }
-      toast.error('Failed to delete requirement: ' + error.message);
+      toast.error(safeErrorMessage(error, 'delete requirement'));
     },
   });
 }
@@ -200,7 +201,7 @@ export function useUpdateLocalRequestedQty() {
       queryClient.invalidateQueries({ queryKey: ['local_requirements'] });
     },
     onError: (error) => {
-      toast.error('Failed to update quantities: ' + error.message);
+      toast.error(safeErrorMessage(error, 'update quantities'));
     },
   });
 }

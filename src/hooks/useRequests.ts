@@ -1,3 +1,4 @@
+import { safeErrorMessage } from '@/lib/errorHandler';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -116,7 +117,7 @@ export function useCreateRequest() {
       toast.success('Request created successfully');
     },
     onError: (error) => {
-      toast.error('Failed to create request: ' + error.message);
+      toast.error(safeErrorMessage(error, 'create request'));
     },
   });
 }
@@ -138,7 +139,7 @@ export function useCreateRequestItems() {
       queryClient.invalidateQueries({ queryKey: ['request_items'] });
     },
     onError: (error) => {
-      toast.error('Failed to create request items: ' + error.message);
+      toast.error(safeErrorMessage(error, 'create request items'));
     },
   });
 }
@@ -163,7 +164,7 @@ export function useUpdateRequest() {
       toast.success('Request updated successfully');
     },
     onError: (error) => {
-      toast.error('Failed to update request: ' + error.message);
+      toast.error(safeErrorMessage(error, 'update request'));
     },
   });
 }
@@ -185,7 +186,7 @@ export function useDeleteRequest() {
       toast.success('Request deleted successfully');
     },
     onError: (error) => {
-      toast.error('Failed to delete request: ' + error.message);
+      toast.error(safeErrorMessage(error, 'delete request'));
     },
   });
 }

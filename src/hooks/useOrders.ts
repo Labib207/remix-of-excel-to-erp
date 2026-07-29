@@ -1,3 +1,4 @@
+import { safeErrorMessage } from '@/lib/errorHandler';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -77,7 +78,7 @@ export function useCreateOrder() {
       toast.success('Order created successfully');
     },
     onError: (error) => {
-      toast.error('Failed to create order: ' + error.message);
+      toast.error(safeErrorMessage(error, 'create order'));
     },
   });
 }
@@ -102,7 +103,7 @@ export function useUpdateOrder() {
       toast.success('Order updated successfully');
     },
     onError: (error) => {
-      toast.error('Failed to update order: ' + error.message);
+      toast.error(safeErrorMessage(error, 'update order'));
     },
   });
 }
@@ -124,7 +125,7 @@ export function useDeleteOrder() {
       toast.success('Order deleted successfully');
     },
     onError: (error) => {
-      toast.error('Failed to delete order: ' + error.message);
+      toast.error(safeErrorMessage(error, 'delete order'));
     },
   });
 }

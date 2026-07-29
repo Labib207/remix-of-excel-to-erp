@@ -1,3 +1,4 @@
+import { safeErrorMessage } from '@/lib/errorHandler';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -68,7 +69,7 @@ export function useCreateMarkerPlan() {
       toast.success('Marker plan created successfully');
     },
     onError: (error) => {
-      toast.error('Failed to create marker plan: ' + error.message);
+      toast.error(safeErrorMessage(error, 'create marker plan'));
     },
   });
 }
@@ -93,7 +94,7 @@ export function useUpdateMarkerPlan() {
       toast.success('Marker plan updated successfully');
     },
     onError: (error) => {
-      toast.error('Failed to update marker plan: ' + error.message);
+      toast.error(safeErrorMessage(error, 'update marker plan'));
     },
   });
 }
@@ -115,7 +116,7 @@ export function useDeleteMarkerPlan() {
       toast.success('Marker plan deleted successfully');
     },
     onError: (error) => {
-      toast.error('Failed to delete marker plan: ' + error.message);
+      toast.error(safeErrorMessage(error, 'delete marker plan'));
     },
   });
 }

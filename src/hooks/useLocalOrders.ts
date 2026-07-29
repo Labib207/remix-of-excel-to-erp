@@ -1,3 +1,4 @@
+import { safeErrorMessage } from '@/lib/errorHandler';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { generateId, nowISO, cloudFetch, cloudInsert, cloudUpdate, cloudDelete } from '@/lib/cloudDb';
 import { toast } from 'sonner';
@@ -64,7 +65,7 @@ export function useCreateLocalOrder() {
       toast.success('Order saved');
     },
     onError: (error) => {
-      toast.error('Failed to save order: ' + error.message);
+      toast.error(safeErrorMessage(error, 'save order'));
     },
   });
 }
@@ -96,7 +97,7 @@ export function useUpdateLocalOrder() {
       toast.success('Order updated');
     },
     onError: (error) => {
-      toast.error('Failed to update order: ' + error.message);
+      toast.error(safeErrorMessage(error, 'update order'));
     },
   });
 }
@@ -127,7 +128,7 @@ export function useDeleteLocalOrder() {
           queryClient.setQueryData(key, data);
         }
       }
-      toast.error('Failed to delete order: ' + error.message);
+      toast.error(safeErrorMessage(error, 'delete order'));
     },
   });
 }

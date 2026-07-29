@@ -1,3 +1,4 @@
+import { safeErrorMessage } from '@/lib/errorHandler';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -72,7 +73,7 @@ export function useCreateLaySheet() {
       toast.success('Lay sheet created successfully');
     },
     onError: (error) => {
-      toast.error('Failed to create lay sheet: ' + error.message);
+      toast.error(safeErrorMessage(error, 'create lay sheet'));
     },
   });
 }
@@ -97,7 +98,7 @@ export function useUpdateLaySheet() {
       toast.success('Lay sheet updated successfully');
     },
     onError: (error) => {
-      toast.error('Failed to update lay sheet: ' + error.message);
+      toast.error(safeErrorMessage(error, 'update lay sheet'));
     },
   });
 }
@@ -119,7 +120,7 @@ export function useDeleteLaySheet() {
       toast.success('Lay sheet deleted successfully');
     },
     onError: (error) => {
-      toast.error('Failed to delete lay sheet: ' + error.message);
+      toast.error(safeErrorMessage(error, 'delete lay sheet'));
     },
   });
 }

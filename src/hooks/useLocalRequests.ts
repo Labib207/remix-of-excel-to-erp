@@ -1,3 +1,4 @@
+import { safeErrorMessage } from '@/lib/errorHandler';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { generateId, nowISO, cloudFetch, cloudInsert, cloudUpdate, cloudDelete } from '@/lib/cloudDb';
 import { toast } from 'sonner';
@@ -87,7 +88,7 @@ export function useCreateLocalRequest() {
       toast.success('Request created');
     },
     onError: (error) => {
-      toast.error('Failed to create request: ' + error.message);
+      toast.error(safeErrorMessage(error, 'create request'));
     },
   });
 }
@@ -125,7 +126,7 @@ export function useCreateLocalRequestItems() {
       queryClient.invalidateQueries({ queryKey: ['local_request_items'] });
     },
     onError: (error) => {
-      toast.error('Failed to create request items: ' + error.message);
+      toast.error(safeErrorMessage(error, 'create request items'));
     },
   });
 }
@@ -143,7 +144,7 @@ export function useUpdateLocalRequest() {
       toast.success('Request updated');
     },
     onError: (error) => {
-      toast.error('Failed to update request: ' + error.message);
+      toast.error(safeErrorMessage(error, 'update request'));
     },
   });
 }
@@ -181,7 +182,7 @@ export function useDeleteLocalRequest() {
           queryClient.setQueryData(key, data);
         }
       }
-      toast.error('Failed to delete request: ' + error.message);
+      toast.error(safeErrorMessage(error, 'delete request'));
     },
   });
 }
