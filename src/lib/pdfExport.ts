@@ -517,5 +517,6 @@ export const exportAllBundleTagsByPart = async (bundles: Bundle[], cutPlan: CutP
     
     addFooter(doc, currentPage, totalPages, docNumber);
     doc.save(`BundleTags_${part}_Cut${cutPlan.cutNo}_${docNumber}.pdf`);
-  });
+  }
+
 };
