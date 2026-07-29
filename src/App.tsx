@@ -15,7 +15,9 @@ import Auth from "./pages/Auth";
 import Admin from "./pages/Admin";
 import Profile from "./pages/Profile";
 import Reports from "./pages/Reports";
+import OAuthConsent from "./pages/OAuthConsent";
 import NotFound from "./pages/NotFound";
+
 
 // Tuned for solo user with growing data: cache aggressively, avoid refetch storms
 const queryClient = new QueryClient({
@@ -40,6 +42,8 @@ const App = () => (
           <DataSyncProvider>
             <Routes>
               <Route path="/auth" element={<Auth />} />
+              <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
+
               <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
               <Route path="/items" element={<ProtectedRoute><ItemList /></ProtectedRoute>} />
               <Route path="/requirements" element={<ProtectedRoute><Requirements /></ProtectedRoute>} />

@@ -1,6 +1,6 @@
 import { mapErrorToUserMessage } from '@/lib/errorHandler';
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -48,6 +48,11 @@ export default function Auth() {
   const { signIn, signUp, user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [searchParams] = useSearchParams();
+
+  // Only same-origin relative paths are accepted as a post-login destination
+  const rawNext = searchParams.get('next') ?? '';
+  const nextPath = rawNext.startsWith('/') && !rawNext.startsWith('//') ? rawNext : '/';
 
   // Monitor online/offline status
   useEffect(() => {
@@ -65,9 +70,10 @@ export default function Auth() {
 
   useEffect(() => {
     if (user) {
-      navigate('/');
+      navigate(nextPath);
     }
-  }, [user, navigate]);
+  }, [user, navigate, nextPath]);
+
 
   const loginForm = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
@@ -110,7 +116,7 @@ export default function Auth() {
         title: 'Welcome back!',
         description: 'You have successfully logged in.',
       });
-      navigate('/');
+      navigate(nextPath);
     }
   };
 
@@ -131,7 +137,7 @@ export default function Auth() {
         title: 'Account Created!',
         description: 'You have successfully signed up and logged in.',
       });
-      navigate('/');
+      navigate(nextPath);
     }
   };
 
