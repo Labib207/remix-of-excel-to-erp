@@ -112,7 +112,7 @@ const addFooter = (doc: jsPDF, pageNumber: number, totalPages: number, docNumber
 
 export const exportCutPlanPDF = async (cutPlan: CutPlan, order: Order) => {
   const doc = new jsPDF();
-  const docNumber = getNextDocNumber('CP');
+  const docNumber = await getNextDocNumber('CP');
   
   await addHeader(doc, `Cut Plan #${cutPlan.cutNo}`, `Order: ${order.orderNumber} | Style: ${order.styleNo}`, docNumber);
   
@@ -164,7 +164,7 @@ export const exportCutPlanPDF = async (cutPlan: CutPlan, order: Order) => {
 
 export const exportLaySheetPDF = async (laySheet: LaySheet, cutPlan: CutPlan, order: Order) => {
   const doc = new jsPDF();
-  const docNumber = getNextDocNumber('LS');
+  const docNumber = await getNextDocNumber('LS');
   
   await addHeader(doc, `Lay Sheet #${laySheet.layNo}`, `Cut Plan #${cutPlan.cutNo} | Order: ${order.orderNumber}`, docNumber);
   
@@ -219,7 +219,7 @@ export const exportLaySheetPDF = async (laySheet: LaySheet, cutPlan: CutPlan, or
 
 export const exportBundleGuidePDF = async (guides: BundleGuide[], cutPlan: CutPlan, order: Order, bundles?: Bundle[]) => {
   const doc = new jsPDF();
-  const docNumber = getNextDocNumber('BG');
+  const docNumber = await getNextDocNumber('BG');
   
   await addHeader(doc, `Bundle Guide - Cut #${cutPlan.cutNo}`, `Order: ${order.orderNumber} | Style: ${order.styleNo}`, docNumber);
   
@@ -331,7 +331,7 @@ export const exportBundleGuidePDF = async (guides: BundleGuide[], cutPlan: CutPl
 export const exportBundleTagsPDF = async (bundles: Bundle[], cutPlan: CutPlan, order: Order) => {
   const doc = new jsPDF();
   const logo = await loadLogoAsBase64();
-  const docNumber = getNextDocNumber('BT');
+  const docNumber = await getNextDocNumber('BT');
   
   // Tags layout: 2 columns, 3 rows per page = 6 tags per page (larger tags for barcode)
   const tagWidth = 90;
@@ -433,7 +433,7 @@ export const exportAllBundleTagsByPart = async (bundles: Bundle[], cutPlan: CutP
   // Export each part separately
   Object.entries(bundlesByPart).forEach(([part, partBundles]) => {
     const doc = new jsPDF();
-    const docNumber = getNextDocNumber('BT');
+    const docNumber = await getNextDocNumber('BT');
     const tagWidth = 90;
     const tagHeight = 85;
     const marginX = 15;
