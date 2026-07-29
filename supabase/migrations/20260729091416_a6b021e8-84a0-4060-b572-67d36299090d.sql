@@ -1,0 +1,2 @@
+ALTER TABLE public.requests DROP CONSTRAINT IF EXISTS requests_approval_status_check;
+ALTER TABLE public.requests ADD CONSTRAINT requests_approval_status_check CHECK (approval_status = ANY (ARRAY['pending'::text, 'approved'::text, 'not_approved'::text, 'hold'::text]));
