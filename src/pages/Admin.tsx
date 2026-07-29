@@ -1,3 +1,4 @@
+import { mapErrorToUserMessage } from '@/lib/errorHandler';
 import { useState, useEffect } from 'react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -86,7 +87,7 @@ export default function Admin() {
       toast({
         variant: 'destructive',
         title: 'Error',
-        description: 'Failed to update user role',
+        description: mapErrorToUserMessage(error, 'update the user role'),
       });
     } else {
       toast({
