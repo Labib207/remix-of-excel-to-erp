@@ -431,7 +431,7 @@ export const exportAllBundleTagsByPart = async (bundles: Bundle[], cutPlan: CutP
   }, {} as Record<string, Bundle[]>);
   
   // Export each part separately
-  Object.entries(bundlesByPart).forEach(([part, partBundles]) => {
+  for (const [part, partBundles] of Object.entries(bundlesByPart)) {
     const doc = new jsPDF();
     const docNumber = await getNextDocNumber('BT');
     const tagWidth = 90;
