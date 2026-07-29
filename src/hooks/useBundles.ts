@@ -1,3 +1,4 @@
+import { safeErrorMessage } from '@/lib/errorHandler';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -67,7 +68,7 @@ export function useCreateBundle() {
       toast.success('Bundle created successfully');
     },
     onError: (error) => {
-      toast.error('Failed to create bundle: ' + error.message);
+      toast.error(safeErrorMessage(error, 'create bundle'));
     },
   });
 }
@@ -91,7 +92,7 @@ export function useCreateBundles() {
       toast.success('Bundles created successfully');
     },
     onError: (error) => {
-      toast.error('Failed to create bundles: ' + error.message);
+      toast.error(safeErrorMessage(error, 'create bundles'));
     },
   });
 }
@@ -116,7 +117,7 @@ export function useUpdateBundle() {
       toast.success('Bundle updated successfully');
     },
     onError: (error) => {
-      toast.error('Failed to update bundle: ' + error.message);
+      toast.error(safeErrorMessage(error, 'update bundle'));
     },
   });
 }
@@ -138,7 +139,7 @@ export function useDeleteBundle() {
       toast.success('Bundle deleted successfully');
     },
     onError: (error) => {
-      toast.error('Failed to delete bundle: ' + error.message);
+      toast.error(safeErrorMessage(error, 'delete bundle'));
     },
   });
 }

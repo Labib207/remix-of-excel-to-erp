@@ -1,3 +1,4 @@
+import { mapErrorToUserMessage } from '@/lib/errorHandler';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { z } from 'zod';
@@ -102,7 +103,7 @@ export default function Auth() {
       toast({
         variant: 'destructive',
         title: 'Login Failed',
-        description: error.message || 'Invalid email or password',
+        description: mapErrorToUserMessage(error, 'sign in'),
       });
     } else {
       toast({
@@ -119,10 +120,7 @@ export default function Auth() {
     setIsLoading(false);
 
     if (error) {
-      let errorMessage = error.message;
-      if (error.message.includes('already registered')) {
-        errorMessage = 'This email is already registered. Please login instead.';
-      }
+      const errorMessage = mapErrorToUserMessage(error, 'sign up');
       toast({
         variant: 'destructive',
         title: 'Signup Failed',
@@ -150,7 +148,7 @@ export default function Auth() {
       toast({
         variant: 'destructive',
         title: 'Reset Failed',
-        description: error.message || 'Failed to send reset email',
+        description: mapErrorToUserMessage(error, 'send the reset email'),
       });
     } else {
       setResetEmailSent(true);

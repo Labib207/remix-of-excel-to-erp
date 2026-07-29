@@ -1,3 +1,4 @@
+import { getNextDocNumber } from '@/lib/docNumberGenerator';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { Order, CutPlan, FabricCalculation } from '@/types/cutting';
@@ -32,17 +33,7 @@ const loadLogoAsBase64 = (): Promise<string> => {
   });
 };
 
-const getNextDocNumber = (prefix: string): string => {
-  const key = `ghoush_doc_counter_${prefix}`;
-  const yearMonth = new Date().toISOString().slice(0, 7).replace('-', '');
-  const counterKey = `${key}_${yearMonth}`;
-  
-  let counter = parseInt(localStorage.getItem(counterKey) || '0', 10);
-  counter++;
-  localStorage.setItem(counterKey, counter.toString());
-  
-  return `${prefix}-${yearMonth}-${counter.toString().padStart(5, '0')}`;
-};
+
 
 export interface FabricSummary {
   type: 'TOP' | 'FUSING' | 'TAB';
@@ -111,7 +102,7 @@ export const exportFabricRequestPDF = async (
 ) => {
   const doc = new jsPDF();
   const logo = await loadLogoAsBase64();
-  const docNumber = getNextDocNumber('FR');
+  const docNumber = await getNextDocNumber('FR');
 
   // Header
   if (logo) {

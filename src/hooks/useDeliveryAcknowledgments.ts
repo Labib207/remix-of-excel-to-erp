@@ -1,3 +1,4 @@
+import { safeErrorMessage } from '@/lib/errorHandler';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -111,7 +112,7 @@ export function useCreateDeliveryAcknowledgment() {
       toast.success('Delivery acknowledgment created successfully');
     },
     onError: (error) => {
-      toast.error('Failed to create delivery acknowledgment: ' + error.message);
+      toast.error(safeErrorMessage(error, 'create delivery acknowledgment'));
     },
   });
 }
@@ -133,7 +134,7 @@ export function useCreateDeliveryItems() {
       queryClient.invalidateQueries({ queryKey: ['delivery_items'] });
     },
     onError: (error) => {
-      toast.error('Failed to create delivery items: ' + error.message);
+      toast.error(safeErrorMessage(error, 'create delivery items'));
     },
   });
 }
@@ -155,7 +156,7 @@ export function useDeleteDeliveryAcknowledgment() {
       toast.success('Delivery acknowledgment deleted successfully');
     },
     onError: (error) => {
-      toast.error('Failed to delete delivery acknowledgment: ' + error.message);
+      toast.error(safeErrorMessage(error, 'delete delivery acknowledgment'));
     },
   });
 }

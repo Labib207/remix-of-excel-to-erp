@@ -14,6 +14,24 @@ export type Database = {
   }
   public: {
     Tables: {
+      approved_users: {
+        Row: {
+          approved_at: string
+          approved_by: string | null
+          user_id: string
+        }
+        Insert: {
+          approved_at?: string
+          approved_by?: string | null
+          user_id: string
+        }
+        Update: {
+          approved_at?: string
+          approved_by?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       bundle_guides: {
         Row: {
           bundle_size: number | null
@@ -409,6 +427,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      document_counters: {
+        Row: {
+          counter: number
+          period: string
+          prefix: string
+          updated_at: string
+        }
+        Insert: {
+          counter?: number
+          period: string
+          prefix: string
+          updated_at?: string
+        }
+        Update: {
+          counter?: number
+          period?: string
+          prefix?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       fabric_calculations: {
         Row: {
@@ -1098,6 +1137,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_all_profiles_admin: {
+        Args: never
+        Returns: {
+          created_at: string
+          email: string
+          full_name: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+        }[]
+      }
       get_user_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
@@ -1109,6 +1158,8 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_approved: { Args: { _user_id: string }; Returns: boolean }
+      next_doc_number: { Args: { _prefix: string }; Returns: string }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
     }

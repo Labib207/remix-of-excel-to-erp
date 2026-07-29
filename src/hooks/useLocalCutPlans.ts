@@ -1,3 +1,4 @@
+import { safeErrorMessage } from '@/lib/errorHandler';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { generateId, nowISO, cloudFetch, cloudInsert, cloudUpdate, cloudDelete } from '@/lib/cloudDb';
 import { toast } from 'sonner';
@@ -58,7 +59,7 @@ export function useCreateLocalCutPlan() {
       toast.success('Cut plan saved');
     },
     onError: (error) => {
-      toast.error('Failed to save cut plan: ' + error.message);
+      toast.error(safeErrorMessage(error, 'save cut plan'));
     },
   });
 }
@@ -90,7 +91,7 @@ export function useUpdateLocalCutPlan() {
       toast.success('Cut plan updated');
     },
     onError: (error) => {
-      toast.error('Failed to update cut plan: ' + error.message);
+      toast.error(safeErrorMessage(error, 'update cut plan'));
     },
   });
 }
@@ -121,7 +122,7 @@ export function useDeleteLocalCutPlan() {
           queryClient.setQueryData(key, data);
         }
       }
-      toast.error('Failed to delete cut plan: ' + error.message);
+      toast.error(safeErrorMessage(error, 'delete cut plan'));
     },
   });
 }

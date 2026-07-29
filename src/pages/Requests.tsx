@@ -449,7 +449,7 @@ export default function Requests() {
   };
 
   // Submit function - saves to store for monthly Excel export
-  const submitRequest = (type: 'raw' | 'general' | 'return') => {
+  const submitRequest = async (type: 'raw' | 'general' | 'return') => {
     // Validate department is required
     const form = type === 'raw' ? rawMaterialForm : type === 'general' ? generalSuppliesForm : materialReturnForm;
     if (!form.department.trim()) {
@@ -462,7 +462,7 @@ export default function Requests() {
     const existingRequest = isEditing ? submittedRequests.find(r => r.id === editingRequestId) : null;
     const docNumber = (isEditing && (editingDocNumber || existingRequest?.docNumber))
       ? (editingDocNumber || existingRequest!.docNumber)
-      : getNextDocNumber(type === 'raw' ? 'RMR' : type === 'general' ? 'GSR' : 'MRS');
+      : await getNextDocNumber(type === 'raw' ? 'RMR' : type === 'general' ? 'GSR' : 'MRS');
 
     const saveOrUpdate = (requestData: Parameters<typeof addRequest>[0]) => {
       if (isEditing && editingRequestId) {

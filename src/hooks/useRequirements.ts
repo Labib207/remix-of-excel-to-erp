@@ -1,3 +1,4 @@
+import { safeErrorMessage } from '@/lib/errorHandler';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -73,7 +74,7 @@ export function useCreateRequirement() {
       toast.success('Requirement created successfully');
     },
     onError: (error) => {
-      toast.error('Failed to create requirement: ' + error.message);
+      toast.error(safeErrorMessage(error, 'create requirement'));
     },
   });
 }
@@ -97,7 +98,7 @@ export function useCreateRequirements() {
       toast.success('Requirements created successfully');
     },
     onError: (error) => {
-      toast.error('Failed to create requirements: ' + error.message);
+      toast.error(safeErrorMessage(error, 'create requirements'));
     },
   });
 }
@@ -124,7 +125,7 @@ export function useUpdateRequirement() {
       toast.success('Requirement updated successfully');
     },
     onError: (error) => {
-      toast.error('Failed to update requirement: ' + error.message);
+      toast.error(safeErrorMessage(error, 'update requirement'));
     },
   });
 }
@@ -146,7 +147,7 @@ export function useDeleteRequirement() {
       toast.success('Requirement deleted successfully');
     },
     onError: (error) => {
-      toast.error('Failed to delete requirement: ' + error.message);
+      toast.error(safeErrorMessage(error, 'delete requirement'));
     },
   });
 }

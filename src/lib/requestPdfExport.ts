@@ -1,3 +1,4 @@
+import { getNextDocNumber } from '@/lib/docNumberGenerator';
 import jsPDF from 'jspdf';
 
 // Print a jsPDF document via a hidden iframe (avoids popup/ad-blocker issues with new-tab blob URLs)
@@ -62,27 +63,6 @@ interface RequestForm {
   issuedBy: string;
   aswaqNumber: string;
 }
-
-const getNextDocNumber = (prefix: string): string => {
-  const key = `docNumber_${prefix}`;
-  const now = new Date();
-  const currentYear = now.getFullYear();
-  const yearKey = `${key}_${currentYear}`;
-  
-  // Get the last used number for this prefix and year
-  const stored = localStorage.getItem(yearKey);
-  let counter = 1;
-  
-  if (stored) {
-    counter = parseInt(stored) + 1;
-  }
-  
-  // Save the new counter
-  localStorage.setItem(yearKey, counter.toString());
-  
-  // Format: PREFIX-XX-YYYY (e.g., RMR-01-2026)
-  return `${prefix}-${String(counter).padStart(2, '0')}-${currentYear}`;
-};
 
 const loadLogoAsBase64 = (): Promise<string> => {
   return new Promise((resolve, reject) => {
@@ -306,7 +286,7 @@ export const exportRawMaterialRequestPDF = async (form: RequestForm, items: Requ
   const doc = new jsPDF('landscape', 'mm', 'a4');
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
-  const docNumber = existingDocNumber || getNextDocNumber('DOC');
+  const docNumber = existingDocNumber || await getNextDocNumber('DOC');
   const issueNumber = `ISS-${docNumber.split('-')[1]}`;
   
   const marginLeft = 10;
@@ -396,7 +376,7 @@ export const exportGeneralSuppliesRequestPDF = async (form: RequestForm, items: 
   const doc = new jsPDF('landscape', 'mm', 'a4');
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
-  const docNumber = existingDocNumber || getNextDocNumber('DOC');
+  const docNumber = existingDocNumber || await getNextDocNumber('DOC');
   const issueNumber = `ISS-${docNumber.split('-')[1]}`;
   
   const marginLeft = 10;
@@ -484,7 +464,7 @@ export const exportMaterialReturnSlipPDF = async (form: RequestForm, items: Retu
   const doc = new jsPDF('landscape', 'mm', 'a4');
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
-  const docNumber = existingDocNumber || getNextDocNumber('DOC');
+  const docNumber = existingDocNumber || await getNextDocNumber('DOC');
   const issueNumber = `ISS-${docNumber.split('-')[1]}`;
   
   const marginLeft = 10;

@@ -1,3 +1,4 @@
+import { safeErrorMessage } from '@/lib/errorHandler';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -70,7 +71,7 @@ export function useCreateCutPlan() {
       toast.success('Cut plan created successfully');
     },
     onError: (error) => {
-      toast.error('Failed to create cut plan: ' + error.message);
+      toast.error(safeErrorMessage(error, 'create cut plan'));
     },
   });
 }
@@ -95,7 +96,7 @@ export function useUpdateCutPlan() {
       toast.success('Cut plan updated successfully');
     },
     onError: (error) => {
-      toast.error('Failed to update cut plan: ' + error.message);
+      toast.error(safeErrorMessage(error, 'update cut plan'));
     },
   });
 }
@@ -117,7 +118,7 @@ export function useDeleteCutPlan() {
       toast.success('Cut plan deleted successfully');
     },
     onError: (error) => {
-      toast.error('Failed to delete cut plan: ' + error.message);
+      toast.error(safeErrorMessage(error, 'delete cut plan'));
     },
   });
 }

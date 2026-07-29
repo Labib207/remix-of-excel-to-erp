@@ -1,3 +1,4 @@
+import { safeErrorMessage } from '@/lib/errorHandler';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { generateId, nowISO, cloudFetch, cloudInsert, cloudDelete } from '@/lib/cloudDb';
 import { toast } from 'sonner';
@@ -50,7 +51,7 @@ export function useCreateLocalMarkerPlan() {
       toast.success('Marker plan saved');
     },
     onError: (error) => {
-      toast.error('Failed to save marker plan: ' + error.message);
+      toast.error(safeErrorMessage(error, 'save marker plan'));
     },
   });
 }
@@ -81,7 +82,7 @@ export function useDeleteLocalMarkerPlan() {
           queryClient.setQueryData(key, data);
         }
       }
-      toast.error('Failed to delete marker plan: ' + error.message);
+      toast.error(safeErrorMessage(error, 'delete marker plan'));
     },
   });
 }

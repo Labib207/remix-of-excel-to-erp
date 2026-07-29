@@ -1,3 +1,4 @@
+import { mapErrorToUserMessage } from '@/lib/errorHandler';
 import { useState, useEffect } from 'react';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -43,53 +44,32 @@ export default function Admin() {
 
   const fetchUsers = async () => {
     setIsLoading(true);
-    
-    // Fetch profiles
-    const { data: profiles, error: profilesError } = await supabase
-      .from('profiles')
-      .select('*')
-      .order('created_at', { ascending: false });
 
-    if (profilesError) {
+    // Server-side admin verification happens inside this function
+    const { data, error } = await (supabase as any).rpc('get_all_profiles_admin');
+
+    if (error) {
       toast({
         variant: 'destructive',
         title: 'Error',
-        description: 'Failed to fetch users',
+        description: mapErrorToUserMessage(error, 'load users'),
       });
       setIsLoading(false);
       return;
     }
 
-    // Fetch roles
-    const { data: roles, error: rolesError } = await supabase
-      .from('user_roles')
-      .select('*');
-
-    if (rolesError) {
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: 'Failed to fetch user roles',
-      });
-      setIsLoading(false);
-      return;
-    }
-
-    // Combine profiles with roles
-    const usersWithRoles: UserWithRole[] = (profiles || []).map((profile) => {
-      const userRole = roles?.find((r) => r.user_id === profile.id);
-      return {
-        id: profile.id,
-        email: profile.email || '',
-        full_name: profile.full_name,
-        created_at: profile.created_at,
-        role: (userRole?.role as 'admin' | 'user') || 'user',
-      };
-    });
+    const usersWithRoles: UserWithRole[] = ((data as any[]) || []).map((row) => ({
+      id: row.id,
+      email: row.email || '',
+      full_name: row.full_name,
+      created_at: row.created_at,
+      role: (row.role as 'admin' | 'user') || 'user',
+    }));
 
     setUsers(usersWithRoles);
     setIsLoading(false);
   };
+
 
   useEffect(() => {
     fetchUsers();
@@ -107,7 +87,7 @@ export default function Admin() {
       toast({
         variant: 'destructive',
         title: 'Error',
-        description: 'Failed to update user role',
+        description: mapErrorToUserMessage(error, 'update the user role'),
       });
     } else {
       toast({
