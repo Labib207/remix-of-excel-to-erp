@@ -1,3 +1,4 @@
+import { safeErrorMessage } from '@/lib/errorHandler';
 import { supabase } from '@/integrations/supabase/client';
 
 // Migration order: parent tables first, then child tables with foreign keys
@@ -140,7 +141,7 @@ export async function importBackupToCloud(
         const { error } = await (supabase
           .from(table)
           .upsert(batch, { onConflict: 'id' }) as any);
-        if (error) throw new Error(`${table}: ${error.message}`);
+        if (error) throw new Error(safeErrorMessage(error, `export ${table}`));
         migrated += batch.length;
         progress[i].done = migrated;
         onProgress([...progress]);

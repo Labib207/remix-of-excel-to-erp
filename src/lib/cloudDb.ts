@@ -1,3 +1,4 @@
+import { safeErrorMessage } from '@/lib/errorHandler';
 // Cloud-only database access layer
 // All reads and writes go directly to Supabase
 
@@ -46,7 +47,7 @@ export async function cloudFetch(table: TableName, filters?: Record<string, any>
     }
   }
   const { data, error } = await query;
-  if (error) throw new Error(`Fetch ${table} failed: ${error.message}`);
+  if (error) throw new Error(safeErrorMessage(error, `fetch ${table}`));
   return data || [];
 }
 
@@ -64,7 +65,7 @@ export async function cloudInsert(table: TableName, data: any, userId?: string):
     .select()
     .single() as any);
 
-  if (error) throw new Error(`Insert ${table} failed: ${error.message}`);
+  if (error) throw new Error(safeErrorMessage(error, `insert ${table}`));
   return inserted;
 }
 
@@ -81,7 +82,7 @@ export async function cloudUpdate(table: TableName, id: string, updates: any): P
     .select()
     .single() as any);
 
-  if (error) throw new Error(`Update ${table} failed: ${error.message}`);
+  if (error) throw new Error(safeErrorMessage(error, `update ${table}`));
   return updated;
 }
 
@@ -90,7 +91,7 @@ export async function cloudUpdate(table: TableName, id: string, updates: any): P
  */
 export async function cloudDelete(table: TableName, id: string): Promise<void> {
   const { error } = await (supabase.from(table).delete().eq('id', id) as any);
-  if (error) throw new Error(`Delete ${table} failed: ${error.message}`);
+  if (error) throw new Error(safeErrorMessage(error, `delete ${table}`));
 }
 
 /**
@@ -107,6 +108,6 @@ export async function cloudUpsert(table: TableName, data: any, userId?: string):
     .select()
     .single() as any);
 
-  if (error) throw new Error(`Upsert ${table} failed: ${error.message}`);
+  if (error) throw new Error(safeErrorMessage(error, `upsert ${table}`));
   return result;
 }
