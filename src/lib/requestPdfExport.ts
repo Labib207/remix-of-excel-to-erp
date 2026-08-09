@@ -783,10 +783,11 @@ export const exportDeliveryNotePDF = async (
       ])
     : [];
   
-  // Pad to fill page but not overflow
+  // Pad with blank rows (grid below is completed afterwards so no gap remains)
   while (tableRows.length < 10) {
     tableRows.push(['', '', '', '', '', '']);
   }
+
 
   autoTable(doc, {
     startY: tableStartY,
@@ -828,9 +829,35 @@ export const exportDeliveryNotePDF = async (
     }
   });
 
+  // Extend the grid with empty cells down to the signature section so no blank gap remains
+  const colWidths = [12, 72, 28, 25, 22, 31];
+  const finalY = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY;
+  const rowH = 8;
+  if (sigY - finalY > 2) {
+    doc.setLineWidth(0.3);
+    doc.setDrawColor(0, 0, 0);
+
+    // Vertical column separators
+    let x = marginLeft;
+    doc.line(x, finalY, x, sigY);
+    for (const w of colWidths) {
+      x += w;
+      doc.line(x, finalY, x, sigY);
+    }
+
+    // Horizontal row separators
+    let y = finalY;
+    while (sigY - y > rowH + 2) {
+      y += rowH;
+      doc.line(marginLeft, y, marginLeft + contentWidth, y);
+    }
+    doc.line(marginLeft, sigY, marginLeft + contentWidth, sigY);
+  }
+
   const fileName = `Delivery_Acknowledgment_${docNumber}.pdf`;
   doc.save(fileName);
 };
+
 
 // Empty form exports for manual use
 export const exportEmptyRawMaterialPDF = async (): Promise<void> => {
