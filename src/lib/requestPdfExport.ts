@@ -783,10 +783,11 @@ export const exportDeliveryNotePDF = async (
       ])
     : [];
   
-  // Pad to fill page but not overflow
+  // Pad with blank rows (grid below is completed afterwards so no gap remains)
   while (tableRows.length < 10) {
     tableRows.push(['', '', '', '', '', '']);
   }
+
 
   autoTable(doc, {
     startY: tableStartY,
