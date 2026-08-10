@@ -281,16 +281,18 @@ export default function Auth() {
             </div>
           )}
 
-          <Tabs value="login" onValueChange={setActiveTab}>
-            <div className="mb-6 text-center">
-              <h3 className="text-lg font-medium flex items-center justify-center gap-2">
-                <LogIn className="h-5 w-5" />
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <TabsList className="grid w-full grid-cols-2 mb-6">
+              <TabsTrigger value="login" className="gap-2">
+                <LogIn className="h-4 w-4" />
                 Login
-              </h3>
-              <p className="text-xs text-muted-foreground mt-2">
-                Sign-up is disabled. Contact the administrator for account access.
-              </p>
-            </div>
+              </TabsTrigger>
+              <TabsTrigger value="signup" className="gap-2">
+                <UserPlus className="h-4 w-4" />
+                Sign Up
+              </TabsTrigger>
+            </TabsList>
+
 
             <TabsContent value="login">
               <Form {...loginForm}>
