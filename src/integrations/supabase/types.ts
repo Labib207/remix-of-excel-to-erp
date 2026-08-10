@@ -1140,6 +1140,7 @@ export type Database = {
       get_all_profiles_admin: {
         Args: never
         Returns: {
+          approved: boolean
           created_at: string
           email: string
           full_name: string
@@ -1160,6 +1161,10 @@ export type Database = {
       }
       is_approved: { Args: { _user_id: string }; Returns: boolean }
       next_doc_number: { Args: { _prefix: string }; Returns: string }
+      set_user_approval: {
+        Args: { _approved: boolean; _user_id: string }
+        Returns: undefined
+      }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
     }

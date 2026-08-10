@@ -12,7 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2, LogIn, UserPlus, KeyRound, ArrowLeft, WifiOff, Cloud } from 'lucide-react';
+import { Loader2, LogIn, UserPlus, KeyRound, ArrowLeft, WifiOff, Cloud, ShieldAlert } from 'lucide-react';
 import logo from '@/assets/logo.png';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
@@ -135,7 +135,7 @@ export default function Auth() {
     } else {
       toast({
         title: 'Account Created!',
-        description: 'You have successfully signed up and logged in.',
+        description: 'An administrator must approve your account before you can access data.',
       });
       navigate(nextPath);
     }
@@ -281,16 +281,18 @@ export default function Auth() {
             </div>
           )}
 
-          <Tabs value="login" onValueChange={setActiveTab}>
-            <div className="mb-6 text-center">
-              <h3 className="text-lg font-medium flex items-center justify-center gap-2">
-                <LogIn className="h-5 w-5" />
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <TabsList className="grid w-full grid-cols-2 mb-6">
+              <TabsTrigger value="login" className="gap-2">
+                <LogIn className="h-4 w-4" />
                 Login
-              </h3>
-              <p className="text-xs text-muted-foreground mt-2">
-                Sign-up is disabled. Contact the administrator for account access.
-              </p>
-            </div>
+              </TabsTrigger>
+              <TabsTrigger value="signup" className="gap-2">
+                <UserPlus className="h-4 w-4" />
+                Sign Up
+              </TabsTrigger>
+            </TabsList>
+
 
             <TabsContent value="login">
               <Form {...loginForm}>
@@ -347,6 +349,85 @@ export default function Auth() {
                 </form>
               </Form>
             </TabsContent>
+
+            <TabsContent value="signup">
+              <Form {...signupForm}>
+                <form onSubmit={signupForm.handleSubmit(handleSignup)} className="space-y-4">
+                  <Alert className="mb-2">
+                    <ShieldAlert className="h-4 w-4" />
+                    <AlertDescription className="text-xs">
+                      New accounts need administrator approval before any data can be accessed.
+                    </AlertDescription>
+                  </Alert>
+                  <FormField
+                    control={signupForm.control}
+                    name="fullName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Full Name</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Your name" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={signupForm.control}
+                    name="email"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Email</FormLabel>
+                        <FormControl>
+                          <Input placeholder="you@example.com" type="email" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={signupForm.control}
+                    name="password"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Password</FormLabel>
+                        <FormControl>
+                          <Input placeholder="••••••••" type="password" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={signupForm.control}
+                    name="confirmPassword"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Confirm Password</FormLabel>
+                        <FormControl>
+                          <Input placeholder="••••••••" type="password" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <Button type="submit" className="w-full" disabled={isLoading || !isOnline}>
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Creating account...
+                      </>
+                    ) : (
+                      <>
+                        <UserPlus className="mr-2 h-4 w-4" />
+                        Create Account
+                      </>
+                    )}
+                  </Button>
+                </form>
+              </Form>
+            </TabsContent>
+
           </Tabs>
         </CardContent>
       </Card>
