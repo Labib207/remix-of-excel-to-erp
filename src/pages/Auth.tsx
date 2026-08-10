@@ -12,7 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2, LogIn, UserPlus, KeyRound, ArrowLeft, WifiOff, Cloud } from 'lucide-react';
+import { Loader2, LogIn, UserPlus, KeyRound, ArrowLeft, WifiOff, Cloud, ShieldAlert } from 'lucide-react';
 import logo from '@/assets/logo.png';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
@@ -135,7 +135,7 @@ export default function Auth() {
     } else {
       toast({
         title: 'Account Created!',
-        description: 'You have successfully signed up and logged in.',
+        description: 'An administrator must approve your account before you can access data.',
       });
       navigate(nextPath);
     }
