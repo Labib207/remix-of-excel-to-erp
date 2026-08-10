@@ -32,6 +32,7 @@ interface UserWithRole {
   full_name: string | null;
   created_at: string;
   role: 'admin' | 'user';
+  approved: boolean;
 }
 
 export default function Admin() {
@@ -64,6 +65,7 @@ export default function Admin() {
       full_name: row.full_name,
       created_at: row.created_at,
       role: (row.role as 'admin' | 'user') || 'user',
+      approved: !!row.approved,
     }));
 
     setUsers(usersWithRoles);
@@ -98,6 +100,35 @@ export default function Admin() {
         prev.map((user) =>
           user.id === userId ? { ...user, role: newRole } : user
         )
+      );
+    }
+
+    setUpdatingUserId(null);
+  };
+
+  const handleApprovalChange = async (userId: string, approved: boolean) => {
+    setUpdatingUserId(userId);
+
+    const { error } = await (supabase as any).rpc('set_user_approval', {
+      _user_id: userId,
+      _approved: approved,
+    });
+
+    if (error) {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: mapErrorToUserMessage(error, 'update account access'),
+      });
+    } else {
+      toast({
+        title: approved ? 'Access Approved' : 'Access Revoked',
+        description: approved
+          ? 'This user can now enter the app.'
+          : 'This user can no longer see any data.',
+      });
+      setUsers((prev) =>
+        prev.map((u) => (u.id === userId ? { ...u, approved } : u))
       );
     }
 
@@ -205,6 +236,7 @@ export default function Admin() {
                     <TableRow>
                       <TableHead>Email</TableHead>
                       <TableHead>Full Name</TableHead>
+                      <TableHead>Access</TableHead>
                       <TableHead>Role</TableHead>
                       <TableHead>Joined</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
@@ -213,7 +245,7 @@ export default function Admin() {
                   <TableBody>
                     {filteredUsers.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                        <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
                           No users found
                         </TableCell>
                       </TableRow>
@@ -223,6 +255,11 @@ export default function Admin() {
                           <TableCell className="font-medium">{user.email}</TableCell>
                           <TableCell>{user.full_name || '-'}</TableCell>
                           <TableCell>
+                            <Badge variant={user.approved ? 'default' : 'destructive'}>
+                              {user.approved ? 'Approved' : 'Pending'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
                             <Badge variant={user.role === 'admin' ? 'default' : 'secondary'}>
                               {user.role}
                             </Badge>
@@ -231,7 +268,15 @@ export default function Admin() {
                             {format(new Date(user.created_at), 'dd/MM/yyyy')}
                           </TableCell>
                           <TableCell className="text-right">
-                            <div className="flex items-center justify-end gap-2">
+                            <div className="flex flex-wrap items-center justify-end gap-2">
+                              <Button
+                                size="sm"
+                                variant={user.approved ? 'outline' : 'default'}
+                                disabled={updatingUserId === user.id}
+                                onClick={() => handleApprovalChange(user.id, !user.approved)}
+                              >
+                                {user.approved ? 'Revoke' : 'Approve'}
+                              </Button>
                               <Select
                                 value={user.role}
                                 onValueChange={(value: 'admin' | 'user') =>
