@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { safeErrorMessage } from '@/lib/errorHandler';
 
 export type ApprovalStatus = 'approved' | 'not_approved' | 'hold';
 
