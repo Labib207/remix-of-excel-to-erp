@@ -181,7 +181,7 @@ export function useSubmitCloudRequest() {
       queryClient.invalidateQueries({ queryKey: ['cloud-requests'] });
     },
     onError: (error) => {
-      console.error('Failed to save request to cloud:', error);
+      toast.error(safeErrorMessage(error, 'save request'));
     },
   });
 }
@@ -269,7 +269,7 @@ export function useUpdateCloudRequest() {
       queryClient.invalidateQueries({ queryKey: ['cloud-requests'] });
     },
     onError: (error) => {
-      console.error('Failed to update request in cloud:', error);
+      toast.error(safeErrorMessage(error, 'update request'));
     },
   });
 }
@@ -287,6 +287,9 @@ export function useDeleteCloudRequest() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['cloud-requests'] });
+    },
+    onError: (error) => {
+      toast.error(safeErrorMessage(error, 'delete request'));
     },
   });
 }
