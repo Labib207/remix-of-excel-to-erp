@@ -27,7 +27,13 @@ const queryClient = new QueryClient({
       gcTime: 30 * 60 * 1000,            // 30 min — keep in memory when tabbing around
       refetchOnWindowFocus: false,
       refetchOnReconnect: false,
-      retry: 1,
+      retry: 2,                          // retry failed fetches twice before showing an error
+      retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 8000), // 2s, 4s backoff
+      placeholderData: (prev: unknown) => prev, // keep showing previous data while refetching (no flicker)
+    },
+    mutations: {
+      retry: 1,                          // one automatic retry for failed saves on shaky networks
+      retryDelay: 1500,
     },
   },
 });

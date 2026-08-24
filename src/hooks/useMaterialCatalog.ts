@@ -16,6 +16,8 @@ const KEY = ['material_catalog'];
 export function useMaterialCatalog() {
   return useQuery({
     queryKey: KEY,
+    // Catalog changes rarely; cache for the whole session. Mutations invalidate explicitly.
+    staleTime: 60 * 60 * 1000,
     queryFn: async (): Promise<CatalogItem[]> => {
       const { data, error } = await supabase
         .from('material_catalog')
