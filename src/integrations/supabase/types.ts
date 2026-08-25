@@ -1111,6 +1111,92 @@ export type Database = {
           },
         ]
       }
+      stationery_items: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string
+          id: string
+          item_code: string
+          min_stock: number
+          opening_stock: number
+          sort_order: number | null
+          uom: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description: string
+          id?: string
+          item_code: string
+          min_stock?: number
+          opening_stock?: number
+          sort_order?: number | null
+          uom?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string
+          id?: string
+          item_code?: string
+          min_stock?: number
+          opening_stock?: number
+          sort_order?: number | null
+          uom?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      stationery_transactions: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          item_id: string
+          notes: string | null
+          qty: number
+          reference: string | null
+          trans_date: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          item_id: string
+          notes?: string | null
+          qty: number
+          reference?: string | null
+          trans_date?: string
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          item_id?: string
+          notes?: string | null
+          qty?: number
+          reference?: string | null
+          trans_date?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stationery_transactions_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "stationery_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
