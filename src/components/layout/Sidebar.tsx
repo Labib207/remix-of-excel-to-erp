@@ -11,6 +11,7 @@ import {
   Truck,
   BarChart3,
   Package,
+  Archive,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import logo from '@/assets/logo.png';
@@ -22,6 +23,7 @@ import { Separator } from '@/components/ui/separator';
 const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
   { name: 'Item List', href: '/items', icon: Package },
+  { name: 'Stationery', href: '/stationery', icon: Archive },
   { name: 'Trim Chart', href: '/requirements', icon: ClipboardList },
   { name: 'Requests', href: '/requests', icon: FileBox },
   { name: 'Delivery Notes', href: '/delivery-notes', icon: Truck },
