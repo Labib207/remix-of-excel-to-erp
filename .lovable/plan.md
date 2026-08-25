@@ -1,34 +1,41 @@
-## Goal
-Every request defaults to **Pending**. In Reports → Records tab, user can approve a row by entering a TR/PL number. Without a valid TR/PL number, the row stays pending. Pending rows show a red badge; approved rows show a green badge with the TR/PL number. Requests page and PDFs are not changed.
+# Stationery Inventory Module
 
-## Database (migration)
-Add to `public.requests`:
-- `approval_status` text NOT NULL DEFAULT `'pending'` (values: `pending`, `approved`)
-- `tr_number` text NULL
-- `approved_at` timestamptz NULL
-- `approved_by` uuid NULL
+A new separate **Stationery** section in the sidebar to track stationery stock: stock-in (receiving), stock-out (delivery/issue), live balances with low-stock alerts, and Excel downloads.
 
-Existing rows backfill to `pending`. No uniqueness on `tr_number` (repeats allowed). RLS already exists on `requests`; reuse current policies — authenticated users can update.
+## What you'll get
 
-## Reports → Records tab (`src/components/requests/RecordsAnalytics.tsx`)
-- New **Status** column showing:
-  - Red `Pending` badge when `approval_status = 'pending'`
-  - Green badge showing the `tr_number` (e.g. `TR-08754`) when approved
-- **Approve** action button on each pending row → opens a dialog with one input "TR / PL Number".
-  - Validation: must match regex `/^(TR|PL)-.+/i` (case-insensitive, requires `TR-` or `PL-` prefix + at least one more character). Empty or wrong-prefix value blocks submit with inline error.
-  - On submit: update the request row with `approval_status='approved'`, `tr_number`, `approved_at=now()`, `approved_by=auth.uid()`. Toast success. Refresh query.
-- Approved rows: **no** revoke/edit action (final).
-- Add **status filter** dropdown above the records table: `All` / `Pending` / `Approved` — filters the displayed list client-side.
-- Optional row tint: pending rows get a subtle red-tinted background using a semantic token (`bg-destructive/5`) so they stand out when scrolling search results.
+- **New sidebar item "Stationery"** (`/stationery`) — its own page, nothing else changes.
+- **Stock board**: one row per stationery item showing Item Code, Description, UOM, Total In, Total Used (out), Balance, and Minimum Level. Rows at/below minimum level are highlighted red with a "Low Stock" badge.
+- **Add Item** dialog: pick from the existing Item List (same autocomplete as Trim Chart — typing an item code auto-fills the description), set an opening stock and a minimum level for the alert.
+- **Stock In / Stock Out** buttons on each row: date, quantity (decimals allowed), reference (e.g. TR no / note), remarks. Every entry is saved as a permanent transaction record.
+- **Records view**: full in/out history per item, newest first, with multi-word case-insensitive search (same as request history).
+- **Excel downloads**:
+  - *Stock Summary* — current balance of every item (with low-stock flagged).
+  - *Transaction History* — all stock in/out records (like the accessories/request history export).
 
-## Imported / external records
-Historical Excel-imported records also start as `pending` (default applies). User must enter TR/PL to mark approved — no auto-approval.
+## How it works
 
-## Hooks
-- Extend `src/hooks/useRequests.ts` (and `useLocalRequests.ts` if used by Records) — `Request` type adds the four new fields; add a small `useApproveRequest` mutation that calls update with the four fields and invalidates `['requests']`.
+### Database (2 new tables)
+1. **`stationery_items`** — item code, description, UOM, opening stock, minimum level (alert threshold).
+2. **`stationery_transactions`** — linked to an item; each row is one movement: type (IN or OUT), quantity, date, reference, remarks. Deleting an item removes its history automatically.
 
-## Out of scope
-- Requests page UI, request creation flow, request PDF, delivery notes, dashboard — unchanged.
-- No revoke/unapprove flow.
-- No uniqueness check on TR numbers.
-- No changes to monthly Excel export columns (can be revisited later if you want TR included in the export).
+Balance = opening stock + total IN − total OUT, always computed from the records so it can never drift.
+
+Both tables get the same protection as your existing data: only approved, signed-in users can read or write; nothing is publicly reachable.
+
+### Frontend
+- `src/pages/Stationery.tsx` — stock board + records, following the same look as Item List / Requests (spacious rows, same cards/tables).
+- `src/hooks/useStationery.ts` — cloud queries/mutations with the existing caching setup; deletes update the screen immediately.
+- `src/lib/stationeryExcel.ts` — the two Excel exports using the existing `xlsx` library.
+- Sidebar gets a "Stationery" entry (box icon) between Item List and Trim Chart.
+
+### Behavior rules (matching your existing conventions)
+- Gapless SL No on the stock board; sorted by item order then date.
+- Quantities accept decimals (5.20, 2.60 etc.).
+- No changes to Requests, Delivery Notes, or the request PDF documents.
+
+## Steps
+1. Database migration: create the two tables with access rules.
+2. Build the Stationery page (stock board, add/edit item, stock in/out dialogs, records list).
+3. Wire the Excel exports.
+4. Add sidebar entry + route, verify in preview (add item → stock in → stock out → low-stock highlight → downloads).
