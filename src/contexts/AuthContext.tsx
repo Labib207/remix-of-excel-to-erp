@@ -28,6 +28,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isCheckingApproval, setIsCheckingApproval] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Tracks which user id we already resolved role/approval for, so returning to the
+  // tab (TOKEN_REFRESHED / SIGNED_IN events) never re-triggers a loading state that
+  // would unmount the current page and destroy in-progress form data.
+  const resolvedForUserId = useRef<string | null>(null);
+
   const fetchUserRole = async (userId: string) => {
     const { data, error } = await supabase
       .from('user_roles')
@@ -41,8 +46,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   // Server-side gate: a user only sees app data if an admin approved the account
-  const fetchApproval = async (userId: string) => {
-    setIsCheckingApproval(true);
+  const fetchApproval = async (userId: string, showLoading = true) => {
+    if (showLoading) setIsCheckingApproval(true);
     const { data } = await supabase
       .from('approved_users')
       .select('user_id')
@@ -52,21 +57,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsCheckingApproval(false);
   };
 
+  const resolveUser = (userId: string) => {
+    const isNewUser = resolvedForUserId.current !== userId;
+    if (!isNewUser) return; // already resolved — don't re-check on tab focus/token refresh
+    resolvedForUserId.current = userId;
+    fetchUserRole(userId);
+    fetchApproval(userId, true);
+  };
 
   useEffect(() => {
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         setSession(session);
-        setUser(session?.user ?? null);
+        setUser((prev) => (prev?.id === session?.user?.id ? prev : session?.user ?? null));
         
         if (session?.user) {
           // Defer Supabase calls with setTimeout to avoid deadlock
-          setTimeout(() => {
-            fetchUserRole(session.user.id);
-            fetchApproval(session.user.id);
-          }, 0);
+          const uid = session.user.id;
+          setTimeout(() => resolveUser(uid), 0);
         } else {
+          resolvedForUserId.current = null;
           setRole(null);
           setIsApproved(false);
           setIsCheckingApproval(false);
@@ -79,11 +90,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // THEN check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
-      setUser(session?.user ?? null);
+      setUser((prev) => (prev?.id === session?.user?.id ? prev : session?.user ?? null));
       
       if (session?.user) {
-        fetchUserRole(session.user.id);
-        fetchApproval(session.user.id);
+        resolveUser(session.user.id);
       } else {
         setIsCheckingApproval(false);
       }
@@ -93,6 +103,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return () => subscription.unsubscribe();
   }, []);
+
 
   const refreshApproval = async () => {
     if (user) await fetchApproval(user.id);
