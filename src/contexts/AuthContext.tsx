@@ -106,7 +106,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 
   const refreshApproval = async () => {
-    if (user) await fetchApproval(user.id);
+    if (user) await fetchApproval(user.id, false);
   };
 
   const signIn = async (email: string, password: string) => {
