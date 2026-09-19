@@ -1154,6 +1154,10 @@ export type Database = {
         Row: {
           created_at: string
           created_by: string | null
+          handover_by: string | null
+          handover_id: string | null
+          handover_number: string | null
+          handover_to: string | null
           id: string
           item_id: string
           notes: string | null
@@ -1166,6 +1170,10 @@ export type Database = {
         Insert: {
           created_at?: string
           created_by?: string | null
+          handover_by?: string | null
+          handover_id?: string | null
+          handover_number?: string | null
+          handover_to?: string | null
           id?: string
           item_id: string
           notes?: string | null
@@ -1178,6 +1186,10 @@ export type Database = {
         Update: {
           created_at?: string
           created_by?: string | null
+          handover_by?: string | null
+          handover_id?: string | null
+          handover_number?: string | null
+          handover_to?: string | null
           id?: string
           item_id?: string
           notes?: string | null
@@ -1223,6 +1235,19 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_stationery_handover: {
+        Args: {
+          _handover_by: string
+          _handover_id: string
+          _handover_number: string
+          _handover_to: string
+          _items: Json
+          _notes: string
+          _reference: string
+          _trans_date: string
+        }
+        Returns: undefined
+      }
       get_all_profiles_admin: {
         Args: never
         Returns: {

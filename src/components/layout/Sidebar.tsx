@@ -23,11 +23,11 @@ import { Separator } from '@/components/ui/separator';
 const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
   { name: 'Item List', href: '/items', icon: Package },
-  { name: 'Stationery', href: '/stationery', icon: Archive },
   { name: 'Trim Chart', href: '/requirements', icon: ClipboardList },
   { name: 'Requests', href: '/requests', icon: FileBox },
   { name: 'Delivery Notes', href: '/delivery-notes', icon: Truck },
   { name: 'Reports', href: '/reports', icon: BarChart3 },
+  { name: 'Stationery', href: '/stationery', icon: Archive },
 ];
 
 export function Sidebar() {

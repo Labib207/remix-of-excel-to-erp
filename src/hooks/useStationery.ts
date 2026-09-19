@@ -23,6 +23,10 @@ export interface StationeryTxn {
   transDate: string;
   reference: string;
   notes: string;
+  handoverId: string | null;
+  handoverNumber: string;
+  handoverBy: string;
+  handoverTo: string;
   createdAt: string;
 }
 
@@ -73,6 +77,10 @@ export function useStationeryTransactions() {
         transDate: r.trans_date,
         reference: r.reference || '',
         notes: r.notes || '',
+        handoverId: r.handover_id,
+        handoverNumber: r.handover_number || '',
+        handoverBy: r.handover_by || '',
+        handoverTo: r.handover_to || '',
         createdAt: r.created_at,
       }));
     },
@@ -215,6 +223,41 @@ export function useAddStationeryTxn() {
       toast.success(vars.type === 'in' ? 'Stock in recorded' : 'Stock out recorded');
     },
     onError: (e: any) => toast.error(e.message),
+  });
+}
+
+export interface StationeryHandoverInput {
+  handoverId: string;
+  handoverNumber: string;
+  transDate: string;
+  reference: string;
+  notes: string;
+  handoverBy: string;
+  handoverTo: string;
+  items: Array<{ itemId: string; qty: number }>;
+}
+
+export function useCreateStationeryHandover() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: StationeryHandoverInput) => {
+      const { error } = await supabase.rpc('create_stationery_handover', {
+        _handover_id: input.handoverId,
+        _handover_number: input.handoverNumber,
+        _trans_date: input.transDate,
+        _reference: normalizeText(input.reference),
+        _notes: normalizeText(input.notes),
+        _handover_by: normalizeText(input.handoverBy),
+        _handover_to: normalizeText(input.handoverTo),
+        _items: input.items.map(item => ({ item_id: item.itemId, qty: item.qty })),
+      });
+      if (error) throw new Error(safeErrorMessage(error, 'save stationery handover'));
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: TXNS_KEY });
+      toast.success('Stationery handover saved');
+    },
+    onError: (e: Error) => toast.error(e.message),
   });
 }
 
