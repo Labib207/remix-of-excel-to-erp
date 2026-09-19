@@ -109,7 +109,7 @@ const Stationery = () => {
       ? txns.filter(entry => entry.handoverId === transaction.handoverId)
       : [transaction];
     return {
-      number: transaction.handoverNumber || `STH-${transaction.transDate.replaceAll('-', '')}-${transaction.id.slice(0, 6).toUpperCase()}`,
+      number: transaction.handoverNumber || `STH-${transaction.transDate.replace(/-/g, '')}-${transaction.id.slice(0, 6).toUpperCase()}`,
       date: transaction.transDate,
       reference: transaction.reference,
       notes: transaction.notes,
