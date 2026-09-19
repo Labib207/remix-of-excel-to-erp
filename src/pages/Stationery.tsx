@@ -16,15 +16,20 @@ import {
 } from '@/components/ui/select';
 import {
   Plus, Trash2, Pencil, Loader2, Search, Download, PackagePlus, PackageMinus, Archive, History,
+  Printer, FileDown, ClipboardCheck, X,
 } from 'lucide-react';
 import {
   useStationeryItems, useStationeryTransactions, useCreateStationeryItem,
   useUpdateStationeryItem, useDeleteStationeryItem, useAddStationeryTxn,
-  useDeleteStationeryTxn, computeStock, StationeryItem, StationeryItemInput, StockRow,
+  useDeleteStationeryTxn, useCreateStationeryHandover, computeStock, StationeryItem, StationeryItemInput, StockRow,
 } from '@/hooks/useStationery';
 import { DescriptionAutocomplete } from '@/components/requests/DescriptionAutocomplete';
 import { exportStationeryStockExcel, exportStationeryHistoryExcel } from '@/lib/stationeryExcel';
 import { toast } from 'sonner';
+import { getNextDocNumber } from '@/lib/docNumberGenerator';
+import {
+  downloadStationeryHandover, printStationeryHandover, StationeryHandoverDocument,
+} from '@/lib/stationeryHandoverPdf';
 
 const emptyForm = (): StationeryItemInput => ({
   itemCode: '', description: '', uom: 'pcs', openingStock: 0, minStock: 0,
@@ -41,6 +46,11 @@ const num = (v: string) => {
   return Number.isFinite(n) ? n : 0;
 };
 
+type HandoverLine = { itemId: string; qty: string };
+const emptyHandover = () => ({
+  date: new Date().toISOString().slice(0, 10), reference: '', notes: '', handoverBy: '', handoverTo: '',
+});
+
 const Stationery = () => {
   const { data: items = [], isLoading } = useStationeryItems();
   const { data: txns = [] } = useStationeryTransactions();
@@ -49,6 +59,7 @@ const Stationery = () => {
   const deleteItem = useDeleteStationeryItem();
   const addTxn = useAddStationeryTxn();
   const deleteTxn = useDeleteStationeryTxn();
+  const createHandover = useCreateStationeryHandover();
 
   const [search, setSearch] = useState('');
   const [recordSearch, setRecordSearch] = useState('');
@@ -60,6 +71,9 @@ const Stationery = () => {
 
   const [txnDialog, setTxnDialog] = useState<{ item: StockRow; type: 'in' | 'out' } | null>(null);
   const [txnForm, setTxnForm] = useState({ qty: '', date: new Date().toISOString().slice(0, 10), reference: '', notes: '' });
+  const [isHandoverOpen, setIsHandoverOpen] = useState(false);
+  const [handoverForm, setHandoverForm] = useState(emptyHandover());
+  const [handoverLines, setHandoverLines] = useState<HandoverLine[]>([{ itemId: '', qty: '' }]);
 
   const stock = useMemo(() => computeStock(items, txns), [items, txns]);
 
@@ -87,6 +101,52 @@ const Stationery = () => {
   }, [txns, items, recordItemFilter, recordSearch]);
 
   const itemById = useMemo(() => new Map(items.map(i => [i.id, i])), [items]);
+
+  const handoverForTransaction = (transactionId: string): StationeryHandoverDocument | null => {
+    const transaction = txns.find(entry => entry.id === transactionId);
+    if (!transaction) return null;
+    const grouped = transaction.handoverId
+      ? txns.filter(entry => entry.handoverId === transaction.handoverId)
+      : [transaction];
+    return {
+      number: transaction.handoverNumber || `STH-${transaction.transDate.replaceAll('-', '')}-${transaction.id.slice(0, 6).toUpperCase()}`,
+      date: transaction.transDate,
+      reference: transaction.reference,
+      notes: transaction.notes,
+      handoverBy: transaction.handoverBy,
+      handoverTo: transaction.handoverTo,
+      transactions: grouped,
+    };
+  };
+
+  const openHandover = () => {
+    setHandoverForm(emptyHandover());
+    setHandoverLines([{ itemId: '', qty: '' }]);
+    setIsHandoverOpen(true);
+  };
+
+  const submitHandover = async () => {
+    const selected = handoverLines.filter(line => line.itemId && num(line.qty) > 0);
+    if (selected.length === 0) return toast.error('Add at least one item and quantity');
+    if (!handoverForm.handoverBy.trim() || !handoverForm.handoverTo.trim()) {
+      return toast.error('Handover By and Handover To are required');
+    }
+    const unique = new Set(selected.map(line => line.itemId));
+    if (unique.size !== selected.length) return toast.error('Each item can only appear once');
+    for (const line of selected) {
+      const row = stock.find(entry => entry.id === line.itemId);
+      if (!row || num(line.qty) > row.balance) {
+        return toast.error(`${row?.description || 'Item'} has only ${row?.balance || 0} ${row?.uom || ''} available`);
+      }
+    }
+    const handoverNumber = await getNextDocNumber('STH');
+    createHandover.mutate({
+      handoverId: crypto.randomUUID(), handoverNumber, transDate: handoverForm.date,
+      reference: handoverForm.reference, notes: handoverForm.notes,
+      handoverBy: handoverForm.handoverBy, handoverTo: handoverForm.handoverTo,
+      items: selected.map(line => ({ itemId: line.itemId, qty: num(line.qty) })),
+    }, { onSuccess: () => setIsHandoverOpen(false) });
+  };
 
   const openEdit = (item: StationeryItem) => {
     setEditing(item);
@@ -230,6 +290,9 @@ const Stationery = () => {
                 >
                   <Download className="h-4 w-4" /> Stock Excel
                 </Button>
+                <Button variant="outline" className="gap-2" onClick={openHandover} disabled={stock.length === 0}>
+                  <ClipboardCheck className="h-4 w-4" /> New Handover
+                </Button>
                 <Button className="gap-2" onClick={() => { setForm(emptyForm()); setIsAddOpen(true); }}>
                   <Plus className="h-4 w-4" /> Add Item
                 </Button>
@@ -258,7 +321,7 @@ const Stationery = () => {
                       <TableHead className="px-4 py-3 text-right">Balance</TableHead>
                       <TableHead className="px-4 py-3 text-right">Min</TableHead>
                       <TableHead className="px-4 py-3">Status</TableHead>
-                      <TableHead className="px-4 py-3 text-right">Actions</TableHead>
+                      <TableHead className="px-4 py-3 text-center min-w-28">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -388,18 +451,35 @@ const Stationery = () => {
                           <TableCell className="px-4 py-3 text-right">{t.qty} {item?.uom || ''}</TableCell>
                           <TableCell className="px-4 py-3">{t.reference || '-'}</TableCell>
                           <TableCell className="px-4 py-3">{t.notes || '-'}</TableCell>
-                          <TableCell className="px-4 py-3 text-right">
-                            <Button
-                              size="icon" variant="ghost"
-                              className="text-destructive hover:text-destructive"
-                              onClick={() => {
-                                if (window.confirm('Delete this entry? The balance will be recalculated.')) {
-                                  deleteTxn.mutate(t.id);
-                                }
-                              }}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                          <TableCell className="px-4 py-3">
+                            <div className="flex items-center justify-center gap-1">
+                              <Button size="icon" variant="ghost" aria-label="Download handover PDF" title="Download handover PDF"
+                                onClick={() => {
+                                  const handover = handoverForTransaction(t.id);
+                                  if (handover) void downloadStationeryHandover(handover, items);
+                                }}>
+                                <FileDown className="h-4 w-4" />
+                              </Button>
+                              <Button size="icon" variant="ghost" aria-label="Print handover" title="Print handover"
+                                onClick={() => {
+                                  const handover = handoverForTransaction(t.id);
+                                  if (handover) void printStationeryHandover(handover, items);
+                                }}>
+                                <Printer className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                size="icon" variant="ghost" aria-label="Delete entry" title="Delete entry"
+                                className="text-destructive hover:text-destructive"
+                                onClick={() => {
+                                  const message = t.handoverId
+                                    ? 'Delete this item from the handover? The balance will be recalculated.'
+                                    : 'Delete this entry? The balance will be recalculated.';
+                                  if (window.confirm(message)) deleteTxn.mutate(t.id);
+                                }}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       );
@@ -478,6 +558,78 @@ const Stationery = () => {
             <Button className="w-full" onClick={submitTxn} disabled={addTxn.isPending}>
               {addTxn.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
               {txnDialog?.type === 'in' ? 'Save Stock In' : 'Save Stock Out'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Multi-item stationery handover */}
+      <Dialog open={isHandoverOpen} onOpenChange={setIsHandoverOpen}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>New Stationery Handover</DialogTitle></DialogHeader>
+          <div className="space-y-5 py-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Date *</Label>
+                <Input type="date" value={handoverForm.date} onChange={e => setHandoverForm(form => ({ ...form, date: e.target.value }))} />
+              </div>
+              <div className="space-y-2">
+                <Label>Reference</Label>
+                <Input value={handoverForm.reference} onChange={e => setHandoverForm(form => ({ ...form, reference: e.target.value }))} placeholder="Department / request reference" />
+              </div>
+              <div className="space-y-2">
+                <Label>Handover By *</Label>
+                <Input value={handoverForm.handoverBy} onChange={e => setHandoverForm(form => ({ ...form, handoverBy: e.target.value }))} placeholder="Name of person issuing" />
+              </div>
+              <div className="space-y-2">
+                <Label>Handover To *</Label>
+                <Input value={handoverForm.handoverTo} onChange={e => setHandoverForm(form => ({ ...form, handoverTo: e.target.value }))} placeholder="Name of person receiving" />
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <Label>Items *</Label>
+                <Button type="button" variant="outline" size="sm" className="gap-1" onClick={() => setHandoverLines(lines => [...lines, { itemId: '', qty: '' }])}>
+                  <Plus className="h-4 w-4" /> Add Row
+                </Button>
+              </div>
+              {handoverLines.map((line, index) => {
+                const selected = stock.find(row => row.id === line.itemId);
+                return (
+                  <div key={index} className="grid grid-cols-[minmax(0,1fr)_7rem_2.5rem] gap-2 items-end">
+                    <div className="space-y-2 min-w-0">
+                      <Label className="text-xs">Item {index + 1}</Label>
+                      <Select value={line.itemId} onValueChange={value => setHandoverLines(lines => lines.map((entry, i) => i === index ? { ...entry, itemId: value } : entry))}>
+                        <SelectTrigger><SelectValue placeholder="Select stationery item" /></SelectTrigger>
+                        <SelectContent>
+                          {stock.filter(row => row.balance > 0).map(row => (
+                            <SelectItem key={row.id} value={row.id}>{row.itemCode} — {row.description} ({row.balance} {row.uom})</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs">Qty {selected?.uom ? `(${selected.uom})` : ''}</Label>
+                      <Input type="number" min="0" step="any" value={line.qty} onChange={e => setHandoverLines(lines => lines.map((entry, i) => i === index ? { ...entry, qty: e.target.value } : entry))} placeholder="0" />
+                    </div>
+                    <Button type="button" size="icon" variant="ghost" aria-label="Remove row" className="text-destructive hover:text-destructive"
+                      disabled={handoverLines.length === 1}
+                      onClick={() => setHandoverLines(lines => lines.filter((_, i) => i !== index))}>
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="space-y-2">
+              <Label>Remarks</Label>
+              <Input value={handoverForm.notes} onChange={e => setHandoverForm(form => ({ ...form, notes: e.target.value }))} placeholder="Optional handover remarks" />
+            </div>
+            <Button className="w-full gap-2" onClick={() => void submitHandover()} disabled={createHandover.isPending}>
+              {createHandover.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <ClipboardCheck className="h-4 w-4" />}
+              Save Handover
             </Button>
           </div>
         </DialogContent>
