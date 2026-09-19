@@ -26,7 +26,7 @@ import {
 import { DescriptionAutocomplete } from '@/components/requests/DescriptionAutocomplete';
 import { exportStationeryStockExcel, exportStationeryHistoryExcel } from '@/lib/stationeryExcel';
 import { toast } from 'sonner';
-import { getNextDocNumber } from '@/lib/docNumberGenerator';
+import { supabase } from '@/integrations/supabase/client';
 import {
   downloadStationeryHandover, printStationeryHandover, StationeryHandoverDocument,
 } from '@/lib/stationeryHandoverPdf';
@@ -139,7 +139,8 @@ const Stationery = () => {
         return toast.error(`${row?.description || 'Item'} has only ${row?.balance || 0} ${row?.uom || ''} available`);
       }
     }
-    const handoverNumber = await getNextDocNumber('STH');
+    const { data: handoverNumber, error: numberError } = await supabase.rpc('next_doc_number', { _prefix: 'STH' });
+    if (numberError || !handoverNumber) return toast.error('Could not create a handover number. Please try again.');
     createHandover.mutate({
       handoverId: crypto.randomUUID(), handoverNumber, transDate: handoverForm.date,
       reference: handoverForm.reference, notes: handoverForm.notes,
