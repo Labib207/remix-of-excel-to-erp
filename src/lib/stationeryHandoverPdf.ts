@@ -53,7 +53,7 @@ async function buildDocument(handover: StationeryHandoverDocument, items: Statio
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
   doc.text(`Handover No: ${handover.number}`, margin + 5, 47);
-  doc.text(`Date: ${handover.date ? new Date(`${handover.date}T00:00:00`).toLocaleDateString('en-GB') : ''}`, pageWidth - margin - 5, 47, { align: 'right' });
+  doc.text(`Date: ${handover.date ? new Date(`${handover.date}T00:00:00`).toLocaleDateString('en-US') : ''}`, pageWidth - margin - 5, 47, { align: 'right' });
   doc.text(`Reference: ${handover.reference || '-'}`, margin + 5, 54);
 
   autoTable(doc, {

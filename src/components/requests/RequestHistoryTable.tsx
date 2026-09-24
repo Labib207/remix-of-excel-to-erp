@@ -228,8 +228,8 @@ export function RequestHistoryTable({ onEdit }: { onEdit?: (request: any) => voi
 
     const wb = XLSX.utils.book_new();
     const dateRangeText = dateFrom && dateTo
-      ? `${format(dateFrom, 'dd-MM-yyyy')}_to_${format(dateTo, 'dd-MM-yyyy')}`
-      : dateFrom ? `from_${format(dateFrom, 'dd-MM-yyyy')}` : dateTo ? `to_${format(dateTo, 'dd-MM-yyyy')}` : format(new Date(), 'yyyy-MM-dd');
+      ? `${format(dateFrom, 'MM-dd-yyyy')}_to_${format(dateTo, 'MM-dd-yyyy')}`
+      : dateFrom ? `from_${format(dateFrom, 'MM-dd-yyyy')}` : dateTo ? `to_${format(dateTo, 'MM-dd-yyyy')}` : format(new Date(), 'yyyy-MM-dd');
 
     const addSheet = (sheetRequests: CloudRequest[], sheetName: string, isReturn: boolean) => {
       if (sheetRequests.length === 0) return;
@@ -239,7 +239,7 @@ export function RequestHistoryTable({ onEdit }: { onEdit?: (request: any) => voi
         (request.items || []).map((item, idx) => isReturn ? {
           'Doc Number': request.request_no,
           'Order': request.order_no || '-',
-          'Date': format(new Date(request.request_date), 'dd/MM/yyyy'),
+          'Date': format(new Date(request.request_date), 'MM/dd/yyyy'),
           'Department': request.department || '-',
           'Approval': request.approval_status || 'approved',
           'SL No': idx + 1,
@@ -249,11 +249,11 @@ export function RequestHistoryTable({ onEdit }: { onEdit?: (request: any) => voi
           'Qty Returned': item.requested_qty,
           'Qty Received': item.issued_qty || 0,
           'Remarks': item.notes || '-',
-          'Submitted At': request.submitted_at ? format(new Date(request.submitted_at), 'dd/MM/yyyy HH:mm') : '-',
+          'Submitted At': request.submitted_at ? format(new Date(request.submitted_at), 'MM/dd/yyyy HH:mm') : '-',
         } : {
           'Doc Number': request.request_no,
           'Order': request.order_no || '-',
-          'Date': format(new Date(request.request_date), 'dd/MM/yyyy'),
+          'Date': format(new Date(request.request_date), 'MM/dd/yyyy'),
           'Department': request.department || '-',
           'Approval': request.approval_status || 'approved',
           'SL No': idx + 1,
@@ -264,7 +264,7 @@ export function RequestHistoryTable({ onEdit }: { onEdit?: (request: any) => voi
           'Issued Qty': item.issued_qty || 0,
           'Remaining Qty': item.requested_qty - (item.issued_qty || 0),
           'Remarks': item.notes || '-',
-          'Submitted At': request.submitted_at ? format(new Date(request.submitted_at), 'dd/MM/yyyy HH:mm') : '-',
+          'Submitted At': request.submitted_at ? format(new Date(request.submitted_at), 'MM/dd/yyyy HH:mm') : '-',
         })
       );
 
@@ -409,7 +409,7 @@ export function RequestHistoryTable({ onEdit }: { onEdit?: (request: any) => voi
                 <PopoverTrigger asChild>
                   <Button variant="outline" className="w-full justify-start text-left font-normal sm:w-[140px]">
                     <CalendarIcon className="mr-2 h-4 w-4" />
-                    {dateFrom ? format(dateFrom, 'dd/MM/yyyy') : 'Pick date'}
+                    {dateFrom ? format(dateFrom, 'MM/dd/yyyy') : 'Pick date'}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
@@ -423,7 +423,7 @@ export function RequestHistoryTable({ onEdit }: { onEdit?: (request: any) => voi
                 <PopoverTrigger asChild>
                   <Button variant="outline" className="w-full justify-start text-left font-normal sm:w-[140px]">
                     <CalendarIcon className="mr-2 h-4 w-4" />
-                    {dateTo ? format(dateTo, 'dd/MM/yyyy') : 'Pick date'}
+                    {dateTo ? format(dateTo, 'MM/dd/yyyy') : 'Pick date'}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
@@ -482,7 +482,7 @@ export function RequestHistoryTable({ onEdit }: { onEdit?: (request: any) => voi
                         <TableCell className="text-xs max-w-[200px] truncate" title={request.order_no || '-'}>
                           {request.order_no || '-'}
                         </TableCell>
-                        <TableCell>{format(new Date(request.request_date), 'dd/MM/yyyy')}</TableCell>
+                        <TableCell>{format(new Date(request.request_date), 'MM/dd/yyyy')}</TableCell>
                         <TableCell>{request.department || '-'}</TableCell>
                         <TableCell>
                           <Select
@@ -510,14 +510,14 @@ export function RequestHistoryTable({ onEdit }: { onEdit?: (request: any) => voi
                         <TableCell>{(request.items || []).length} items</TableCell>
                         <TableCell className="text-muted-foreground text-xs">
                           {(() => {
-                            const sub = request.submitted_at ? format(new Date(request.submitted_at), 'dd/MM/yyyy HH:mm') : '-';
+                            const sub = request.submitted_at ? format(new Date(request.submitted_at), 'MM/dd/yyyy HH:mm') : '-';
                             const hasUpdate = request.updated_at && request.submitted_at &&
                               Math.abs(new Date(request.updated_at).getTime() - new Date(request.submitted_at).getTime()) > 60_000;
                             return (
                               <div className="flex flex-col leading-tight">
                                 <span><span className="opacity-70">Sub:</span> {sub}</span>
                                 {hasUpdate && (
-                                  <span className="text-primary"><span className="opacity-70">Upd:</span> {format(new Date(request.updated_at), 'dd/MM/yyyy HH:mm')}</span>
+                                  <span className="text-primary"><span className="opacity-70">Upd:</span> {format(new Date(request.updated_at), 'MM/dd/yyyy HH:mm')}</span>
                                 )}
                               </div>
                             );
@@ -625,16 +625,16 @@ export function RequestHistoryTable({ onEdit }: { onEdit?: (request: any) => voi
 
               <div className="space-y-4">
                 <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-3 sm:gap-4">
-                  <div><span className="text-muted-foreground">Date:</span> {format(new Date(selectedRequest.request_date), 'dd/MM/yyyy')}</div>
+                  <div><span className="text-muted-foreground">Date:</span> {format(new Date(selectedRequest.request_date), 'MM/dd/yyyy')}</div>
                   <div><span className="text-muted-foreground">Department:</span> {selectedRequest.department || '-'}</div>
                   <div><span className="text-muted-foreground">Order:</span> <span className="font-semibold">{selectedRequest.order_no || '-'}</span></div>
                   <div><span className="text-muted-foreground">Requested By:</span> {selectedRequest.requested_by || '-'}</div>
                   {selectedRequest.submitted_at && (
-                    <div><span className="text-muted-foreground">Submitted:</span> {format(new Date(selectedRequest.submitted_at), 'dd/MM/yyyy HH:mm')}</div>
+                    <div><span className="text-muted-foreground">Submitted:</span> {format(new Date(selectedRequest.submitted_at), 'MM/dd/yyyy HH:mm')}</div>
                   )}
                   {selectedRequest.updated_at && selectedRequest.submitted_at &&
                     Math.abs(new Date(selectedRequest.updated_at).getTime() - new Date(selectedRequest.submitted_at).getTime()) > 60_000 && (
-                    <div className="text-primary"><span className="text-muted-foreground">Last Updated:</span> {format(new Date(selectedRequest.updated_at), 'dd/MM/yyyy HH:mm')}</div>
+                    <div className="text-primary"><span className="text-muted-foreground">Last Updated:</span> {format(new Date(selectedRequest.updated_at), 'MM/dd/yyyy HH:mm')}</div>
                   )}
                   {selectedRequest.notes && (
                     <div className="col-span-2"><span className="text-muted-foreground">Notes:</span> {selectedRequest.notes}</div>

@@ -9,7 +9,7 @@ function save(wb: XLSX.WorkBook, filename: string) {
   XLSX.writeFile(wb, filename);
 }
 
-const fmtDate = (d: string) => (d ? new Date(d).toLocaleDateString('en-GB') : '');
+const fmtDate = (d: string) => (d ? new Date(d).toLocaleDateString('en-US') : '');
 
 /** Current stock summary for every stationery item. */
 export function exportStationeryStockExcel(rows: StockRow[]) {
@@ -18,7 +18,7 @@ export function exportStationeryStockExcel(rows: StockRow[]) {
   const sheetRows = [
     ['GHOUSH - Stock Management'],
     ['Stationery Stock Summary'],
-    [`Generated: ${new Date().toLocaleDateString('en-GB')}`],
+    [`Generated: ${new Date().toLocaleDateString('en-US')}`],
     [],
     ['SL No', 'Item Code', 'Description', 'UOM', 'Opening Stock', 'Total In', 'Total Used', 'Balance', 'Min Level', 'Status'],
     ...rows.map((r, i) => [
@@ -63,7 +63,7 @@ export function exportStationeryHistoryExcel(txns: StationeryTxn[], items: Stati
   const sheetRows = [
     ['GHOUSH - Stock Management'],
     ['Stationery Stock In / Out History'],
-    [`Generated: ${new Date().toLocaleDateString('en-GB')}`],
+    [`Generated: ${new Date().toLocaleDateString('en-US')}`],
     [],
     ['SL No', 'Date', 'Item Code', 'Description', 'Type', 'Qty', 'UOM', 'Reference', 'Remarks'],
     ...sorted.map((t, i) => {

@@ -172,7 +172,7 @@ export function CustomItemReport() {
 
   const handleExportExcel = () => {
     const exportData: any[] = results.map(row => ({
-      'Date': row.date ? format(new Date(row.date), 'dd/MM/yyyy') : '—',
+      'Date': row.date ? format(new Date(row.date), 'MM/dd/yyyy') : '—',
       'Request #': row.requestNo,
       'Order #': row.orderNo,
       'Type': row.type,
@@ -321,7 +321,7 @@ export function CustomItemReport() {
                 <TableBody>
                   {results.map((row, i) => (
                     <TableRow key={i}>
-                      <TableCell className="text-xs">{row.date ? format(new Date(row.date), 'dd/MM/yyyy') : '—'}</TableCell>
+                      <TableCell className="text-xs">{row.date ? format(new Date(row.date), 'MM/dd/yyyy') : '—'}</TableCell>
                       <TableCell className="font-mono text-xs">{row.requestNo}</TableCell>
                       <TableCell className="font-mono text-xs">{row.orderNo}</TableCell>
                       <TableCell>

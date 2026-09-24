@@ -265,7 +265,7 @@ export default function Admin() {
                             </Badge>
                           </TableCell>
                           <TableCell className="text-muted-foreground">
-                            {format(new Date(user.created_at), 'dd/MM/yyyy')}
+                            {format(new Date(user.created_at), 'MM/dd/yyyy')}
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="flex flex-wrap items-center justify-end gap-2">

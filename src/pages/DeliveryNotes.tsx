@@ -394,7 +394,7 @@ const DeliveryNotes = () => {
                         <TableRow key={note.id}>
                           <TableCell className="font-mono font-medium">{note.acknowledgment_no}</TableCell>
                           <TableCell className="text-xs max-w-[200px] truncate" title={orderDisplay}>{orderDisplay}</TableCell>
-                          <TableCell>{format(new Date(note.delivery_date), 'dd/MM/yyyy')}</TableCell>
+                          <TableCell>{format(new Date(note.delivery_date), 'MM/dd/yyyy')}</TableCell>
                           <TableCell>{note.received_by || '-'}</TableCell>
                           <TableCell>{note.notes || '-'}</TableCell>
                         <TableCell className="text-center">
@@ -482,7 +482,7 @@ const DeliveryNotes = () => {
                   <PopoverTrigger asChild>
                     <Button variant="outline" className="w-full justify-start text-left font-normal">
                       <CalendarIcon className="mr-2 h-4 w-4" />
-                      {format(deliveryDate, 'dd/MM/yyyy')}
+                      {format(deliveryDate, 'MM/dd/yyyy')}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">

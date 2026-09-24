@@ -230,7 +230,7 @@ export const exportBundleGuidePDF = async (guides: BundleGuide[], cutPlan: CutPl
       ['STYLE NO:', `${order.styleNo} - ${order.styleName}`, 'CUT:', cutPlan.cutNo.toString()],
       ['COLOUR:', cutPlan.shade, 'PLIES:', cutPlan.plies.toString()],
       ['CUSTOMER:', order.customer, 'TOTAL QTY:', order.totalQty.toString()],
-      ['DATE:', new Date(cutPlan.date).toLocaleDateString(), '', ''],
+      ['DATE:', new Date(cutPlan.date).toLocaleDateString('en-US'), '', ''],
     ],
     theme: 'plain',
     styles: { fontSize: 9 },

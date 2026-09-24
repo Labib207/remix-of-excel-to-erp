@@ -40,7 +40,7 @@ export function generateMonthlyReportPdf(data: ReportData) {
   y += 5;
   doc.setFontSize(8);
   doc.setFont('helvetica', 'normal');
-  doc.text(`Generated: ${new Date().toLocaleDateString()}`, pageW / 2, y, { align: 'center' });
+  doc.text(`Generated: ${new Date().toLocaleDateString('en-US')}`, pageW / 2, y, { align: 'center' });
   y += 8;
 
   // Summary box
