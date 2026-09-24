@@ -54,7 +54,7 @@ export function RequestHistorySummary() {
                     <div className="flex items-center gap-3 text-xs text-muted-foreground">
                       <span className="flex items-center gap-1">
                         <Calendar className="h-3 w-3" />
-                        {format(new Date(ack.delivery_date), 'dd MMM yyyy')}
+                        {format(new Date(ack.delivery_date), 'MMM dd, yyyy')}
                       </span>
                       {ack.received_by && (
                         <span>Received by: {ack.received_by}</span>

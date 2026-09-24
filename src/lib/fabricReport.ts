@@ -116,7 +116,7 @@ export const exportFabricRequestPDF = async (
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
   doc.text(`Document: ${docNumber}`, 45, 26);
-  doc.text(`Date: ${new Date().toLocaleDateString()}`, doc.internal.pageSize.width - 14, 18, { align: 'right' });
+  doc.text(`Date: ${new Date().toLocaleDateString('en-US')}`, doc.internal.pageSize.width - 14, 18, { align: 'right' });
 
   // Order Details
   autoTable(doc, {

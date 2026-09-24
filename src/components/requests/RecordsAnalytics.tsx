@@ -215,8 +215,8 @@ export function RecordsAnalytics() {
           if (typeof dateStr === 'string' && dateStr.includes('/')) {
             const parts = dateStr.split('/');
             if (parts.length === 3) {
-              // Assume DD/MM/YYYY format
-              dateStr = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+              // Assume MM/DD/YYYY format
+              dateStr = `${parts[2]}-${parts[0].padStart(2, '0')}-${parts[1].padStart(2, '0')}`;
             }
           }
 
@@ -426,7 +426,7 @@ export function RecordsAnalytics() {
 
     const wb = XLSX.utils.book_new();
     const dateRangeText = dateFrom && dateTo 
-      ? `${format(dateFrom, 'dd-MM-yyyy')}_to_${format(dateTo, 'dd-MM-yyyy')}`
+      ? `${format(dateFrom, 'MM-dd-yyyy')}_to_${format(dateTo, 'MM-dd-yyyy')}`
       : format(new Date(), 'yyyy-MM-dd');
     
     const data = filteredRequests.flatMap(request => {
@@ -435,7 +435,7 @@ export function RecordsAnalytics() {
         'Doc Number': request.docNumber,
         'Order': order ? order.orderNumber : '-',
         'Customer': order ? order.customer : '-',
-        'Date': format(new Date(request.form.date), 'dd/MM/yyyy'),
+        'Date': format(new Date(request.form.date), 'MM/dd/yyyy'),
         'Department': request.form.department,
         'Item Code': item.itemCode,
         'Description': item.description,
@@ -446,7 +446,7 @@ export function RecordsAnalytics() {
         'Remaining Qty': item.remainingQty,
         'Status': item.issuedQty >= item.requestedQty ? 'Completed' : item.issuedQty > 0 ? 'Partial' : 'Pending',
         'Remarks': item.remarks,
-        'Submitted At': format(new Date(request.submittedAt), 'dd/MM/yyyy HH:mm'),
+        'Submitted At': format(new Date(request.submittedAt), 'MM/dd/yyyy HH:mm'),
         'Approval': request.approvalStatus === 'approved' ? 'Approved' : 'Pending',
         'TR / PL Number': request.trNumber || '',
       }));
@@ -911,7 +911,7 @@ export function RecordsAnalytics() {
                 <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2 md:grid-cols-4 sm:gap-4">
                   <div>
                     <span className="text-muted-foreground">Date:</span>
-                    <p className="font-medium">{format(new Date(selectedRequest.form.date), 'dd/MM/yyyy')}</p>
+                    <p className="font-medium">{format(new Date(selectedRequest.form.date), 'MM/dd/yyyy')}</p>
                   </div>
                   <div>
                     <span className="text-muted-foreground">Department:</span>
@@ -923,7 +923,7 @@ export function RecordsAnalytics() {
                   </div>
                   <div>
                     <span className="text-muted-foreground">Submitted:</span>
-                    <p className="font-medium">{format(new Date(selectedRequest.submittedAt), 'dd/MM/yyyy HH:mm')}</p>
+                    <p className="font-medium">{format(new Date(selectedRequest.submittedAt), 'MM/dd/yyyy HH:mm')}</p>
                   </div>
                 </div>
                 <div className="border rounded-lg overflow-hidden">

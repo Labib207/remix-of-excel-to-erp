@@ -34,7 +34,7 @@ export function generateMonthlyReportExcel(data: ReportData) {
   const summaryRows = [
     ['ADEEM UNIFORM'],
     [`Monthly Summary Report — ${data.month} ${data.year}`],
-    [`Generated: ${new Date().toLocaleDateString()}`],
+    [`Generated: ${new Date().toLocaleDateString('en-US')}`],
     [],
     ['Category', 'Count', 'Key Metric'],
     ['Orders', data.orders.length, `Total Qty: ${data.orders.reduce((s, o) => s + Number(o.quantity || 0), 0)}`],

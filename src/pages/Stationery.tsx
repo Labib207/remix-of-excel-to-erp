@@ -440,7 +440,7 @@ const Stationery = () => {
                       return (
                         <TableRow key={t.id}>
                           <TableCell className="px-4 py-3">{i + 1}</TableCell>
-                          <TableCell className="px-4 py-3">{new Date(t.transDate).toLocaleDateString('en-GB')}</TableCell>
+                          <TableCell className="px-4 py-3">{new Date(t.transDate).toLocaleDateString('en-US')}</TableCell>
                           <TableCell className="px-4 py-3">
                             {item ? `${item.itemCode} — ${item.description}` : '(deleted item)'}
                           </TableCell>

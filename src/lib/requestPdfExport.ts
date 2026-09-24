@@ -88,7 +88,7 @@ const loadLogoAsBase64 = (): Promise<string> => {
 const formatDate = (dateStr: string): string => {
   if (!dateStr) return '';
   const date = new Date(dateStr);
-  return date.toLocaleDateString('en-GB');
+  return date.toLocaleDateString('en-US');
 };
 
 // Helper to draw page header for multi-page support
