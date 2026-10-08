@@ -8,6 +8,13 @@
       "when": 1789804275787,
       "tag": "0000_add_stationery_handover_documents",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1791444164795,
+      "tag": "0001_customer_samples_module",
+      "breakpoints": true
     }
   ]
 }

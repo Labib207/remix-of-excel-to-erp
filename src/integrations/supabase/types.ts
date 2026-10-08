@@ -173,6 +173,110 @@ export type Database = {
           },
         ]
       }
+      customer_orders: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          current_stage: number
+          customer_id: string | null
+          customer_name: string
+          deadline: string | null
+          delivery_date: string | null
+          id: string
+          mobile: string | null
+          order_date: string
+          order_no: string
+          quantity: number
+          received_by: string | null
+          remarks: string | null
+          stage_history: Json
+          style: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          current_stage?: number
+          customer_id?: string | null
+          customer_name: string
+          deadline?: string | null
+          delivery_date?: string | null
+          id?: string
+          mobile?: string | null
+          order_date?: string
+          order_no: string
+          quantity?: number
+          received_by?: string | null
+          remarks?: string | null
+          stage_history?: Json
+          style?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          current_stage?: number
+          customer_id?: string | null
+          customer_name?: string
+          deadline?: string | null
+          delivery_date?: string | null
+          id?: string
+          mobile?: string | null
+          order_date?: string
+          order_no?: string
+          quantity?: number
+          received_by?: string | null
+          remarks?: string | null
+          stage_history?: Json
+          style?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_orders_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      customers: {
+        Row: {
+          address: string | null
+          company: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          mobile: string | null
+          name: string
+          notes: string | null
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          company?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          mobile?: string | null
+          name: string
+          notes?: string | null
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          company?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          mobile?: string | null
+          name?: string
+          notes?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       cut_plans: {
         Row: {
           created_at: string
@@ -1110,6 +1214,126 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      sample_dispatches: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          customer_id: string | null
+          dispatched_by: string | null
+          expected_return: string | null
+          gate_pass_no: string
+          id: string
+          mobile: string | null
+          purpose: string | null
+          qty: number
+          return_condition: string | null
+          return_date: string | null
+          return_remarks: string | null
+          returned_by: string | null
+          sample_id: string
+          sent_date: string
+          sent_to: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string | null
+          dispatched_by?: string | null
+          expected_return?: string | null
+          gate_pass_no: string
+          id?: string
+          mobile?: string | null
+          purpose?: string | null
+          qty?: number
+          return_condition?: string | null
+          return_date?: string | null
+          return_remarks?: string | null
+          returned_by?: string | null
+          sample_id: string
+          sent_date?: string
+          sent_to: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string | null
+          dispatched_by?: string | null
+          expected_return?: string | null
+          gate_pass_no?: string
+          id?: string
+          mobile?: string | null
+          purpose?: string | null
+          qty?: number
+          return_condition?: string | null
+          return_date?: string | null
+          return_remarks?: string | null
+          returned_by?: string | null
+          sample_id?: string
+          sent_date?: string
+          sent_to?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sample_dispatches_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sample_dispatches_sample_id_fkey"
+            columns: ["sample_id"]
+            isOneToOne: false
+            referencedRelation: "samples"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      samples: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          location: string | null
+          notes: string | null
+          ref_no: string
+          style_name: string
+          total_qty: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          location?: string | null
+          notes?: string | null
+          ref_no: string
+          style_name: string
+          total_qty?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          location?: string | null
+          notes?: string | null
+          ref_no?: string
+          style_name?: string
+          total_qty?: number
+          updated_at?: string
+        }
+        Relationships: []
       }
       stationery_items: {
         Row: {
