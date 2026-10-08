@@ -12,6 +12,7 @@ import {
   BarChart3,
   Package,
   Archive,
+  Users,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import logo from '@/assets/logo.png';
@@ -27,6 +28,7 @@ const navigation = [
   { name: 'Requests', href: '/requests', icon: FileBox },
   { name: 'Delivery Notes', href: '/delivery-notes', icon: Truck },
   { name: 'Reports', href: '/reports', icon: BarChart3 },
+  { name: 'Customer & Samples', href: '/customer-samples', icon: Users },
   { name: 'Stationery', href: '/stationery', icon: Archive },
 ];
 
