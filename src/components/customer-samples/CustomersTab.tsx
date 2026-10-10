@@ -46,10 +46,10 @@ export function CustomersTab() {
     <Card>
       <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <CardTitle className="font-normal">Customer Index ({customers.length})</CardTitle>
-        <div className="flex gap-2">
-          <div className="relative">
+        <div className="flex flex-wrap gap-2">
+          <div className="relative w-full sm:w-auto">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input className="pl-9 w-56" placeholder="Search name or mobile" value={q} onChange={e => setQ(e.target.value)} />
+            <Input className="pl-9 w-full sm:w-56" placeholder="Search name or mobile" value={q} onChange={e => setQ(e.target.value)} />
           </div>
           <Button onClick={() => openForm()}><Plus className="h-4 w-4 mr-1" />Add Customer</Button>
         </div>

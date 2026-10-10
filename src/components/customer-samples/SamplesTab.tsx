@@ -41,8 +41,17 @@ export function SamplesTab() {
   const [returnOf, setReturnOf] = useState<SampleDispatch | null>(null);
   const [rForm, setRForm] = useState({ status: 'returned', return_date: today(), returned_by: '', return_condition: 'Good', return_remarks: '' });
 
-  const outQty = (id: string) => dispatches.filter(d => d.sample_id === id && d.status === 'out').reduce((a, d) => a + Number(d.qty), 0);
-  const keptQty = (id: string) => dispatches.filter(d => d.sample_id === id && d.status === 'kept').reduce((a, d) => a + Number(d.qty), 0);
+  // One pass over gate passes instead of re-scanning per sample row
+  const qtyMaps = useMemo(() => {
+    const out = new Map<string, number>(); const kept = new Map<string, number>();
+    for (const d of dispatches) {
+      const m = d.status === 'out' ? out : d.status === 'kept' ? kept : null;
+      if (m) m.set(d.sample_id, (m.get(d.sample_id) ?? 0) + Number(d.qty));
+    }
+    return { out, kept };
+  }, [dispatches]);
+  const outQty = (id: string) => qtyMaps.out.get(id) ?? 0;
+  const keptQty = (id: string) => qtyMaps.kept.get(id) ?? 0;
   const available = (s: Sample) => Number(s.total_qty) - outQty(s.id) - keptQty(s.id);
   const sampleById = useMemo(() => new Map(samples.map(s => [s.id, s])), [samples]);
 
