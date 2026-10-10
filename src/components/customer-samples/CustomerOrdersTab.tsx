@@ -109,9 +109,9 @@ export function CustomerOrdersTab() {
           {(['active', 'delivered', 'all'] as const).map(f => (
             <Button key={f} size="sm" variant={filter === f ? 'default' : 'outline'} onClick={() => setFilter(f)} className="capitalize">{f}</Button>
           ))}
-          <div className="relative">
+          <div className="relative w-full sm:w-auto">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input className="pl-9 w-52" placeholder="Search orders" value={q} onChange={e => setQ(e.target.value)} />
+            <Input className="pl-9 w-full sm:w-52" placeholder="Search orders" value={q} onChange={e => setQ(e.target.value)} />
           </div>
           <Button variant="outline" onClick={() => orderStageReport(rows, 'download')} disabled={!rows.length}><BarChart3 className="h-4 w-4 mr-1" />Stage Report</Button>
           <Button onClick={() => openForm()}><Plus className="h-4 w-4 mr-1" />New Order</Button>
@@ -153,7 +153,7 @@ export function CustomerOrdersTab() {
                 </div>
               </div>
               <Progress value={(o.current_stage / DELIVERED_STAGE) * 100} />
-              <div className="grid grid-cols-4 sm:grid-cols-7 gap-1 text-xs">
+              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-1 text-xs">
                 {ORDER_STAGES.map((s, i) => (
                   <div key={s} className={cn('rounded px-2 py-1 text-center',
                     i < o.current_stage || delivered ? 'bg-primary/15 text-primary' : i === o.current_stage ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground')}>

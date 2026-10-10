@@ -63,8 +63,15 @@ function useRemove(table: TableName) {
       const { error } = await supabase.from(table).delete().eq('id', id);
       if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['cs'] }),
-    onError: fail,
+    // Optimistic: remove the row instantly, restore on failure
+    onMutate: async (id: string) => {
+      await qc.cancelQueries({ queryKey: ['cs', table] });
+      const prev = qc.getQueryData<{ id: string }[]>(['cs', table]);
+      qc.setQueryData<{ id: string }[]>(['cs', table], old => (old ?? []).filter(r => r.id !== id));
+      return { prev };
+    },
+    onError: (e, _id, ctx) => { if (ctx?.prev) qc.setQueryData(['cs', table], ctx.prev); fail(e); },
+    onSettled: () => qc.invalidateQueries({ queryKey: ['cs'] }),
   });
 }
 
