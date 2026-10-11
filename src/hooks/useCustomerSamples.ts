@@ -91,6 +91,43 @@ export const useSampleDispatches = () => useList<SampleDispatch>('sample_dispatc
 export const useSaveDispatch = () => useSave('sample_dispatches');
 export const useDeleteDispatch = () => useRemove('sample_dispatches');
 
+export type SampleHistory = T['sample_history']['Row'];
+
+export const useSampleHistory = (sampleId?: string) => useQuery({
+  queryKey: ['cs', 'sample_history', sampleId],
+  enabled: !!sampleId,
+  queryFn: async () => {
+    const { data, error } = await supabase.from('sample_history').select('*').eq('sample_id', sampleId!).order('created_at', { ascending: false }).limit(200);
+    if (error) throw error;
+    return data as SampleHistory[];
+  },
+});
+
+const PHOTO_BUCKET = 'sample-photos';
+
+export async function uploadSamplePhotos(files: File[]) {
+  const paths: string[] = [];
+  for (const f of files) {
+    const ext = f.name.split('.').pop()?.toLowerCase() || 'jpg';
+    const path = `${crypto.randomUUID()}.${ext}`;
+    const { error } = await supabase.storage.from(PHOTO_BUCKET).upload(path, f, { contentType: f.type });
+    if (error) { toast.error(`Could not upload ${f.name}`); continue; }
+    paths.push(path);
+  }
+  return paths;
+}
+
+export const useSamplePhotoUrls = (paths: string[]) => useQuery({
+  queryKey: ['sample-photo-urls', paths],
+  enabled: paths.length > 0,
+  staleTime: 50 * 60 * 1000,
+  queryFn: async () => {
+    const { data, error } = await supabase.storage.from(PHOTO_BUCKET).createSignedUrls(paths, 3600);
+    if (error) throw error;
+    return Object.fromEntries((data ?? []).map(d => [d.path ?? '', d.signedUrl]));
+  },
+});
+
 export async function nextNumber(prefix: string) {
   const { data, error } = await supabase.rpc('next_doc_number', { _prefix: prefix });
   if (error || !data) return `${prefix}-${Date.now().toString().slice(-6)}`;
