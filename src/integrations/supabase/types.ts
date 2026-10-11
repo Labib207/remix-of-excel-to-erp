@@ -1225,8 +1225,11 @@ export type Database = {
           gate_pass_no: string
           id: string
           mobile: string | null
+          pass_type: string
+          prev_status: string | null
           purpose: string | null
           qty: number
+          reason: string | null
           return_condition: string | null
           return_date: string | null
           return_remarks: string | null
@@ -1246,8 +1249,11 @@ export type Database = {
           gate_pass_no: string
           id?: string
           mobile?: string | null
+          pass_type?: string
+          prev_status?: string | null
           purpose?: string | null
           qty?: number
+          reason?: string | null
           return_condition?: string | null
           return_date?: string | null
           return_remarks?: string | null
@@ -1267,8 +1273,11 @@ export type Database = {
           gate_pass_no?: string
           id?: string
           mobile?: string | null
+          pass_type?: string
+          prev_status?: string | null
           purpose?: string | null
           qty?: number
+          reason?: string | null
           return_condition?: string | null
           return_date?: string | null
           return_remarks?: string | null
@@ -1296,44 +1305,126 @@ export type Database = {
           },
         ]
       }
+      sample_history: {
+        Row: {
+          action: string
+          changed_by: string | null
+          changed_by_email: string | null
+          changes: Json
+          created_at: string
+          id: string
+          sample_id: string
+        }
+        Insert: {
+          action: string
+          changed_by?: string | null
+          changed_by_email?: string | null
+          changes?: Json
+          created_at?: string
+          id?: string
+          sample_id: string
+        }
+        Update: {
+          action?: string
+          changed_by?: string | null
+          changed_by_email?: string | null
+          changes?: Json
+          created_at?: string
+          id?: string
+          sample_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sample_history_sample_id_fkey"
+            columns: ["sample_id"]
+            isOneToOne: false
+            referencedRelation: "samples"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       samples: {
         Row: {
+          color: string | null
           created_at: string
           created_by: string | null
           description: string | null
+          final_action: string | null
+          golden: boolean
           id: string
+          keep_until: string | null
           location: string | null
+          made_date: string | null
           notes: string | null
+          order_id: string | null
+          photos: string[]
           ref_no: string
+          remarks: string | null
+          sample_type: string
+          size: string | null
+          status: string
+          status_changed_at: string
           style_name: string
           total_qty: number
           updated_at: string
         }
         Insert: {
+          color?: string | null
           created_at?: string
           created_by?: string | null
           description?: string | null
+          final_action?: string | null
+          golden?: boolean
           id?: string
+          keep_until?: string | null
           location?: string | null
+          made_date?: string | null
           notes?: string | null
+          order_id?: string | null
+          photos?: string[]
           ref_no: string
+          remarks?: string | null
+          sample_type?: string
+          size?: string | null
+          status?: string
+          status_changed_at?: string
           style_name: string
           total_qty?: number
           updated_at?: string
         }
         Update: {
+          color?: string | null
           created_at?: string
           created_by?: string | null
           description?: string | null
+          final_action?: string | null
+          golden?: boolean
           id?: string
+          keep_until?: string | null
           location?: string | null
+          made_date?: string | null
           notes?: string | null
+          order_id?: string | null
+          photos?: string[]
           ref_no?: string
+          remarks?: string | null
+          sample_type?: string
+          size?: string | null
+          status?: string
+          status_changed_at?: string
           style_name?: string
           total_qty?: number
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "samples_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "customer_orders"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       stationery_items: {
         Row: {
