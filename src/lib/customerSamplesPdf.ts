@@ -111,7 +111,8 @@ export async function orderStageReport(orders: CustomerOrder[], mode: 'download'
 }
 
 export async function sampleGatePass(d: SampleDispatch, s: Sample | undefined, mode: 'download' | 'print') {
-  const { doc, w, h } = await frame('SAMPLE OUTWARD GATE PASS');
+  const title = d.pass_type === 'disposed' ? 'SAMPLE DISPOSAL GATE PASS' : d.pass_type === 'returned' ? 'SAMPLE RETURN GATE PASS' : 'SAMPLE OUTWARD GATE PASS';
+  const { doc, w, h } = await frame(title);
   doc.text(`Gate Pass No: ${d.gate_pass_no}`, 19, 47);
   doc.text(`Date Sent: ${fmtDate(d.sent_date)}`, w - 19, 47, { align: 'right' });
   doc.text(`Sent To: ${d.sent_to}`, 19, 54);
@@ -121,11 +122,12 @@ export async function sampleGatePass(d: SampleDispatch, s: Sample | undefined, m
   autoTable(doc, {
     ...tableStyle, startY: 68, margin: { left: 19, right: 19 },
     head: [['SL', 'Sample Ref', 'Style Name', 'Description', 'Qty']],
-    body: [[1, s?.ref_no || '', s?.style_name || '', s?.description || '', String(d.qty)]],
+    body: [[1, s?.ref_no || '', s?.style_name || '', [s?.description, s?.size && `Size ${s.size}`, s?.color && `Color ${s.color}`].filter(Boolean).join(' · '), String(d.qty)]],
     columnStyles: { 0: { cellWidth: 12, halign: 'center' }, 1: { cellWidth: 32 }, 4: { cellWidth: 18, halign: 'right' } },
   });
   let y = (doc.lastAutoTable?.finalY ?? 90) + 12;
-  if (d.status !== 'out') {
+  if (d.reason) { doc.text(`Reason: ${d.reason}`, 19, y); y += 10; }
+  if (d.pass_type === 'sent' && d.status !== 'out') {
     doc.setFont('helvetica', 'bold'); doc.text('Return Details', 19, y); doc.setFont('helvetica', 'normal');
     y += 7;
     doc.text(`Status: ${d.status === 'returned' ? 'Returned' : 'Kept by client'}   Date: ${fmtDate(d.return_date)}   By: ${d.returned_by || '-'}   Condition: ${d.return_condition || '-'}`, 19, y);
@@ -133,4 +135,20 @@ export async function sampleGatePass(d: SampleDispatch, s: Sample | undefined, m
   }
   signatures(doc, w, h, 'Dispatched By', 'Received By', d.dispatched_by || '', d.sent_to);
   output(doc, d.gate_pass_no, mode);
+}
+
+export async function sampleLabel(s: Sample, typeText: string, mode: 'download' | 'print') {
+  const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: [100, 60] });
+  doc.setDrawColor(40); doc.setLineWidth(0.4); doc.rect(3, 3, 94, 54);
+  doc.setFont('helvetica', 'bold'); doc.setFontSize(9);
+  doc.text('GHOUSH - SAMPLE', 50, 10, { align: 'center' });
+  doc.setFontSize(16); doc.text(s.ref_no, 50, 21, { align: 'center' });
+  doc.setLineWidth(0.2); doc.line(6, 25, 94, 25);
+  doc.setFontSize(10);
+  const rows: [string, string][] = [['Style', s.style_name], ['Type', typeText], ['Location', s.location || '-']];
+  rows.forEach(([k, v], i) => {
+    doc.setFont('helvetica', 'bold'); doc.text(`${k}:`, 8, 33 + i * 8);
+    doc.setFont('helvetica', 'normal'); doc.text(doc.splitTextToSize(v, 62)[0] ?? '', 30, 33 + i * 8);
+  });
+  output(doc, `label-${s.ref_no}`, mode);
 }
