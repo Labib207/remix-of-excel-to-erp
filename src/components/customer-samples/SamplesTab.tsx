@@ -8,245 +8,299 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Pencil, Trash2, Search, Send, Undo2, Printer, FileDown } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Plus, Pencil, Search, Send, Undo2, Printer, FileDown, Tag, Eye, Star, CalendarPlus, Recycle, Trash2, FileSpreadsheet } from 'lucide-react';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 import {
-  Sample, SampleDispatch, useSamples, useSaveSample, useDeleteSample, useSampleDispatches, useSaveDispatch,
-  useDeleteDispatch, nextNumber, fmtDate,
+  Sample, SampleDispatch, useSamples, useSaveSample, useSampleDispatches, useSaveDispatch, useCustomerOrders, fmtDate,
 } from '@/hooks/useCustomerSamples';
-import { CustomerPicker } from './CustomerPicker';
-import { sampleGatePass } from '@/lib/customerSamplesPdf';
-import { useAuth } from '@/contexts/AuthContext';
+import { sampleGatePass, sampleLabel } from '@/lib/customerSamplesPdf';
+import { exportSamplesExcel } from '@/lib/sampleExcel';
+import {
+  SAMPLE_TYPES, SAMPLE_STATUSES, LEAVING_STATUSES, typeLabel, statusLabel, isInRoom, isExpired, reviewReasons,
+  suggestKeepUntil, todayStr, addDays,
+} from '@/lib/sampleRules';
+import { SampleFormDialog } from './SampleFormDialog';
+import { GatePassDialog, PassType } from './GatePassDialog';
+import { SampleDetailDialog } from './SampleDetailDialog';
 
-const today = () => new Date().toISOString().slice(0, 10);
 const matches = (t: string, q: string) => q.trim().toLowerCase().split(/\s+/).filter(Boolean).every(w => t.toLowerCase().includes(w));
-const emptySample = { ref_no: '', style_name: '', description: '', location: '', total_qty: '1', notes: '' };
+
+const STATUS_STYLE: Record<string, string> = {
+  waiting_approval: 'bg-warning/15 text-warning border-warning/30',
+  approved: 'bg-success/15 text-success border-success/30',
+  rejected: 'bg-destructive/15 text-destructive border-destructive/30',
+  sent: 'bg-primary/15 text-primary border-primary/30',
+  returned: 'bg-muted text-muted-foreground',
+  disposed: 'bg-muted text-muted-foreground line-through',
+};
+const StatusBadge = ({ s }: { s: string }) => <Badge variant="outline" className={STATUS_STYLE[s]}>{statusLabel(s)}</Badge>;
 
 export function SamplesTab() {
-  const { user } = useAuth();
   const { data: samples = [] } = useSamples();
   const { data: dispatches = [] } = useSampleDispatches();
+  const { data: orders = [] } = useCustomerOrders();
   const saveSample = useSaveSample();
-  const delSample = useDeleteSample();
   const saveDispatch = useSaveDispatch();
-  const delDispatch = useDeleteDispatch();
 
   const [q, setQ] = useState('');
+  const [fType, setFType] = useState('all');
+  const [fStatus, setFStatus] = useState('all');
+  const [fLoc, setFLoc] = useState('all');
+  const [fGolden, setFGolden] = useState('all');
   const [logFilter, setLogFilter] = useState<'out' | 'all'>('out');
-  const [sampleOpen, setSampleOpen] = useState(false);
-  const [editId, setEditId] = useState<string | undefined>();
-  const [sForm, setSForm] = useState(emptySample);
-  const [dispatchOf, setDispatchOf] = useState<Sample | null>(null);
-  const [dForm, setDForm] = useState({ customer_id: null as string | null, sent_to: '', mobile: '', qty: '1', purpose: 'Approval', sent_date: today(), expected_return: '', dispatched_by: '' });
+
+  const [formOpen, setFormOpen] = useState(false);
+  const [editing, setEditing] = useState<Sample | null>(null);
+  const [gate, setGate] = useState<{ sample: Sample; type: PassType } | null>(null);
+  const [detail, setDetail] = useState<Sample | null>(null);
+  const [extendOf, setExtendOf] = useState<Sample | null>(null);
+  const [extendDate, setExtendDate] = useState('');
   const [returnOf, setReturnOf] = useState<SampleDispatch | null>(null);
-  const [rForm, setRForm] = useState({ status: 'returned', return_date: today(), returned_by: '', return_condition: 'Good', return_remarks: '' });
+  const [rForm, setRForm] = useState({ return_date: todayStr(), returned_by: '', return_condition: 'Good', return_remarks: '' });
 
-  // One pass over gate passes instead of re-scanning per sample row
-  const qtyMaps = useMemo(() => {
-    const out = new Map<string, number>(); const kept = new Map<string, number>();
-    for (const d of dispatches) {
-      const m = d.status === 'out' ? out : d.status === 'kept' ? kept : null;
-      if (m) m.set(d.sample_id, (m.get(d.sample_id) ?? 0) + Number(d.qty));
-    }
-    return { out, kept };
-  }, [dispatches]);
-  const outQty = (id: string) => qtyMaps.out.get(id) ?? 0;
-  const keptQty = (id: string) => qtyMaps.kept.get(id) ?? 0;
-  const available = (s: Sample) => Number(s.total_qty) - outQty(s.id) - keptQty(s.id);
+  const orderById = useMemo(() => new Map(orders.map(o => [o.id, o])), [orders]);
   const sampleById = useMemo(() => new Map(samples.map(s => [s.id, s])), [samples]);
+  const reviewMap = useMemo(() => new Map(samples.map(s => [s.id, reviewReasons(s, samples)])), [samples]);
+  const locations = useMemo(() => [...new Set(samples.map(s => s.location?.trim()).filter(Boolean) as string[])].sort(), [samples]);
 
-  const sampleRows = samples.filter(s => matches(`${s.ref_no} ${s.style_name} ${s.description ?? ''} ${s.location ?? ''}`, q));
+  const stats = useMemo(() => {
+    const room = samples.filter(isInRoom);
+    const byType = SAMPLE_TYPES.map(t => [t.label, room.filter(s => s.sample_type === t.value).length] as const);
+    const byLoc = new Map<string, number>();
+    room.forEach(s => { const l = s.location?.trim() || 'No location'; byLoc.set(l, (byLoc.get(l) ?? 0) + 1); });
+    const review = samples.filter(s => (reviewMap.get(s.id) ?? []).length > 0).length;
+    return { room: room.length, byType, byLoc: [...byLoc.entries()].sort((a, b) => b[1] - a[1]), review };
+  }, [samples, reviewMap]);
+
+  const rows = useMemo(() => samples.filter(s => {
+    const o = s.order_id ? orderById.get(s.order_id) : undefined;
+    return (fType === 'all' || s.sample_type === fType) && (fStatus === 'all' || s.status === fStatus)
+      && (fLoc === 'all' || (s.location?.trim() ?? '') === fLoc) && (fGolden === 'all' || String(s.golden) === fGolden)
+      && matches(`${s.ref_no} ${s.style_name} ${o?.customer_name ?? ''} ${o?.order_no ?? ''}`, q);
+  }), [samples, orderById, fType, fStatus, fLoc, fGolden, q]);
+
+  const reviewRows = samples.filter(s => (reviewMap.get(s.id) ?? []).length > 0);
   const logRows = dispatches.filter(d => (logFilter === 'all' || d.status === 'out') &&
     matches(`${d.gate_pass_no} ${d.sent_to} ${sampleById.get(d.sample_id)?.ref_no ?? ''} ${sampleById.get(d.sample_id)?.style_name ?? ''}`, q));
 
-  const openSample = async (s?: Sample) => {
-    setEditId(s?.id);
-    setSForm(s ? { ref_no: s.ref_no, style_name: s.style_name, description: s.description ?? '', location: s.location ?? '', total_qty: String(s.total_qty), notes: s.notes ?? '' }
-      : { ...emptySample, ref_no: await nextNumber('SMP') });
-    setSampleOpen(true);
+  const openForm = (s: Sample | null) => { setEditing(s); setFormOpen(true); };
+  const canLeave = (s: Sample) => !LEAVING_STATUSES.includes(s.status);
+
+  const doExtend = async () => {
+    if (!extendOf || !extendDate) return toast.error('Pick a new date');
+    await saveSample.mutateAsync({ id: extendOf.id, values: { keep_until: extendDate, final_action: 'keep' } });
+    toast.success('Keep-until date extended'); setExtendOf(null);
   };
 
-  const submitSample = async () => {
-    if (!sForm.ref_no.trim() || !sForm.style_name.trim()) return toast.error('Reference number and style name are required');
-    await saveSample.mutateAsync({ id: editId, values: { ...sForm, ref_no: sForm.ref_no.trim(), style_name: sForm.style_name.trim(), total_qty: parseFloat(sForm.total_qty) || 0 } });
-    toast.success('Sample saved'); setSampleOpen(false);
-  };
-
-  const openDispatch = (s: Sample) => {
-    setDispatchOf(s);
-    setDForm({ customer_id: null, sent_to: '', mobile: '', qty: '1', purpose: 'Approval', sent_date: today(), expected_return: '', dispatched_by: user?.email?.split('@')[0] ?? '' });
-  };
-
-  const submitDispatch = async () => {
-    if (!dispatchOf) return;
-    const qty = parseFloat(dForm.qty) || 0;
-    if (!dForm.sent_to.trim()) return toast.error('Recipient name is required');
-    if (qty <= 0 || qty > available(dispatchOf)) return toast.error(`Only ${available(dispatchOf)} available in store`);
-    const gate_pass_no = await nextNumber('GP');
-    await saveDispatch.mutateAsync({ values: {
-      gate_pass_no, sample_id: dispatchOf.id, customer_id: dForm.customer_id, sent_to: dForm.sent_to.trim(), mobile: dForm.mobile || null,
-      qty, purpose: dForm.purpose || null, sent_date: dForm.sent_date, expected_return: dForm.expected_return || null, dispatched_by: dForm.dispatched_by || null,
-    } });
-    toast.success(`Gate pass ${gate_pass_no} created`);
-    setDispatchOf(null);
+  const doReuse = async (s: Sample) => {
+    const keep = suggestKeepUntil(s.sample_type, 'waiting_approval', todayStr(), s.order_id ? orderById.get(s.order_id) : null) || addDays(todayStr(), 30);
+    await saveSample.mutateAsync({ id: s.id, values: { final_action: 'reuse', status: 'waiting_approval', keep_until: keep, made_date: todayStr() } });
+    toast.success('Sample marked for reuse');
   };
 
   const submitReturn = async () => {
     if (!returnOf) return;
-    await saveDispatch.mutateAsync({ id: returnOf.id, values: { ...rForm, returned_by: rForm.returned_by || null, return_remarks: rForm.return_remarks || null } });
-    toast.success(rForm.status === 'returned' ? 'Sample returned to store' : 'Marked as kept by client');
-    setReturnOf(null);
+    await saveDispatch.mutateAsync({ id: returnOf.id, values: { status: 'returned', ...rForm, returned_by: rForm.returned_by || null, return_remarks: rForm.return_remarks || null } });
+    const s = sampleById.get(returnOf.sample_id);
+    if (s) await saveSample.mutateAsync({ id: s.id, values: { status: returnOf.prev_status && !LEAVING_STATUSES.includes(returnOf.prev_status) ? returnOf.prev_status : 'approved' } });
+    toast.success('Sample is back in the store'); setReturnOf(null);
   };
+
+  const rowActions = (s: Sample) => (
+    <>
+      <Button size="icon" variant="ghost" title="Details" onClick={() => setDetail(s)}><Eye className="h-4 w-4" /></Button>
+      <Button size="icon" variant="ghost" title="Edit" onClick={() => openForm(s)}><Pencil className="h-4 w-4" /></Button>
+      <Button size="icon" variant="ghost" title="Print label" onClick={() => sampleLabel(s, typeLabel(s.sample_type), 'print')}><Tag className="h-4 w-4" /></Button>
+      <Button size="sm" variant="outline" disabled={!canLeave(s)} onClick={() => setGate({ sample: s, type: 'sent' })}><Send className="h-4 w-4 mr-1" />Gate Pass</Button>
+    </>
+  );
+
+  const filterSelect = (value: string, set: (v: string) => void, all: string, opts: { value: string; label: string }[]) => (
+    <Select value={value} onValueChange={set}>
+      <SelectTrigger className="w-full sm:w-40"><SelectValue /></SelectTrigger>
+      <SelectContent>
+        <SelectItem value="all">{all}</SelectItem>
+        {opts.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+      </SelectContent>
+    </Select>
+  );
 
   return (
     <div className="grid gap-4">
-      <Card>
-        <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <CardTitle className="font-normal">Sample Store ({samples.length})</CardTitle>
-          <div className="flex gap-2">
-            <div className="relative">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <Card><CardContent className="px-4 py-3"><p className="text-xs text-muted-foreground">In Sample Room</p><p className="text-2xl">{stats.room}</p></CardContent></Card>
+        <Card><CardContent className="px-4 py-3"><p className="text-xs text-muted-foreground mb-1">By Type</p>
+          {stats.byType.map(([l, n]) => <p key={l} className="text-sm flex justify-between gap-2"><span className="truncate">{l}</span><span>{n}</span></p>)}
+        </CardContent></Card>
+        <Card><CardContent className="px-4 py-3"><p className="text-xs text-muted-foreground mb-1">By Location</p>
+          <div className="max-h-20 overflow-y-auto">
+            {stats.byLoc.length === 0 ? <p className="text-sm text-muted-foreground">—</p> : stats.byLoc.map(([l, n]) => <p key={l} className="text-sm flex justify-between gap-2"><span className="truncate">{l}</span><span>{n}</span></p>)}
+          </div>
+        </CardContent></Card>
+        <Card className={cn(stats.review > 0 && 'border-destructive/50')}><CardContent className="px-4 py-3"><p className="text-xs text-muted-foreground">Needs Review</p><p className={cn('text-2xl', stats.review > 0 && 'text-destructive')}>{stats.review}</p></CardContent></Card>
+      </div>
+
+      <Tabs defaultValue="list">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <TabsList className="flex-wrap h-auto">
+            <TabsTrigger value="list">All Samples ({samples.length})</TabsTrigger>
+            <TabsTrigger value="review">Needs Review ({reviewRows.length})</TabsTrigger>
+            <TabsTrigger value="passes">Gate Passes</TabsTrigger>
+          </TabsList>
+          <div className="flex flex-wrap gap-2">
+            <div className="relative w-full sm:w-auto">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input className="pl-9 w-56" placeholder="Search samples / gate pass" value={q} onChange={e => setQ(e.target.value)} />
+              <Input className="pl-9 w-full sm:w-60" placeholder="Search ID, style, customer" value={q} onChange={e => setQ(e.target.value)} />
             </div>
-            <Button onClick={() => openSample()}><Plus className="h-4 w-4 mr-1" />Add Sample</Button>
+            <Button variant="outline" onClick={() => exportSamplesExcel(rows, orders)} disabled={!rows.length}><FileSpreadsheet className="h-4 w-4 mr-1" />Excel</Button>
+            <Button onClick={() => openForm(null)}><Plus className="h-4 w-4 mr-1" />Add Sample</Button>
           </div>
-        </CardHeader>
-        <CardContent className="overflow-x-auto">
-          <Table>
-            <TableHeader><TableRow>
-              <TableHead>Ref No</TableHead><TableHead>Style Name</TableHead><TableHead>Description</TableHead><TableHead>Location</TableHead>
-              <TableHead className="text-right">Total</TableHead><TableHead className="text-right">Outside</TableHead><TableHead className="text-right">In Store</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow></TableHeader>
-            <TableBody>
-              {sampleRows.length === 0 && <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">No samples yet</TableCell></TableRow>}
-              {sampleRows.map(s => {
-                const avail = available(s); const out = outQty(s.id);
-                return (
-                  <TableRow key={s.id}>
-                    <TableCell className="px-4 py-3 font-mono text-sm">{s.ref_no}</TableCell>
-                    <TableCell className="px-4 py-3">{s.style_name}</TableCell>
-                    <TableCell className="px-4 py-3 max-w-[200px] truncate">{s.description || '-'}</TableCell>
-                    <TableCell className="px-4 py-3">{s.location || '-'}</TableCell>
-                    <TableCell className="px-4 py-3 text-right">{s.total_qty}</TableCell>
-                    <TableCell className="px-4 py-3 text-right">{out ? <Badge variant="destructive">{out}</Badge> : 0}</TableCell>
-                    <TableCell className="px-4 py-3 text-right">{avail}</TableCell>
-                    <TableCell className="px-4 py-3 text-right whitespace-nowrap">
-                      <Button size="sm" variant="outline" disabled={avail <= 0} onClick={() => openDispatch(s)}><Send className="h-4 w-4 mr-1" />Send Out</Button>
-                      <Button size="icon" variant="ghost" onClick={() => openSample(s)}><Pencil className="h-4 w-4" /></Button>
-                      <Button size="icon" variant="ghost" onClick={() => confirm(`Delete sample ${s.ref_no} and its gate pass history?`) && delSample.mutate(s.id)}><Trash2 className="h-4 w-4" /></Button>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+        </div>
 
-      <Card>
-        <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <CardTitle className="font-normal">Gate Pass & Returns</CardTitle>
-          <div className="flex gap-2">
-            <Button size="sm" variant={logFilter === 'out' ? 'default' : 'outline'} onClick={() => setLogFilter('out')}>Currently Outside</Button>
-            <Button size="sm" variant={logFilter === 'all' ? 'default' : 'outline'} onClick={() => setLogFilter('all')}>All History</Button>
-          </div>
-        </CardHeader>
-        <CardContent className="overflow-x-auto">
-          <Table>
-            <TableHeader><TableRow>
-              <TableHead>Gate Pass</TableHead><TableHead>Sample</TableHead><TableHead>Sent To</TableHead><TableHead className="text-right">Qty</TableHead>
-              <TableHead>Purpose</TableHead><TableHead>Sent</TableHead><TableHead>Return</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Actions</TableHead>
-            </TableRow></TableHeader>
-            <TableBody>
-              {logRows.length === 0 && <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-8">Nothing here</TableCell></TableRow>}
-              {logRows.map(d => {
-                const s = sampleById.get(d.sample_id);
-                const late = d.status === 'out' && d.expected_return && d.expected_return < today();
-                return (
-                  <TableRow key={d.id}>
-                    <TableCell className="px-4 py-3 font-mono text-sm">{d.gate_pass_no}</TableCell>
-                    <TableCell className="px-4 py-3">{s ? `${s.ref_no} · ${s.style_name}` : '-'}</TableCell>
-                    <TableCell className="px-4 py-3">{d.sent_to}{d.mobile && <div className="text-xs text-muted-foreground">{d.mobile}</div>}</TableCell>
-                    <TableCell className="px-4 py-3 text-right">{d.qty}</TableCell>
-                    <TableCell className="px-4 py-3">{d.purpose || '-'}</TableCell>
-                    <TableCell className="px-4 py-3">{fmtDate(d.sent_date)}<div className="text-xs text-muted-foreground">by {d.dispatched_by || '-'}</div></TableCell>
-                    <TableCell className="px-4 py-3">
-                      {d.status === 'out' ? <span className={late ? 'text-destructive' : ''}>Exp. {fmtDate(d.expected_return)}</span>
-                        : <>{fmtDate(d.return_date)}<div className="text-xs text-muted-foreground">{d.returned_by || '-'} · {d.return_condition || '-'}</div></>}
-                    </TableCell>
-                    <TableCell className="px-4 py-3">
-                      {d.status === 'out' ? <Badge variant="destructive">Outside</Badge> : d.status === 'returned' ? <Badge variant="secondary">Returned</Badge> : <Badge variant="outline">Kept by client</Badge>}
-                    </TableCell>
-                    <TableCell className="px-4 py-3 text-right whitespace-nowrap">
-                      {d.status === 'out' && <Button size="sm" variant="outline" onClick={() => { setReturnOf(d); setRForm({ status: 'returned', return_date: today(), returned_by: d.sent_to, return_condition: 'Good', return_remarks: '' }); }}><Undo2 className="h-4 w-4 mr-1" />Return</Button>}
-                      <Button size="icon" variant="ghost" onClick={() => sampleGatePass(d, s, 'print')}><Printer className="h-4 w-4" /></Button>
-                      <Button size="icon" variant="ghost" onClick={() => sampleGatePass(d, s, 'download')}><FileDown className="h-4 w-4" /></Button>
-                      <Button size="icon" variant="ghost" onClick={() => confirm(`Delete gate pass ${d.gate_pass_no}?`) && delDispatch.mutate(d.id)}><Trash2 className="h-4 w-4" /></Button>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+        <TabsContent value="list">
+          <Card>
+            <CardHeader className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+              {filterSelect(fType, setFType, 'All types', SAMPLE_TYPES.map(t => ({ value: t.value, label: t.label })))}
+              {filterSelect(fStatus, setFStatus, 'All statuses', SAMPLE_STATUSES.map(t => ({ value: t.value, label: t.label })))}
+              {filterSelect(fLoc, setFLoc, 'All locations', locations.map(l => ({ value: l, label: l })))}
+              {filterSelect(fGolden, setFGolden, 'Golden: any', [{ value: 'true', label: 'Golden only' }, { value: 'false', label: 'Not golden' }])}
+            </CardHeader>
+            <CardContent className="overflow-x-auto">
+              <Table>
+                <TableHeader><TableRow>
+                  <TableHead>Sample ID</TableHead><TableHead>Type</TableHead><TableHead>Style</TableHead><TableHead>Customer / Order</TableHead>
+                  <TableHead>Size / Color</TableHead><TableHead className="text-right">Qty</TableHead><TableHead>Status</TableHead>
+                  <TableHead>Location</TableHead><TableHead>Keep Until</TableHead><TableHead className="text-right">Actions</TableHead>
+                </TableRow></TableHeader>
+                <TableBody>
+                  {rows.length === 0 && <TableRow><TableCell colSpan={10} className="text-center text-muted-foreground py-8">No samples found</TableCell></TableRow>}
+                  {rows.map(s => {
+                    const o = s.order_id ? orderById.get(s.order_id) : undefined;
+                    const expired = isExpired(s);
+                    return (
+                      <TableRow key={s.id} className={cn(expired && 'bg-destructive/10')}>
+                        <TableCell className="px-4 py-3 font-mono text-sm whitespace-nowrap">{s.golden && <Star className="inline h-3 w-3 mr-1 text-warning fill-current" />}{s.ref_no}</TableCell>
+                        <TableCell className="px-4 py-3 whitespace-nowrap">{typeLabel(s.sample_type)}</TableCell>
+                        <TableCell className="px-4 py-3">{s.style_name}</TableCell>
+                        <TableCell className="px-4 py-3">{o ? <>{o.customer_name}<div className="text-xs text-muted-foreground">{o.order_no}</div></> : '-'}</TableCell>
+                        <TableCell className="px-4 py-3">{[s.size, s.color].filter(Boolean).join(' / ') || '-'}</TableCell>
+                        <TableCell className="px-4 py-3 text-right">{s.total_qty}</TableCell>
+                        <TableCell className="px-4 py-3"><StatusBadge s={s.status} /></TableCell>
+                        <TableCell className="px-4 py-3">{s.location || '-'}</TableCell>
+                        <TableCell className={cn('px-4 py-3 whitespace-nowrap', expired && 'text-destructive')}>{fmtDate(s.keep_until)}</TableCell>
+                        <TableCell className="px-4 py-3 text-right whitespace-nowrap">{rowActions(s)}</TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-      <Dialog open={sampleOpen} onOpenChange={setSampleOpen}>
-        <DialogContent>
-          <DialogHeader><DialogTitle className="font-normal">{editId ? 'Edit Sample' : 'Add Sample to Store'}</DialogTitle></DialogHeader>
-          <div className="grid gap-3">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div><Label>Reference No *</Label><Input value={sForm.ref_no} onChange={e => setSForm({ ...sForm, ref_no: e.target.value })} /></div>
-              <div><Label>Style Name *</Label><Input value={sForm.style_name} onChange={e => setSForm({ ...sForm, style_name: e.target.value })} /></div>
-              <div><Label>Location (Rack / Shelf)</Label><Input value={sForm.location} onChange={e => setSForm({ ...sForm, location: e.target.value })} /></div>
-              <div><Label>Quantity in Store</Label><Input type="number" step="any" value={sForm.total_qty} onChange={e => setSForm({ ...sForm, total_qty: e.target.value })} /></div>
-            </div>
-            <div><Label>Description</Label><Input value={sForm.description} onChange={e => setSForm({ ...sForm, description: e.target.value })} /></div>
-            <div><Label>Notes</Label><Textarea value={sForm.notes} onChange={e => setSForm({ ...sForm, notes: e.target.value })} /></div>
-            <Button onClick={submitSample} disabled={saveSample.isPending}>Save Sample</Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+        <TabsContent value="review">
+          <Card>
+            <CardContent className="overflow-x-auto pt-6">
+              <Table>
+                <TableHeader><TableRow>
+                  <TableHead>Sample ID</TableHead><TableHead>Type</TableHead><TableHead>Style</TableHead><TableHead>Status</TableHead>
+                  <TableHead>Location</TableHead><TableHead>Keep Until</TableHead><TableHead>Why</TableHead><TableHead className="text-right">Actions</TableHead>
+                </TableRow></TableHeader>
+                <TableBody>
+                  {reviewRows.length === 0 && <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">Nothing needs review</TableCell></TableRow>}
+                  {reviewRows.map(s => (
+                    <TableRow key={s.id}>
+                      <TableCell className="px-4 py-3 font-mono text-sm"><button className="text-primary" onClick={() => setDetail(s)}>{s.ref_no}</button></TableCell>
+                      <TableCell className="px-4 py-3 whitespace-nowrap">{typeLabel(s.sample_type)}</TableCell>
+                      <TableCell className="px-4 py-3">{s.style_name}</TableCell>
+                      <TableCell className="px-4 py-3"><StatusBadge s={s.status} /></TableCell>
+                      <TableCell className="px-4 py-3">{s.location || '-'}</TableCell>
+                      <TableCell className={cn('px-4 py-3', isExpired(s) && 'text-destructive')}>{fmtDate(s.keep_until)}</TableCell>
+                      <TableCell className="px-4 py-3"><div className="flex flex-wrap gap-1">{(reviewMap.get(s.id) ?? []).map(r => <Badge key={r} variant="destructive">{r}</Badge>)}</div></TableCell>
+                      <TableCell className="px-4 py-3 text-right whitespace-nowrap">
+                        <Button size="sm" variant="ghost" onClick={() => { setExtendOf(s); setExtendDate(addDays(todayStr(), 30)); }}><CalendarPlus className="h-4 w-4 mr-1" />Extend</Button>
+                        <Button size="sm" variant="ghost" disabled={!canLeave(s)} onClick={() => setGate({ sample: s, type: 'sent' })}><Send className="h-4 w-4 mr-1" />Send</Button>
+                        <Button size="sm" variant="ghost" onClick={() => doReuse(s)}><Recycle className="h-4 w-4 mr-1" />Reuse</Button>
+                        <Button size="sm" variant="ghost" className="text-destructive" onClick={() => setGate({ sample: s, type: 'disposed' })}><Trash2 className="h-4 w-4 mr-1" />Dispose</Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-      <Dialog open={!!dispatchOf} onOpenChange={v => !v && setDispatchOf(null)}>
-        <DialogContent className="max-w-lg">
-          {dispatchOf && <>
-            <DialogHeader><DialogTitle className="font-normal">Send Out {dispatchOf.ref_no} · {dispatchOf.style_name}</DialogTitle></DialogHeader>
-            <div className="grid gap-3">
-              <p className="text-sm text-muted-foreground">Available in store: {available(dispatchOf)} · Location {dispatchOf.location || '-'}</p>
-              <CustomerPicker value={dForm.customer_id} onPick={c => setDForm({ ...dForm, customer_id: c?.id ?? null, sent_to: c?.name ?? dForm.sent_to, mobile: c?.mobile ?? dForm.mobile })} />
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div><Label>Sent To *</Label><Input value={dForm.sent_to} onChange={e => setDForm({ ...dForm, sent_to: e.target.value })} /></div>
-                <div><Label>Mobile</Label><Input value={dForm.mobile} onChange={e => setDForm({ ...dForm, mobile: e.target.value })} /></div>
-                <div><Label>Quantity</Label><Input type="number" step="any" value={dForm.qty} onChange={e => setDForm({ ...dForm, qty: e.target.value })} /></div>
-                <div><Label>Purpose</Label>
-                  <Select value={dForm.purpose} onValueChange={v => setDForm({ ...dForm, purpose: v })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>{['Approval', 'Fitting', 'Exhibition', 'Reference', 'Other'].map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
-                  </Select>
-                </div>
-                <div><Label>Date Sent</Label><Input type="date" value={dForm.sent_date} onChange={e => setDForm({ ...dForm, sent_date: e.target.value })} /></div>
-                <div><Label>Expected Return</Label><Input type="date" value={dForm.expected_return} onChange={e => setDForm({ ...dForm, expected_return: e.target.value })} /></div>
+        <TabsContent value="passes">
+          <Card>
+            <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <CardTitle className="font-normal">Gate Passes & Returns</CardTitle>
+              <div className="flex flex-wrap gap-2">
+                <Button size="sm" variant={logFilter === 'out' ? 'default' : 'outline'} onClick={() => setLogFilter('out')}>Currently Outside</Button>
+                <Button size="sm" variant={logFilter === 'all' ? 'default' : 'outline'} onClick={() => setLogFilter('all')}>All History</Button>
               </div>
-              <div><Label>Dispatched By</Label><Input value={dForm.dispatched_by} onChange={e => setDForm({ ...dForm, dispatched_by: e.target.value })} /></div>
-              <Button onClick={submitDispatch} disabled={saveDispatch.isPending}>Create Gate Pass</Button>
-            </div>
-          </>}
+            </CardHeader>
+            <CardContent className="overflow-x-auto">
+              <Table>
+                <TableHeader><TableRow>
+                  <TableHead>Gate Pass</TableHead><TableHead>Type</TableHead><TableHead>Sample</TableHead><TableHead>To</TableHead><TableHead className="text-right">Qty</TableHead>
+                  <TableHead>Date</TableHead><TableHead>Return</TableHead><TableHead className="text-right">Actions</TableHead>
+                </TableRow></TableHeader>
+                <TableBody>
+                  {logRows.length === 0 && <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">Nothing here</TableCell></TableRow>}
+                  {logRows.map(d => {
+                    const s = sampleById.get(d.sample_id);
+                    const late = d.status === 'out' && d.expected_return && d.expected_return < todayStr();
+                    return (
+                      <TableRow key={d.id}>
+                        <TableCell className="px-4 py-3 font-mono text-sm">{d.gate_pass_no}</TableCell>
+                        <TableCell className="px-4 py-3 capitalize">{d.pass_type}{d.reason && <div className="text-xs text-muted-foreground normal-case">{d.reason}</div>}</TableCell>
+                        <TableCell className="px-4 py-3">{s ? `${s.ref_no} · ${s.style_name}` : '-'}</TableCell>
+                        <TableCell className="px-4 py-3">{d.sent_to}{d.mobile && <div className="text-xs text-muted-foreground">{d.mobile}</div>}</TableCell>
+                        <TableCell className="px-4 py-3 text-right">{d.qty}</TableCell>
+                        <TableCell className="px-4 py-3">{fmtDate(d.sent_date)}<div className="text-xs text-muted-foreground">by {d.dispatched_by || '-'}</div></TableCell>
+                        <TableCell className="px-4 py-3">
+                          {d.pass_type !== 'sent' ? '-' : d.status === 'out'
+                            ? <span className={late ? 'text-destructive' : ''}>Outside · Exp. {fmtDate(d.expected_return)}</span>
+                            : <>{fmtDate(d.return_date)}<div className="text-xs text-muted-foreground">{d.returned_by || '-'} · {d.return_condition || '-'}</div></>}
+                        </TableCell>
+                        <TableCell className="px-4 py-3 text-right whitespace-nowrap">
+                          {d.status === 'out' && <Button size="sm" variant="outline" onClick={() => { setReturnOf(d); setRForm({ return_date: todayStr(), returned_by: d.sent_to, return_condition: 'Good', return_remarks: '' }); }}><Undo2 className="h-4 w-4 mr-1" />Back to Store</Button>}
+                          <Button size="icon" variant="ghost" onClick={() => sampleGatePass(d, s, 'print')}><Printer className="h-4 w-4" /></Button>
+                          <Button size="icon" variant="ghost" onClick={() => sampleGatePass(d, s, 'download')}><FileDown className="h-4 w-4" /></Button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+
+      <SampleFormDialog open={formOpen} onOpenChange={setFormOpen} sample={editing} />
+      <GatePassDialog sample={gate?.sample ?? null} initialType={gate?.type ?? 'sent'} onClose={() => setGate(null)} />
+      {detail && <SampleDetailDialog sample={sampleById.get(detail.id) ?? detail} all={samples} dispatches={dispatches}
+        order={detail.order_id ? orderById.get(detail.order_id) : undefined} onClose={() => setDetail(null)} />}
+
+      <Dialog open={!!extendOf} onOpenChange={v => !v && setExtendOf(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle className="font-normal">Extend Keep-Until — {extendOf?.ref_no}</DialogTitle></DialogHeader>
+          <div className="grid gap-3">
+            <div><Label>New Keep-Until Date</Label><Input type="date" value={extendDate} onChange={e => setExtendDate(e.target.value)} /></div>
+            <Button onClick={doExtend} disabled={saveSample.isPending}>Save</Button>
+          </div>
         </DialogContent>
       </Dialog>
 
       <Dialog open={!!returnOf} onOpenChange={v => !v && setReturnOf(null)}>
         <DialogContent>
           {returnOf && <>
-            <DialogHeader><DialogTitle className="font-normal">Return — {returnOf.gate_pass_no}</DialogTitle></DialogHeader>
+            <DialogHeader><DialogTitle className="font-normal">Back to Store — {returnOf.gate_pass_no}</DialogTitle></DialogHeader>
             <div className="grid gap-3">
-              <div><Label>Result</Label>
-                <Select value={rForm.status} onValueChange={v => setRForm({ ...rForm, status: v })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent><SelectItem value="returned">Returned to store</SelectItem><SelectItem value="kept">Kept by client</SelectItem></SelectContent>
-                </Select>
-              </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div><Label>Return Date</Label><Input type="date" value={rForm.return_date} onChange={e => setRForm({ ...rForm, return_date: e.target.value })} /></div>
                 <div><Label>Returned By (Name)</Label><Input value={rForm.returned_by} onChange={e => setRForm({ ...rForm, returned_by: e.target.value })} /></div>
