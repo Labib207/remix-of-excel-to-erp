@@ -2,6 +2,8 @@ import type { Sample, CustomerOrder } from '@/hooks/useCustomerSamples';
 
 export const SAMPLE_TYPES = [
   { value: 'fit_on', label: 'Fit-on' },
+  { value: 'pp_sample', label: 'PP Sample' },
+  { value: 'production', label: 'Production' },
   { value: 'approval', label: 'Approval (Owner / Ministry)' },
   { value: 'customer_sales', label: 'Customer Sales' },
 ] as const;
