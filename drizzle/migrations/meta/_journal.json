@@ -22,6 +22,13 @@
       "when": 1791699807917,
       "tag": "0002_sample_store_upgrade",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1791886476467,
+      "tag": "0003_add_production_pp_sample_types",
+      "breakpoints": true
     }
   ]
 }
