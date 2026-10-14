@@ -1,6 +1,7 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import logoImage from '@/assets/logo.png';
+import { buildSampleDeliveryNote } from '@/lib/sampleDeliveryNotePdf';
 import {
   CustomerOrder, Sample, SampleDispatch, ORDER_STAGES, stageHistory, formatDuration, fmtDate, fmtDateTime,
 } from '@/hooks/useCustomerSamples';
@@ -111,29 +112,7 @@ export async function orderStageReport(orders: CustomerOrder[], mode: 'download'
 }
 
 export async function sampleGatePass(d: SampleDispatch, s: Sample | undefined, mode: 'download' | 'print') {
-  const title = d.pass_type === 'disposed' ? 'SAMPLE DISPOSAL NOTE' : d.pass_type === 'returned' ? 'SAMPLE RETURN DELIVERY NOTE' : 'SAMPLE DELIVERY NOTE';
-  const { doc, w, h } = await frame(title);
-  doc.text(`Delivery Note No: ${d.gate_pass_no}`, 19, 47);
-  doc.text(`Date Sent: ${fmtDate(d.sent_date)}`, w - 19, 47, { align: 'right' });
-  doc.text(`Sent To: ${d.sent_to}`, 19, 54);
-  doc.text(`Mobile: ${d.mobile || '-'}`, w - 19, 54, { align: 'right' });
-  doc.text(`Purpose: ${d.purpose || '-'}`, 19, 61);
-  doc.text(`Expected Return: ${fmtDate(d.expected_return)}`, w - 19, 61, { align: 'right' });
-  autoTable(doc, {
-    ...tableStyle, startY: 68, margin: { left: 19, right: 19 },
-    head: [['SL', 'Sample Ref', 'Style Name', 'Description', 'Qty']],
-    body: [[1, s?.ref_no || '', s?.style_name || '', [s?.description, s?.size && `Size ${s.size}`, s?.color && `Color ${s.color}`].filter(Boolean).join(' · '), String(d.qty)]],
-    columnStyles: { 0: { cellWidth: 12, halign: 'center' }, 1: { cellWidth: 32 }, 4: { cellWidth: 18, halign: 'right' } },
-  });
-  let y = (doc.lastAutoTable?.finalY ?? 90) + 12;
-  if (d.reason) { doc.text(`Reason: ${d.reason}`, 19, y); y += 10; }
-  if (d.pass_type === 'sent' && d.status !== 'out') {
-    doc.setFont('helvetica', 'bold'); doc.text('Return Details', 19, y); doc.setFont('helvetica', 'normal');
-    y += 7;
-    doc.text(`Status: ${d.status === 'returned' ? 'Returned' : 'Kept by client'}   Date: ${fmtDate(d.return_date)}   By: ${d.returned_by || '-'}   Condition: ${d.return_condition || '-'}`, 19, y);
-    if (d.return_remarks) doc.text(`Remarks: ${d.return_remarks}`, 19, y + 7);
-  }
-  signatures(doc, w, h, 'Dispatched By', 'Received By', d.dispatched_by || '', d.sent_to);
+  const doc = buildSampleDeliveryNote(d, s, await loadLogo(), fmtDate);
   output(doc, d.gate_pass_no, mode);
 }
 
