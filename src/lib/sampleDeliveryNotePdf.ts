@@ -55,7 +55,7 @@ export function buildSampleDeliveryNote(
   ].filter(Boolean).join('\n') || '-';
   const body: (string | number)[][] = [
     [1, sample?.ref_no || '-', description, String(dispatch.qty)],
-    ...Array.from({ length: 4 }, () => ['', '', '', '']),
+    ...Array.from({ length: 2 }, () => ['', '', '', '']),
   ];
   autoTable(doc, {
     startY: firstHeaderEnd + 2,
@@ -63,7 +63,7 @@ export function buildSampleDeliveryNote(
     theme: 'grid',
     styles: { font: 'helvetica', fontSize: 10, cellPadding: 2.5, lineColor: 70, lineWidth: 0.2, textColor: 25, valign: 'middle', overflow: 'linebreak' },
     headStyles: { fillColor: 242, textColor: 25, fontStyle: 'bold' },
-    bodyStyles: { minCellHeight: 11 },
+    bodyStyles: { minCellHeight: 8 },
     footStyles: { fillColor: 255, textColor: 25, fontStyle: 'bold' },
     columnStyles: { 0: { cellWidth: 14, halign: 'center' }, 1: { cellWidth: 45 }, 3: { cellWidth: 28, halign: 'center' } },
     head: [['SL', 'SAMPLE REFERENCE', 'ITEM / DESCRIPTION', 'QTY']],
