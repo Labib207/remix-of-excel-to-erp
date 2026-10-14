@@ -13,7 +13,7 @@ import { Plus, Pencil, Search, Send, Undo2, Printer, FileDown, Tag, Eye, Star, C
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import {
-  Sample, SampleDispatch, useSamples, useSaveSample, useSampleDispatches, useSaveDispatch, useCustomerOrders, fmtDate,
+  Sample, SampleDispatch, useSamples, useSaveSample, useDeleteSample, useSampleDispatches, useSaveDispatch, useCustomerOrders, fmtDate,
 } from '@/hooks/useCustomerSamples';
 import { sampleGatePass, sampleLabel } from '@/lib/customerSamplesPdf';
 import { exportSamplesExcel } from '@/lib/sampleExcel';
