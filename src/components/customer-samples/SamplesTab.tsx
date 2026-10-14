@@ -42,6 +42,7 @@ export function SamplesTab() {
   const { data: dispatches = [] } = useSampleDispatches();
   const { data: orders = [] } = useCustomerOrders();
   const saveSample = useSaveSample();
+  const deleteSample = useDeleteSample();
   const saveDispatch = useSaveDispatch();
 
   const [q, setQ] = useState('');
@@ -59,6 +60,8 @@ export function SamplesTab() {
   const [extendDate, setExtendDate] = useState('');
   const [returnOf, setReturnOf] = useState<SampleDispatch | null>(null);
   const [rForm, setRForm] = useState({ return_date: todayStr(), returned_by: '', return_condition: 'Good', return_remarks: '' });
+  const [editDispatch, setEditDispatch] = useState<SampleDispatch | null>(null);
+  const [dForm, setDForm] = useState({ sent_to: '', mobile: '', qty: '1', purpose: 'Approval', sent_date: '', expected_return: '', dispatched_by: '', reason: '' });
 
   const orderById = useMemo(() => new Map(orders.map(o => [o.id, o])), [orders]);
   const sampleById = useMemo(() => new Map(samples.map(s => [s.id, s])), [samples]);
