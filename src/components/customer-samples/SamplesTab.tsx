@@ -111,14 +111,51 @@ export function SamplesTab() {
     toast.success('Sample is back in the store'); setReturnOf(null);
   };
 
-  const rowActions = (s: Sample) => (
-    <>
-      <Button size="icon" variant="ghost" title="Details" onClick={() => setDetail(s)}><Eye className="h-4 w-4" /></Button>
-      <Button size="icon" variant="ghost" title="Edit" onClick={() => openForm(s)}><Pencil className="h-4 w-4" /></Button>
-      <Button size="icon" variant="ghost" title="Print label" onClick={() => sampleLabel(s, typeLabel(s.sample_type), 'print')}><Tag className="h-4 w-4" /></Button>
-      <Button size="sm" variant="outline" disabled={!canLeave(s)} onClick={() => setGate({ sample: s, type: 'sent' })}><Send className="h-4 w-4 mr-1" />Gate Pass</Button>
-    </>
-  );
+  const latestDispatch = (s: Sample) => dispatches.find(d => d.sample_id === s.id);
+
+  const openDispatchEdit = (d: SampleDispatch) => {
+    setEditDispatch(d);
+    setDForm({
+      sent_to: d.sent_to, mobile: d.mobile ?? '', qty: String(d.qty), purpose: d.purpose ?? 'Approval',
+      sent_date: d.sent_date, expected_return: d.expected_return ?? '', dispatched_by: d.dispatched_by ?? '', reason: d.reason ?? '',
+    });
+  };
+
+  const submitDispatchEdit = async () => {
+    if (!editDispatch) return;
+    const qty = parseFloat(dForm.qty) || 0;
+    if (!dForm.sent_to.trim()) return toast.error('"Sent to" name is required');
+    if (qty <= 0) return toast.error('Quantity must be more than zero');
+    await saveDispatch.mutateAsync({ id: editDispatch.id, values: {
+      sent_to: dForm.sent_to.trim(), mobile: dForm.mobile || null, qty, purpose: dForm.purpose || null,
+      sent_date: dForm.sent_date, expected_return: dForm.expected_return || null,
+      dispatched_by: dForm.dispatched_by || null, reason: dForm.reason || null,
+    } });
+    toast.success(`Delivery note ${editDispatch.gate_pass_no} updated`);
+    setEditDispatch(null);
+  };
+
+  const doDeleteSample = async (s: Sample) => {
+    if (!window.confirm(`Delete sample ${s.ref_no} permanently? Its gate pass history will also be removed.`)) return;
+    await deleteSample.mutateAsync(s.id);
+    toast.success(`Sample ${s.ref_no} deleted`);
+  };
+
+  const rowActions = (s: Sample) => {
+    const d = latestDispatch(s);
+    return (
+      <>
+        <Button size="icon" variant="ghost" title="Details" onClick={() => setDetail(s)}><Eye className="h-4 w-4" /></Button>
+        <Button size="icon" variant="ghost" title="Edit" onClick={() => openForm(s)}><Pencil className="h-4 w-4" /></Button>
+        <Button size="icon" variant="ghost" title="Print label" onClick={() => sampleLabel(s, typeLabel(s.sample_type), 'print')}><Tag className="h-4 w-4" /></Button>
+        <Button size="icon" variant="ghost" title="Print delivery note" disabled={!d}
+          onClick={() => d ? sampleGatePass(d, s, 'print') : toast.error('No delivery note yet — create a gate pass first')}><Printer className="h-4 w-4" /></Button>
+        <Button size="sm" variant="outline" disabled={!canLeave(s)} onClick={() => setGate({ sample: s, type: 'sent' })}><Send className="h-4 w-4 mr-1" />Gate Pass</Button>
+        {d && <Button size="icon" variant="ghost" title="Edit delivery note" onClick={() => openDispatchEdit(d)}><FileDown className="h-4 w-4 hidden" /><Pencil className="h-4 w-4 text-primary" /></Button>}
+        <Button size="icon" variant="ghost" title="Delete sample" className="text-destructive" onClick={() => doDeleteSample(s)}><Trash2 className="h-4 w-4" /></Button>
+      </>
+    );
+  };
 
   const filterSelect = (value: string, set: (v: string) => void, all: string, opts: { value: string; label: string }[]) => (
     <Select value={value} onValueChange={set}>
