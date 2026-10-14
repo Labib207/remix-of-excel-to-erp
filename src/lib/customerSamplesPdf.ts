@@ -111,9 +111,9 @@ export async function orderStageReport(orders: CustomerOrder[], mode: 'download'
 }
 
 export async function sampleGatePass(d: SampleDispatch, s: Sample | undefined, mode: 'download' | 'print') {
-  const title = d.pass_type === 'disposed' ? 'SAMPLE DISPOSAL GATE PASS' : d.pass_type === 'returned' ? 'SAMPLE RETURN GATE PASS' : 'SAMPLE OUTWARD GATE PASS';
+  const title = d.pass_type === 'disposed' ? 'SAMPLE DISPOSAL NOTE' : d.pass_type === 'returned' ? 'SAMPLE RETURN DELIVERY NOTE' : 'SAMPLE DELIVERY NOTE';
   const { doc, w, h } = await frame(title);
-  doc.text(`Gate Pass No: ${d.gate_pass_no}`, 19, 47);
+  doc.text(`Delivery Note No: ${d.gate_pass_no}`, 19, 47);
   doc.text(`Date Sent: ${fmtDate(d.sent_date)}`, w - 19, 47, { align: 'right' });
   doc.text(`Sent To: ${d.sent_to}`, 19, 54);
   doc.text(`Mobile: ${d.mobile || '-'}`, w - 19, 54, { align: 'right' });

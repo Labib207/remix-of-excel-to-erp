@@ -13,7 +13,7 @@ import { Plus, Pencil, Search, Send, Undo2, Printer, FileDown, Tag, Eye, Star, C
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import {
-  Sample, SampleDispatch, useSamples, useSaveSample, useSampleDispatches, useSaveDispatch, useCustomerOrders, fmtDate,
+  Sample, SampleDispatch, useSamples, useSaveSample, useDeleteSample, useSampleDispatches, useSaveDispatch, useCustomerOrders, fmtDate,
 } from '@/hooks/useCustomerSamples';
 import { sampleGatePass, sampleLabel } from '@/lib/customerSamplesPdf';
 import { exportSamplesExcel } from '@/lib/sampleExcel';
@@ -42,6 +42,7 @@ export function SamplesTab() {
   const { data: dispatches = [] } = useSampleDispatches();
   const { data: orders = [] } = useCustomerOrders();
   const saveSample = useSaveSample();
+  const deleteSample = useDeleteSample();
   const saveDispatch = useSaveDispatch();
 
   const [q, setQ] = useState('');
@@ -59,6 +60,8 @@ export function SamplesTab() {
   const [extendDate, setExtendDate] = useState('');
   const [returnOf, setReturnOf] = useState<SampleDispatch | null>(null);
   const [rForm, setRForm] = useState({ return_date: todayStr(), returned_by: '', return_condition: 'Good', return_remarks: '' });
+  const [editDispatch, setEditDispatch] = useState<SampleDispatch | null>(null);
+  const [dForm, setDForm] = useState({ sent_to: '', mobile: '', qty: '1', purpose: 'Approval', sent_date: '', expected_return: '', dispatched_by: '', reason: '' });
 
   const orderById = useMemo(() => new Map(orders.map(o => [o.id, o])), [orders]);
   const sampleById = useMemo(() => new Map(samples.map(s => [s.id, s])), [samples]);
@@ -108,14 +111,51 @@ export function SamplesTab() {
     toast.success('Sample is back in the store'); setReturnOf(null);
   };
 
-  const rowActions = (s: Sample) => (
-    <>
-      <Button size="icon" variant="ghost" title="Details" onClick={() => setDetail(s)}><Eye className="h-4 w-4" /></Button>
-      <Button size="icon" variant="ghost" title="Edit" onClick={() => openForm(s)}><Pencil className="h-4 w-4" /></Button>
-      <Button size="icon" variant="ghost" title="Print label" onClick={() => sampleLabel(s, typeLabel(s.sample_type), 'print')}><Tag className="h-4 w-4" /></Button>
-      <Button size="sm" variant="outline" disabled={!canLeave(s)} onClick={() => setGate({ sample: s, type: 'sent' })}><Send className="h-4 w-4 mr-1" />Gate Pass</Button>
-    </>
-  );
+  const latestDispatch = (s: Sample) => dispatches.find(d => d.sample_id === s.id);
+
+  const openDispatchEdit = (d: SampleDispatch) => {
+    setEditDispatch(d);
+    setDForm({
+      sent_to: d.sent_to, mobile: d.mobile ?? '', qty: String(d.qty), purpose: d.purpose ?? 'Approval',
+      sent_date: d.sent_date, expected_return: d.expected_return ?? '', dispatched_by: d.dispatched_by ?? '', reason: d.reason ?? '',
+    });
+  };
+
+  const submitDispatchEdit = async () => {
+    if (!editDispatch) return;
+    const qty = parseFloat(dForm.qty) || 0;
+    if (!dForm.sent_to.trim()) return toast.error('"Sent to" name is required');
+    if (qty <= 0) return toast.error('Quantity must be more than zero');
+    await saveDispatch.mutateAsync({ id: editDispatch.id, values: {
+      sent_to: dForm.sent_to.trim(), mobile: dForm.mobile || null, qty, purpose: dForm.purpose || null,
+      sent_date: dForm.sent_date, expected_return: dForm.expected_return || null,
+      dispatched_by: dForm.dispatched_by || null, reason: dForm.reason || null,
+    } });
+    toast.success(`Delivery note ${editDispatch.gate_pass_no} updated`);
+    setEditDispatch(null);
+  };
+
+  const doDeleteSample = async (s: Sample) => {
+    if (!window.confirm(`Delete sample ${s.ref_no} permanently? Its gate pass history will also be removed.`)) return;
+    await deleteSample.mutateAsync(s.id);
+    toast.success(`Sample ${s.ref_no} deleted`);
+  };
+
+  const rowActions = (s: Sample) => {
+    const d = latestDispatch(s);
+    return (
+      <>
+        <Button size="icon" variant="ghost" title="Details" onClick={() => setDetail(s)}><Eye className="h-4 w-4" /></Button>
+        <Button size="icon" variant="ghost" title="Edit" onClick={() => openForm(s)}><Pencil className="h-4 w-4" /></Button>
+        <Button size="icon" variant="ghost" title="Print label" onClick={() => sampleLabel(s, typeLabel(s.sample_type), 'print')}><Tag className="h-4 w-4" /></Button>
+        <Button size="icon" variant="ghost" title="Print delivery note" disabled={!d}
+          onClick={() => d ? sampleGatePass(d, s, 'print') : toast.error('No delivery note yet — create a gate pass first')}><Printer className="h-4 w-4" /></Button>
+        <Button size="sm" variant="outline" disabled={!canLeave(s)} onClick={() => setGate({ sample: s, type: 'sent' })}><Send className="h-4 w-4 mr-1" />Gate Pass</Button>
+        {d && <Button size="icon" variant="ghost" title="Edit delivery note" onClick={() => openDispatchEdit(d)}><Pencil className="h-4 w-4 text-primary" /></Button>}
+        <Button size="icon" variant="ghost" title="Delete sample" className="text-destructive" onClick={() => doDeleteSample(s)}><Trash2 className="h-4 w-4" /></Button>
+      </>
+    );
+  };
 
   const filterSelect = (value: string, set: (v: string) => void, all: string, opts: { value: string; label: string }[]) => (
     <Select value={value} onValueChange={set}>
@@ -293,6 +333,32 @@ export function SamplesTab() {
             <div><Label>New Keep-Until Date</Label><Input type="date" value={extendDate} onChange={e => setExtendDate(e.target.value)} /></div>
             <Button onClick={doExtend} disabled={saveSample.isPending}>Save</Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!editDispatch} onOpenChange={v => !v && setEditDispatch(null)}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          {editDispatch && <>
+            <DialogHeader><DialogTitle className="font-normal">Edit Delivery Note — {editDispatch.gate_pass_no}</DialogTitle></DialogHeader>
+            <div className="grid gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div><Label>Sent To *</Label><Input value={dForm.sent_to} onChange={e => setDForm({ ...dForm, sent_to: e.target.value })} /></div>
+                <div><Label>Mobile</Label><Input value={dForm.mobile} onChange={e => setDForm({ ...dForm, mobile: e.target.value })} /></div>
+                <div><Label>Quantity</Label><Input type="number" step="any" value={dForm.qty} onChange={e => setDForm({ ...dForm, qty: e.target.value })} /></div>
+                <div><Label>Purpose</Label>
+                  <Select value={dForm.purpose} onValueChange={v => setDForm({ ...dForm, purpose: v })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>{['Approval', 'Fitting', 'Exhibition', 'Reference', 'Return', 'Disposal', 'Other'].map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+                <div><Label>Date</Label><Input type="date" value={dForm.sent_date} onChange={e => setDForm({ ...dForm, sent_date: e.target.value })} /></div>
+                <div><Label>Expected Return</Label><Input type="date" value={dForm.expected_return} onChange={e => setDForm({ ...dForm, expected_return: e.target.value })} /></div>
+              </div>
+              <div><Label>Dispatched By</Label><Input value={dForm.dispatched_by} onChange={e => setDForm({ ...dForm, dispatched_by: e.target.value })} /></div>
+              <div><Label>Reason</Label><Textarea value={dForm.reason} onChange={e => setDForm({ ...dForm, reason: e.target.value })} /></div>
+              <Button onClick={submitDispatchEdit} disabled={saveDispatch.isPending}>Save Changes</Button>
+            </div>
+          </>}
         </DialogContent>
       </Dialog>
 
