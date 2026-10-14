@@ -151,7 +151,7 @@ export function SamplesTab() {
         <Button size="icon" variant="ghost" title="Print delivery note" disabled={!d}
           onClick={() => d ? sampleGatePass(d, s, 'print') : toast.error('No delivery note yet — create a gate pass first')}><Printer className="h-4 w-4" /></Button>
         <Button size="sm" variant="outline" disabled={!canLeave(s)} onClick={() => setGate({ sample: s, type: 'sent' })}><Send className="h-4 w-4 mr-1" />Gate Pass</Button>
-        {d && <Button size="icon" variant="ghost" title="Edit delivery note" onClick={() => openDispatchEdit(d)}><FileDown className="h-4 w-4 hidden" /><Pencil className="h-4 w-4 text-primary" /></Button>}
+        {d && <Button size="icon" variant="ghost" title="Edit delivery note" onClick={() => openDispatchEdit(d)}><Pencil className="h-4 w-4 text-primary" /></Button>}
         <Button size="icon" variant="ghost" title="Delete sample" className="text-destructive" onClick={() => doDeleteSample(s)}><Trash2 className="h-4 w-4" /></Button>
       </>
     );
@@ -333,6 +333,32 @@ export function SamplesTab() {
             <div><Label>New Keep-Until Date</Label><Input type="date" value={extendDate} onChange={e => setExtendDate(e.target.value)} /></div>
             <Button onClick={doExtend} disabled={saveSample.isPending}>Save</Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!editDispatch} onOpenChange={v => !v && setEditDispatch(null)}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          {editDispatch && <>
+            <DialogHeader><DialogTitle className="font-normal">Edit Delivery Note — {editDispatch.gate_pass_no}</DialogTitle></DialogHeader>
+            <div className="grid gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div><Label>Sent To *</Label><Input value={dForm.sent_to} onChange={e => setDForm({ ...dForm, sent_to: e.target.value })} /></div>
+                <div><Label>Mobile</Label><Input value={dForm.mobile} onChange={e => setDForm({ ...dForm, mobile: e.target.value })} /></div>
+                <div><Label>Quantity</Label><Input type="number" step="any" value={dForm.qty} onChange={e => setDForm({ ...dForm, qty: e.target.value })} /></div>
+                <div><Label>Purpose</Label>
+                  <Select value={dForm.purpose} onValueChange={v => setDForm({ ...dForm, purpose: v })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>{['Approval', 'Fitting', 'Exhibition', 'Reference', 'Return', 'Disposal', 'Other'].map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+                <div><Label>Date</Label><Input type="date" value={dForm.sent_date} onChange={e => setDForm({ ...dForm, sent_date: e.target.value })} /></div>
+                <div><Label>Expected Return</Label><Input type="date" value={dForm.expected_return} onChange={e => setDForm({ ...dForm, expected_return: e.target.value })} /></div>
+              </div>
+              <div><Label>Dispatched By</Label><Input value={dForm.dispatched_by} onChange={e => setDForm({ ...dForm, dispatched_by: e.target.value })} /></div>
+              <div><Label>Reason</Label><Textarea value={dForm.reason} onChange={e => setDForm({ ...dForm, reason: e.target.value })} /></div>
+              <Button onClick={submitDispatchEdit} disabled={saveDispatch.isPending}>Save Changes</Button>
+            </div>
+          </>}
         </DialogContent>
       </Dialog>
 
