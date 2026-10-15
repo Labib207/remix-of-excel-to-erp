@@ -173,6 +173,57 @@ export type Database = {
           },
         ]
       }
+      custom_sample_delivery_notes: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          dispatched_by: string | null
+          expected_return: string | null
+          gate_pass_no: string
+          id: string
+          mobile: string | null
+          note_description: string
+          purpose: string | null
+          qty: number
+          reason: string | null
+          sent_date: string
+          sent_to: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          dispatched_by?: string | null
+          expected_return?: string | null
+          gate_pass_no: string
+          id?: string
+          mobile?: string | null
+          note_description: string
+          purpose?: string | null
+          qty?: number
+          reason?: string | null
+          sent_date?: string
+          sent_to: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          dispatched_by?: string | null
+          expected_return?: string | null
+          gate_pass_no?: string
+          id?: string
+          mobile?: string | null
+          note_description?: string
+          purpose?: string | null
+          qty?: number
+          reason?: string | null
+          sent_date?: string
+          sent_to?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       customer_orders: {
         Row: {
           created_at: string
@@ -1225,6 +1276,7 @@ export type Database = {
           gate_pass_no: string
           id: string
           mobile: string | null
+          note_description: string | null
           pass_type: string
           prev_status: string | null
           purpose: string | null
@@ -1249,6 +1301,7 @@ export type Database = {
           gate_pass_no: string
           id?: string
           mobile?: string | null
+          note_description?: string | null
           pass_type?: string
           prev_status?: string | null
           purpose?: string | null
@@ -1273,6 +1326,7 @@ export type Database = {
           gate_pass_no?: string
           id?: string
           mobile?: string | null
+          note_description?: string | null
           pass_type?: string
           prev_status?: string | null
           purpose?: string | null

@@ -7,7 +7,7 @@ type T = Database['public']['Tables'];
 export type Customer = T['customers']['Row'];
 export type CustomerOrder = T['customer_orders']['Row'];
 export type Sample = T['samples']['Row'];
-export type SampleDispatch = T['sample_dispatches']['Row'];
+export type SampleDispatch = T['sample_dispatches']['Row'] & { is_custom?: boolean };
 
 export const ORDER_STAGES = [
   'Measurement', 'Style Selection', 'Marker Making', 'Cutting', 'Production', 'QC Check', 'Delivered',
@@ -21,7 +21,7 @@ export interface StageEntry {
   remark?: string | null;
 }
 
-type TableName = 'customers' | 'customer_orders' | 'samples' | 'sample_dispatches';
+type TableName = 'customers' | 'customer_orders' | 'samples' | 'sample_dispatches' | 'custom_sample_delivery_notes';
 
 const fail = (e: unknown) => {
   const msg = e instanceof Error ? e.message : 'Something went wrong';
@@ -87,8 +87,21 @@ export const useSamples = () => useList<Sample>('samples');
 export const useSaveSample = () => useSave('samples');
 export const useDeleteSample = () => useRemove('samples');
 
-export const useSampleDispatches = () => useList<SampleDispatch>('sample_dispatches');
+export const useSampleDispatches = () => useQuery({
+  queryKey: ['cs', 'sample_dispatches'],
+  queryFn: async () => {
+    const { data: regular, error } = await supabase.from('sample_dispatches').select('*').order('created_at', { ascending: false });
+    if (error) throw error;
+    const { data: custom, error: customError } = await supabase.from('custom_sample_delivery_notes').select('*').order('created_at', { ascending: false });
+    if (customError) throw customError;
+    const notes: SampleDispatch[] = (custom ?? []).map(d => ({ ...d, is_custom: true, sample_id: '', customer_id: null,
+      pass_type: 'sent', prev_status: null, status: 'kept', return_date: null, returned_by: null, return_condition: null, return_remarks: null }));
+    const combined: SampleDispatch[] = [...(regular ?? []), ...notes];
+    return combined.sort((a, b) => b.created_at.localeCompare(a.created_at));
+  },
+});
 export const useSaveDispatch = () => useSave('sample_dispatches');
+export const useSaveCustomDispatch = () => useSave('custom_sample_delivery_notes');
 export const useDeleteDispatch = () => useRemove('sample_dispatches');
 
 export type SampleHistory = T['sample_history']['Row'];

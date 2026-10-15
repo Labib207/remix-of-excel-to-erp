@@ -21,14 +21,14 @@ export function GatePassDialog({ sample, initialType, onClose }: { sample: Sampl
   const saveSample = useSaveSample();
   const [f, setF] = useState({
     pass_type: initialType as PassType, customer_id: null as string | null, sent_to: '', mobile: '', qty: '1', purpose: 'Approval',
-    sent_date: todayStr(), expected_return: '', dispatched_by: '', reason: '',
+    sent_date: todayStr(), expected_return: '', dispatched_by: '', reason: '', note_description: '',
   });
 
   useEffect(() => {
     if (!sample) return;
     setF({
       pass_type: initialType, customer_id: null, sent_to: initialType === 'disposed' ? 'Disposal' : '', mobile: '', qty: String(sample.total_qty),
-      purpose: 'Approval', sent_date: todayStr(), expected_return: '', dispatched_by: user?.email?.split('@')[0] ?? '', reason: '',
+      purpose: 'Approval', sent_date: todayStr(), expected_return: '', dispatched_by: user?.email?.split('@')[0] ?? '', reason: '', note_description: sample.style_name,
     });
   }, [sample, initialType, user]);
 
@@ -38,6 +38,7 @@ export function GatePassDialog({ sample, initialType, onClose }: { sample: Sampl
     const qty = parseFloat(f.qty) || 0;
     if (!f.sent_to.trim()) return toast.error('"Sent to" name is required');
     if (qty <= 0) return toast.error('Quantity must be more than zero');
+    if (!f.note_description.trim()) return toast.error('Style or customer name is required');
     if (f.pass_type === 'disposed' && !f.reason.trim()) return toast.error('A reason is required to dispose a sample');
     const gate_pass_no = await nextNumber('GP');
     await saveDispatch.mutateAsync({ values: {
@@ -46,19 +47,21 @@ export function GatePassDialog({ sample, initialType, onClose }: { sample: Sampl
       sent_date: f.sent_date, expected_return: f.pass_type === 'sent' ? f.expected_return || null : null,
       dispatched_by: f.dispatched_by || null, pass_type: f.pass_type, reason: f.reason || null, prev_status: sample.status,
       status: f.pass_type === 'sent' ? 'out' : 'kept',
+      note_description: f.note_description.trim(),
     } });
     await saveSample.mutateAsync({ id: sample.id, values: {
       status: f.pass_type, final_action: f.pass_type === 'disposed' ? 'dispose' : f.pass_type === 'sent' ? 'send' : sample.final_action,
     } });
-    toast.success(`Gate pass ${gate_pass_no} created`);
+    toast.success(`Delivery note ${gate_pass_no} created`);
     onClose();
   };
 
   return (
     <Dialog open onOpenChange={v => !v && onClose()}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-        <DialogHeader><DialogTitle className="font-normal">Gate Pass — {sample.ref_no} · {sample.style_name}</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle className="font-normal">Sample Delivery Note — {sample.ref_no} · {sample.style_name}</DialogTitle></DialogHeader>
         <div className="grid gap-3">
+          <div><Label htmlFor="dispatch-description">Style / Customer Name *</Label><Input id="dispatch-description" value={f.note_description} onChange={e => setF({ ...f, note_description: e.target.value })} /></div>
           <div><Label>Gate Pass Type</Label>
             <Select value={f.pass_type} onValueChange={v => setF({ ...f, pass_type: v as PassType, sent_to: v === 'disposed' ? f.sent_to || 'Disposal' : f.sent_to })}>
               <SelectTrigger><SelectValue /></SelectTrigger>
@@ -81,7 +84,7 @@ export function GatePassDialog({ sample, initialType, onClose }: { sample: Sampl
           </div>
           <div><Label>Dispatched By</Label><Input value={f.dispatched_by} onChange={e => setF({ ...f, dispatched_by: e.target.value })} /></div>
           <div><Label>Reason{f.pass_type === 'disposed' ? ' *' : ''}</Label><Textarea value={f.reason} onChange={e => setF({ ...f, reason: e.target.value })} /></div>
-          <Button onClick={submit} disabled={saveDispatch.isPending || saveSample.isPending}>Create Gate Pass</Button>
+          <Button onClick={submit} disabled={saveDispatch.isPending || saveSample.isPending}>Create Delivery Note</Button>
         </div>
       </DialogContent>
     </Dialog>

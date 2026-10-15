@@ -29,6 +29,13 @@
       "when": 1791886476467,
       "tag": "0003_add_production_pp_sample_types",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1792051773487,
+      "tag": "0004_custom_sample_delivery_notes",
+      "breakpoints": true
     }
   ]
 }
