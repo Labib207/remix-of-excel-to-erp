@@ -13,7 +13,7 @@ import { Plus, Pencil, Search, Send, Undo2, Printer, FileDown, Tag, Eye, Star, C
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import {
-  Sample, SampleDispatch, useSamples, useSaveSample, useDeleteSample, useSampleDispatches, useSaveDispatch, useCustomerOrders, fmtDate,
+  Sample, SampleDispatch, useSamples, useSaveSample, useDeleteSample, useSampleDispatches, useSaveDispatch, useSaveCustomDispatch, useCustomerOrders, fmtDate, nextNumber,
 } from '@/hooks/useCustomerSamples';
 import { sampleGatePass, sampleLabel } from '@/lib/customerSamplesPdf';
 import { exportSamplesExcel } from '@/lib/sampleExcel';
@@ -44,6 +44,7 @@ export function SamplesTab() {
   const saveSample = useSaveSample();
   const deleteSample = useDeleteSample();
   const saveDispatch = useSaveDispatch();
+  const saveCustomDispatch = useSaveCustomDispatch();
 
   const [q, setQ] = useState('');
   const [fType, setFType] = useState('all');
@@ -61,7 +62,8 @@ export function SamplesTab() {
   const [returnOf, setReturnOf] = useState<SampleDispatch | null>(null);
   const [rForm, setRForm] = useState({ return_date: todayStr(), returned_by: '', return_condition: 'Good', return_remarks: '' });
   const [editDispatch, setEditDispatch] = useState<SampleDispatch | null>(null);
-  const [dForm, setDForm] = useState({ sent_to: '', mobile: '', qty: '1', purpose: 'Approval', sent_date: '', expected_return: '', dispatched_by: '', reason: '' });
+  const [customOpen, setCustomOpen] = useState(false);
+  const [dForm, setDForm] = useState({ sent_to: '', mobile: '', qty: '1', purpose: 'Approval', sent_date: '', expected_return: '', dispatched_by: '', reason: '', note_description: '' });
 
   const orderById = useMemo(() => new Map(orders.map(o => [o.id, o])), [orders]);
   const sampleById = useMemo(() => new Map(samples.map(s => [s.id, s])), [samples]);
@@ -85,8 +87,8 @@ export function SamplesTab() {
   }), [samples, orderById, fType, fStatus, fLoc, fGolden, q]);
 
   const reviewRows = samples.filter(s => (reviewMap.get(s.id) ?? []).length > 0);
-  const logRows = dispatches.filter(d => (logFilter === 'all' || d.status === 'out') &&
-    matches(`${d.gate_pass_no} ${d.sent_to} ${sampleById.get(d.sample_id)?.ref_no ?? ''} ${sampleById.get(d.sample_id)?.style_name ?? ''}`, q));
+  const logRows = dispatches.filter(d => (logFilter === 'all' || d.status === 'out' || d.is_custom) &&
+    matches(`${d.gate_pass_no} ${d.sent_to} ${d.note_description ?? ''} ${sampleById.get(d.sample_id)?.ref_no ?? ''} ${sampleById.get(d.sample_id)?.style_name ?? ''}`, q));
 
   const openForm = (s: Sample | null) => { setEditing(s); setFormOpen(true); };
   const canLeave = (s: Sample) => !LEAVING_STATUSES.includes(s.status);
@@ -118,21 +120,30 @@ export function SamplesTab() {
     setDForm({
       sent_to: d.sent_to, mobile: d.mobile ?? '', qty: String(d.qty), purpose: d.purpose ?? 'Approval',
       sent_date: d.sent_date, expected_return: d.expected_return ?? '', dispatched_by: d.dispatched_by ?? '', reason: d.reason ?? '',
+      note_description: d.note_description ?? sampleById.get(d.sample_id)?.style_name ?? d.sent_to,
     });
   };
 
   const submitDispatchEdit = async () => {
-    if (!editDispatch) return;
+    if (!editDispatch && !customOpen) return;
     const qty = parseFloat(dForm.qty) || 0;
     if (!dForm.sent_to.trim()) return toast.error('"Sent to" name is required');
-    if (qty <= 0) return toast.error('Quantity must be more than zero');
-    await saveDispatch.mutateAsync({ id: editDispatch.id, values: {
+    if (!Number.isFinite(qty) || qty <= 0) return toast.error('Quantity must be more than zero');
+    if (!dForm.sent_date) return toast.error('Date is required');
+    if (!dForm.note_description.trim()) return toast.error('Style or customer name is required');
+    if (editDispatch?.pass_type === 'disposed' && !dForm.reason.trim()) return toast.error('A disposal reason is required');
+    const values = {
       sent_to: dForm.sent_to.trim(), mobile: dForm.mobile || null, qty, purpose: dForm.purpose || null,
       sent_date: dForm.sent_date, expected_return: dForm.expected_return || null,
-      dispatched_by: dForm.dispatched_by || null, reason: dForm.reason || null,
-    } });
-    toast.success(`Delivery note ${editDispatch.gate_pass_no} updated`);
-    setEditDispatch(null);
+      dispatched_by: dForm.dispatched_by || null, reason: dForm.reason || null, note_description: dForm.note_description.trim(),
+    };
+    if (customOpen || editDispatch?.is_custom) {
+      await saveCustomDispatch.mutateAsync({ id: editDispatch?.id, values: customOpen ? { ...values, gate_pass_no: await nextNumber('GP') } : values });
+    } else if (editDispatch) {
+      await saveDispatch.mutateAsync({ id: editDispatch.id, values });
+    }
+    toast.success(customOpen ? 'Custom delivery note created' : `Delivery note ${editDispatch?.gate_pass_no} updated`);
+    setEditDispatch(null); setCustomOpen(false);
   };
 
   const doDeleteSample = async (s: Sample) => {
@@ -195,6 +206,7 @@ export function SamplesTab() {
               <Input className="pl-9 w-full sm:w-60" placeholder="Search ID, style, customer" value={q} onChange={e => setQ(e.target.value)} />
             </div>
             <Button variant="outline" onClick={() => exportSamplesExcel(rows, orders)} disabled={!rows.length}><FileSpreadsheet className="h-4 w-4 mr-1" />Excel</Button>
+            <Button variant="outline" onClick={() => { setEditDispatch(null); setDForm({ sent_to: '', mobile: '', qty: '1', purpose: 'Other', sent_date: todayStr(), expected_return: '', dispatched_by: '', reason: '', note_description: '' }); setCustomOpen(true); }}><Plus className="h-4 w-4 mr-1" />Custom Delivery Note</Button>
             <Button onClick={() => openForm(null)}><Plus className="h-4 w-4 mr-1" />Add Sample</Button>
           </div>
         </div>
@@ -296,20 +308,21 @@ export function SamplesTab() {
                     return (
                       <TableRow key={d.id}>
                         <TableCell className="px-4 py-3 font-mono text-sm">{d.gate_pass_no}</TableCell>
-                        <TableCell className="px-4 py-3 capitalize">{d.pass_type}{d.reason && <div className="text-xs text-muted-foreground normal-case">{d.reason}</div>}</TableCell>
-                        <TableCell className="px-4 py-3">{s ? `${s.ref_no} · ${s.style_name}` : '-'}</TableCell>
+                        <TableCell className="px-4 py-3 capitalize">{d.is_custom ? 'Custom' : d.pass_type}{d.reason && <div className="text-xs text-muted-foreground normal-case">{d.reason}</div>}</TableCell>
+                        <TableCell className="px-4 py-3">{d.note_description || (s ? `${s.ref_no} · ${s.style_name}` : '-')}</TableCell>
                         <TableCell className="px-4 py-3">{d.sent_to}{d.mobile && <div className="text-xs text-muted-foreground">{d.mobile}</div>}</TableCell>
                         <TableCell className="px-4 py-3 text-right">{d.qty}</TableCell>
                         <TableCell className="px-4 py-3">{fmtDate(d.sent_date)}<div className="text-xs text-muted-foreground">by {d.dispatched_by || '-'}</div></TableCell>
                         <TableCell className="px-4 py-3">
-                          {d.pass_type !== 'sent' ? '-' : d.status === 'out'
+                          {d.is_custom || d.pass_type !== 'sent' ? '-' : d.status === 'out'
                             ? <span className={late ? 'text-destructive' : ''}>Outside · Exp. {fmtDate(d.expected_return)}</span>
                             : <>{fmtDate(d.return_date)}<div className="text-xs text-muted-foreground">{d.returned_by || '-'} · {d.return_condition || '-'}</div></>}
                         </TableCell>
                         <TableCell className="px-4 py-3 text-right whitespace-nowrap">
                           {d.status === 'out' && <Button size="sm" variant="outline" onClick={() => { setReturnOf(d); setRForm({ return_date: todayStr(), returned_by: d.sent_to, return_condition: 'Good', return_remarks: '' }); }}><Undo2 className="h-4 w-4 mr-1" />Back to Store</Button>}
-                          <Button size="icon" variant="ghost" onClick={() => sampleGatePass(d, s, 'print')}><Printer className="h-4 w-4" /></Button>
-                          <Button size="icon" variant="ghost" onClick={() => sampleGatePass(d, s, 'download')}><FileDown className="h-4 w-4" /></Button>
+                          <Button size="icon" variant="ghost" title="Edit delivery note" onClick={() => openDispatchEdit(d)}><Pencil className="h-4 w-4" /></Button>
+                          <Button size="icon" variant="ghost" title="Print delivery note" onClick={() => sampleGatePass(d, s, 'print')}><Printer className="h-4 w-4" /></Button>
+                          <Button size="icon" variant="ghost" title="Download delivery note" onClick={() => sampleGatePass(d, s, 'download')}><FileDown className="h-4 w-4" /></Button>
                         </TableCell>
                       </TableRow>
                     );
@@ -336,11 +349,12 @@ export function SamplesTab() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={!!editDispatch} onOpenChange={v => !v && setEditDispatch(null)}>
+      <Dialog open={!!editDispatch || customOpen} onOpenChange={v => { if (!v) { setEditDispatch(null); setCustomOpen(false); } }}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-          {editDispatch && <>
-            <DialogHeader><DialogTitle className="font-normal">Edit Delivery Note — {editDispatch.gate_pass_no}</DialogTitle></DialogHeader>
+          <>
+            <DialogHeader><DialogTitle className="font-normal">{customOpen ? 'Custom Sample Delivery Note' : `Edit Delivery Note — ${editDispatch?.gate_pass_no}`}</DialogTitle></DialogHeader>
             <div className="grid gap-3">
+              <div><Label htmlFor="note-description">Style / Customer Name *</Label><Input id="note-description" value={dForm.note_description} onChange={e => setDForm({ ...dForm, note_description: e.target.value })} /></div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div><Label>Sent To *</Label><Input value={dForm.sent_to} onChange={e => setDForm({ ...dForm, sent_to: e.target.value })} /></div>
                 <div><Label>Mobile</Label><Input value={dForm.mobile} onChange={e => setDForm({ ...dForm, mobile: e.target.value })} /></div>
@@ -356,9 +370,9 @@ export function SamplesTab() {
               </div>
               <div><Label>Dispatched By</Label><Input value={dForm.dispatched_by} onChange={e => setDForm({ ...dForm, dispatched_by: e.target.value })} /></div>
               <div><Label>Reason</Label><Textarea value={dForm.reason} onChange={e => setDForm({ ...dForm, reason: e.target.value })} /></div>
-              <Button onClick={submitDispatchEdit} disabled={saveDispatch.isPending}>Save Changes</Button>
+              <Button onClick={submitDispatchEdit} disabled={saveDispatch.isPending || saveCustomDispatch.isPending}>{customOpen ? 'Create Delivery Note' : 'Save Changes'}</Button>
             </div>
-          </>}
+          </>
         </DialogContent>
       </Dialog>
 

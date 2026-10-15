@@ -70,7 +70,7 @@ export function buildSampleDeliveryNote(
 
   const notes: string[][] = [];
   if (dispatch.reason) notes.push(['Remarks / Reason', dispatch.reason]);
-  if (dispatch.pass_type === 'sent' && dispatch.status !== 'out') {
+  if (!dispatch.is_custom && dispatch.pass_type === 'sent' && dispatch.status !== 'out') {
     notes.push(['Return Details', `${dispatch.status === 'returned' ? 'Returned' : 'Kept by client'} | Date: ${formatDate(dispatch.return_date)} | By: ${dispatch.returned_by || '-'} | Condition: ${dispatch.return_condition || '-'}`]);
     if (dispatch.return_remarks) notes.push(['Return Remarks', dispatch.return_remarks]);
   }
