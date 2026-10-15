@@ -96,7 +96,8 @@ export const useSampleDispatches = () => useQuery({
     if (customError) throw customError;
     const notes: SampleDispatch[] = (custom ?? []).map(d => ({ ...d, is_custom: true, sample_id: '', customer_id: null,
       pass_type: 'sent', prev_status: null, status: 'kept', return_date: null, returned_by: null, return_condition: null, return_remarks: null }));
-    return [...(regular ?? []), ...notes].sort((a, b) => b.created_at.localeCompare(a.created_at));
+    const combined: SampleDispatch[] = [...(regular ?? []), ...notes];
+    return combined.sort((a, b) => b.created_at.localeCompare(a.created_at));
   },
 });
 export const useSaveDispatch = () => useSave('sample_dispatches');
