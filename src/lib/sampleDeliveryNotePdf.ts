@@ -14,8 +14,7 @@ export function buildSampleDeliveryNote(
   const height = doc.internal.pageSize.getHeight();
   const left = 12;
   const contentWidth = width - 24;
-  const title = dispatch.pass_type === 'disposed' ? 'SAMPLE DISPOSAL NOTE'
-    : dispatch.pass_type === 'returned' ? 'SAMPLE RETURN DELIVERY NOTE' : 'SAMPLE DELIVERY NOTE';
+  const title = 'SAMPLE DELIVERY NOTE';
   const framedPages = new Set<number>();
 
   const drawHeader = () => {
@@ -29,10 +28,9 @@ export function buildSampleDeliveryNote(
     if (logo) doc.addImage(logo, 'PNG', 12, 10, 40, 18);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(17);
-    doc.text(title, width / 2 + 15, 20, { align: 'center' });
+    doc.text(title, width / 2 + 15, 24, { align: 'center' });
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(10);
-    doc.text('GHOUSH - Stock Management', width / 2 + 15, 28, { align: 'center' });
     doc.line(left, 34, width - left, 34);
     autoTable(doc, {
       startY: 34, margin: { left, right: left }, theme: 'plain',
@@ -49,10 +47,7 @@ export function buildSampleDeliveryNote(
   // Metadata can wrap; leave the item table below it rather than overlaying it.
   drawHeader();
   const firstHeaderEnd = (doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? 63;
-  const description = [
-    sample?.style_name, sample?.description,
-    sample?.size && `Size: ${sample.size}`, sample?.color && `Color: ${sample.color}`,
-  ].filter(Boolean).join('\n') || '-';
+  const description = dispatch.note_description?.trim() || sample?.style_name?.trim() || dispatch.sent_to || '-';
   const body: (string | number)[][] = [
     [1, sample?.ref_no || '-', description, String(dispatch.qty)],
     ...Array.from({ length: 2 }, () => ['', '', '', '']),
@@ -93,14 +88,13 @@ export function buildSampleDeliveryNote(
   const signatureY = height - 49;
   doc.setDrawColor(45);
   doc.line(left, signatureY - 5, width - left, signatureY - 5);
-  for (const [x, heading, name] of [
-    [left + 8, 'ISSUED BY', dispatch.dispatched_by || ''],
-    [width / 2 + 20, 'RECEIVED BY', dispatch.sent_to || ''],
+  for (const [x, heading] of [
+    [left + 8, 'ISSUED BY'],
+    [width / 2 + 20, 'RECEIVED BY'],
   ] as const) {
     doc.setFont('helvetica', 'bold'); doc.setFontSize(10);
     doc.text(heading, x, signatureY + 2);
     doc.setFont('helvetica', 'normal'); doc.setFontSize(9);
-    doc.text(`Name: ${doc.splitTextToSize(name, 85).slice(0, 2).join('\n')}`, x, signatureY + 10);
     doc.text('Signature:', x, signatureY + 25);
     doc.line(x + 19, signatureY + 26, x + 95, signatureY + 26);
     doc.text('Date:', x, signatureY + 34);
