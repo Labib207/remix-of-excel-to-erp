@@ -36,6 +36,13 @@
       "when": 1792051773487,
       "tag": "0004_custom_sample_delivery_notes",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1793537153307,
+      "tag": "0005_allow_duplicate_item_codes",
+      "breakpoints": true
     }
   ]
 }
