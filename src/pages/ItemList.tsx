@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
@@ -30,6 +31,7 @@ const ItemList = () => {
   const [isBulkOpen, setIsBulkOpen] = useState(false);
   const [editing, setEditing] = useState<CatalogItem | null>(null);
   const [form, setForm] = useState(empty());
+  const [allowDuplicate, setAllowDuplicate] = useState(false);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -43,7 +45,7 @@ const ItemList = () => {
 
   const submitAdd = () => {
     create.mutate(
-      { itemCode: form.itemCode, description: form.description, uom: form.uom },
+      { itemCode: form.itemCode, description: form.description, uom: form.uom, allowDuplicate },
       { onSuccess: () => { setForm(empty()); setIsAddOpen(false); } }
     );
   };
@@ -126,6 +128,10 @@ const ItemList = () => {
                         </div>
                       </div>
                     </div>
+                    <label className="flex items-center gap-2 text-sm cursor-pointer">
+                      <Switch checked={allowDuplicate} onCheckedChange={setAllowDuplicate} />
+                      <span>Allow duplicate (add even if same code and description exist)</span>
+                    </label>
                     <div className="flex justify-end gap-2">
                       <Button variant="outline" onClick={() => setIsAddOpen(false)}>Cancel</Button>
                       <Button onClick={submitAdd} disabled={create.isPending}>

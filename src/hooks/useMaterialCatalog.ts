@@ -37,7 +37,7 @@ export function useMaterialCatalog() {
 export function useCreateCatalogItem() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (item: Omit<CatalogItem, 'id'>) => {
+    mutationFn: async (item: Omit<CatalogItem, 'id'> & { allowDuplicate?: boolean }) => {
       const description = normalizeText(item.description);
       const itemCode = normalizeText(item.itemCode);
       const uom = normalizeText(item.uom) || 'pcs';
@@ -54,7 +54,7 @@ export function useCreateCatalogItem() {
         const eCode = normalizeText(e.item_code || '').toLowerCase();
         return eDesc === descLc && eCode === codeLc;
       });
-      if (dup) {
+      if (dup && !item.allowDuplicate) {
         throw new Error('An item with the same description and item code already exists');
       }
 
