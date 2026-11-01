@@ -63,13 +63,21 @@ export function useCloudRequests() {
 
       // Fetch all items for these requests
       const requestIds = requests.map(r => r.id);
-      const { data: items, error: itemsError } = await supabase
-        .from('request_items')
-        .select('*')
-        .in('request_id', requestIds)
-        .order('sort_order', { ascending: true });
-
-      if (itemsError) throw itemsError;
+      // Page through all items (server returns max 1000 rows per call)
+      const items: any[] = [];
+      const PAGE = 1000;
+      for (let from = 0; ; from += PAGE) {
+        const { data: page, error: itemsError } = await supabase
+          .from('request_items')
+          .select('*')
+          .in('request_id', requestIds)
+          .order('sort_order', { ascending: true })
+          .order('id', { ascending: true })
+          .range(from, from + PAGE - 1);
+        if (itemsError) throw itemsError;
+        items.push(...(page || []));
+        if (!page || page.length < PAGE) break;
+      }
 
       // Fetch order names
       const orderIds = [...new Set(requests.map(r => r.order_id).filter(Boolean))];
