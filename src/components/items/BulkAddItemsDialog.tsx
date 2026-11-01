@@ -4,6 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -52,11 +53,12 @@ export function BulkAddItemsDialog({ open, onOpenChange, existing }: Props) {
   const qc = useQueryClient();
   const [pasteText, setPasteText] = useState('');
   const [rawRows, setRawRows] = useState<{ description: string; itemCode: string; uom: string }[]>([]);
+  const [allowDuplicates, setAllowDuplicates] = useState(false);
   const [importing, setImporting] = useState(false);
   const [progress, setProgress] = useState({ done: 0, total: 0 });
 
   const existingDescSet = useMemo(
-    () => new Set(existing.map(i => normalizeText(i.description).toLowerCase())),
+    () => new Set(existing.map(i => `${normalizeText(i.itemCode).toLowerCase()}|${normalizeText(i.description).toLowerCase()}`)),
     [existing],
   );
 
@@ -70,17 +72,17 @@ export function BulkAddItemsDialog({ open, onOpenChange, existing }: Props) {
       if (!description) {
         return { rowNo, description, itemCode, uom, status: 'invalid', reason: 'Missing description' };
       }
-      const key = description.toLowerCase();
-      if (existingDescSet.has(key)) {
+      const key = `${itemCode.toLowerCase()}|${description.toLowerCase()}`;
+      if (!allowDuplicates && existingDescSet.has(key)) {
         return { rowNo, description, itemCode, uom, status: 'duplicate', reason: 'Already in catalog' };
       }
-      if (seenInBatch.has(key)) {
+      if (!allowDuplicates && seenInBatch.has(key)) {
         return { rowNo, description, itemCode, uom, status: 'duplicate', reason: 'Duplicate in this batch' };
       }
       seenInBatch.add(key);
       return { rowNo, description, itemCode, uom, status: 'ready' };
     });
-  }, [rawRows, existingDescSet]);
+  }, [rawRows, existingDescSet, allowDuplicates]);
 
   const counts = useMemo(() => ({
     ready: parsed.filter(p => p.status === 'ready').length,
@@ -237,6 +239,10 @@ export function BulkAddItemsDialog({ open, onOpenChange, existing }: Props) {
               <Badge variant="default">{counts.ready} ready</Badge>
               {counts.duplicate > 0 && <Badge variant="secondary">{counts.duplicate} duplicate</Badge>}
               {counts.invalid > 0 && <Badge variant="destructive">{counts.invalid} invalid</Badge>}
+              <label className="ml-auto flex items-center gap-2 cursor-pointer">
+                <Switch checked={allowDuplicates} onCheckedChange={setAllowDuplicates} />
+                <span>Allow duplicates</span>
+              </label>
             </div>
             <div className="rounded-md border max-h-72 overflow-y-auto">
               <Table>
