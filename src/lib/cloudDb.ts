@@ -38,17 +38,25 @@ export function nowISO(): string {
  * Fetch all rows from a table directly from cloud.
  */
 export async function cloudFetch(table: TableName, filters?: Record<string, any>): Promise<any[]> {
-  let query = supabase.from(table).select('*') as any;
-  if (filters) {
-    for (const [key, value] of Object.entries(filters)) {
-      if (value !== undefined && value !== null) {
-        query = query.eq(key, value);
+  // Page through all rows — the server caps each call at 1000 rows,
+  // so a single select() silently drops rows beyond that.
+  const PAGE = 1000;
+  const rows: any[] = [];
+  for (let from = 0; ; from += PAGE) {
+    let query = supabase.from(table).select('*') as any;
+    if (filters) {
+      for (const [key, value] of Object.entries(filters)) {
+        if (value !== undefined && value !== null) {
+          query = query.eq(key, value);
+        }
       }
     }
+    const { data, error } = await query.range(from, from + PAGE - 1);
+    if (error) throw new Error(safeErrorMessage(error, `fetch ${table}`));
+    rows.push(...(data || []));
+    if (!data || data.length < PAGE) break;
   }
-  const { data, error } = await query;
-  if (error) throw new Error(safeErrorMessage(error, `fetch ${table}`));
-  return data || [];
+  return rows;
 }
 
 /**
