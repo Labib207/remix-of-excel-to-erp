@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -7,18 +8,18 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { DataSyncProvider } from "@/components/DataSyncProvider";
 import Dashboard from "./pages/Dashboard";
-import DeliveryNotes from "./pages/DeliveryNotes";
-import Requests from "./pages/Requests";
-import Requirements from "./pages/Requirements";
-import ItemList from "./pages/ItemList";
-import Stationery from "./pages/Stationery";
-import CustomerSamples from "./pages/CustomerSamples";
+const DeliveryNotes = lazy(() => import("./pages/DeliveryNotes"));
+const Requests = lazy(() => import("./pages/Requests"));
+const Requirements = lazy(() => import("./pages/Requirements"));
+const ItemList = lazy(() => import("./pages/ItemList"));
+const Stationery = lazy(() => import("./pages/Stationery"));
+const CustomerSamples = lazy(() => import("./pages/CustomerSamples"));
 import Auth from "./pages/Auth";
-import Admin from "./pages/Admin";
-import Profile from "./pages/Profile";
-import Reports from "./pages/Reports";
-import OAuthConsent from "./pages/OAuthConsent";
-import NotFound from "./pages/NotFound";
+const Admin = lazy(() => import("./pages/Admin"));
+const Profile = lazy(() => import("./pages/Profile"));
+const Reports = lazy(() => import("./pages/Reports"));
+const OAuthConsent = lazy(() => import("./pages/OAuthConsent"));
+const NotFound = lazy(() => import("./pages/NotFound"));
 
 
 // Tuned for solo user with growing data: cache aggressively, avoid refetch storms
@@ -48,6 +49,7 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <DataSyncProvider>
+            <Suspense fallback={<div className="flex min-h-screen items-center justify-center text-muted-foreground">Loading…</div>}>
             <Routes>
               <Route path="/auth" element={<Auth />} />
               <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
@@ -64,6 +66,7 @@ const App = () => (
               <Route path="/admin" element={<ProtectedRoute requireAdmin><Admin /></ProtectedRoute>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
+            </Suspense>
           </DataSyncProvider>
         </AuthProvider>
       </BrowserRouter>
